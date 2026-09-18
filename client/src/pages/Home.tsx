@@ -290,6 +290,10 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-full bg-white border border-black/[0.06] p-0.5 text-[11px] text-[#515154]">
+                <span className="px-2 py-0.5 rounded-full bg-[#1d1d1f] text-white font-medium">中文</span>
+                <button onClick={() => showToast('已预留维吾尔语界面规范与词条映射。')} className="px-2 py-0.5 hover:text-[#1d1d1f] transition-colors">ئۇيغۇرچە</button>
+              </div>
               <div className="hidden md:flex items-center gap-2 px-3 h-9 rounded-full bg-white border border-black/[0.06] text-xs text-[#515154] shadow-[0_1px_2px_rgba(0,0,0,0.02)]"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />试点环境运行正常</div>
               <button onClick={() => showToast('通知中心：暂无待处理系统预警。')} aria-label="通知" className="relative w-9 h-9 rounded-full bg-white border border-black/[0.06] hover:bg-[#f5f5f7] flex items-center justify-center"><Bell className="w-4 h-4" /><span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-rose-500" /></button>
             </div>
