@@ -95,7 +95,7 @@
 }
 
 .login-scenic-background {
-  background-image: url('/manus-storage/quji-xinjiang-login-background_d990656d.png');
+  background-image: url('/manus-storage/quji-xinjiang-login-background_3120f429.webp');
   background-size: cover;
   background-position: center;
   animation: login-scenic-drift 24s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
@@ -109,4 +109,44 @@
 
 @media (prefers-reduced-motion: reduce) {
   .login-scenic-background { animation: none; }
+}
+
+/* Business UI guardrails: preserve Chinese phrases and reflow modules before text can be compressed. */
+.metric-grid > * {
+  min-width: 0;
+}
+
+.metric-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.metric-value {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.metric-sub {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.role-login-card {
+  min-width: 0;
+}
+
+@media (max-width: 559px) {
+  .role-login-card {
+    min-height: 122px;
+  }
+
+  .metric-card {
+    min-height: 142px;
+  }
+}
+
+@media (max-width: 459px) {
+  .onsite-stat-grid > * {
+    min-height: 78px;
+  }
 }

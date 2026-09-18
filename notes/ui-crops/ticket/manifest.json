@@ -1,0 +1,46 @@
+{
+  "source": "/home/ubuntu/upload/ScreenShot_2026-09-18_142021_540.png",
+  "pixel_width": 180,
+  "pixel_height": 1154,
+  "aspect_ratio": "90:577",
+  "aspect_ratio_decimal_width_over_height": 0.155979,
+  "longest_side_over_shortest_side": 6.411111,
+  "total_pixels": 207720,
+  "screening_signals": [
+    "longest_side_over_shortest_side_gte_4"
+  ],
+  "geometry_screening_match": true,
+  "orientation": "portrait",
+  "dimension_basis": "original image header with EXIF orientation applied",
+  "readability_assessment": "unreadable",
+  "preprocessing_required": true,
+  "tiling_requested": true,
+  "reason": "caller confirmed task-relevant unreadability",
+  "tiled": true,
+  "mode": "vertical",
+  "overlap_fraction_requested_target": 0.12,
+  "overlap_fraction_actual_minimum": {
+    "horizontal": 0.0,
+    "vertical": 0.076667
+  },
+  "reading_order": "top-to-bottom",
+  "tile_count": 2,
+  "tiles": [
+    {
+      "index": 1,
+      "path": "/home/ubuntu/quji-event-service-prototype/notes/ui-crops/ticket/tile_001_x000000_y000000.png",
+      "x": 0,
+      "y": 0,
+      "pixel_width": 180,
+      "pixel_height": 600
+    },
+    {
+      "index": 2,
+      "path": "/home/ubuntu/quji-event-service-prototype/notes/ui-crops/ticket/tile_002_x000000_y000554.png",
+      "x": 0,
+      "y": 554,
+      "pixel_width": 180,
+      "pixel_height": 600
+    }
+  ]
+}
