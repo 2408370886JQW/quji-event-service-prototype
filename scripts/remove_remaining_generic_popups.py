@@ -1,0 +1,22 @@
+from pathlib import Path
+
+path = Path('/home/ubuntu/quji-event-service-prototype/client/src/pages/Home.tsx')
+s = path.read_text()
+
+old_notice = """function Notice({ icon, tone, title, text, time, unread, action, onClick }: { icon: ReactNode; tone: 'rose' | 'amber' | 'blue'; title: string; text: string; time: string; unread: boolean; action: string; onClick?: () => void }) { const [open, setOpen] = useState(false); const c = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-[#255ec8]' }[tone]; return <><div className="p-4 border border-slate-200 rounded-lg"><div className="flex gap-3"><div className={`w-9 h-9 rounded-lg shrink-0 flex items-center justify-center ${c}`}>{icon}</div><div className="min-w-0 flex-1"><div className="flex gap-2"><div className="text-[15px] font-semibold flex-1">{title}</div>{unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-[#255ec8]" />}</div><p className="mt-1 text-[14px] leading-6 text-slate-600">{text}</p><div className="mt-3 flex items-center justify-between"><span className="text-[12px] text-slate-500">{time}</span><button onClick={() => onClick ? onClick() : setOpen(true)} className="text-[13px] font-semibold text-[#255ec8]">{action}</button></div></div></div></div>{open && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={() => setOpen(false)} className="absolute inset-0 bg-black/30" /><section className="relative w-full max-w-[420px] bg-white rounded-lg shadow-2xl p-6"><h2 className="text-[20px] font-semibold">{title}</h2><p className="mt-3 text-[14px] leading-6 text-slate-600">{text}</p><button onClick={() => setOpen(false)} className="mt-6 h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold">关闭</button></section></div>}</>; }"""
+new_notice = """function Notice({ icon, tone, title, text, time, unread, action, onClick }: { icon: ReactNode; tone: 'rose' | 'amber' | 'blue'; title: string; text: string; time: string; unread: boolean; action: string; onClick?: () => void }) { const c = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-[#245fc4]' }[tone]; return <div className="p-4 border border-slate-200 rounded-lg"><div className="flex gap-3"><div className={`w-9 h-9 rounded-md shrink-0 flex items-center justify-center ${c}`}>{icon}</div><div className="min-w-0 flex-1"><div className="flex gap-2"><div className="text-[15px] font-semibold flex-1">{title}</div>{unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-[#245fc4]" />}</div><p className="semantic-copy mt-1 text-[14px] leading-6 text-slate-600">{text}</p><div className="mt-3 flex items-center justify-between"><span className="text-[12px] text-slate-500">{time}</span>{onClick ? <button onClick={onClick} className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]">{action}</button> : <ActionButton label={action} title={title} description={text} className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]" />}</div></div></div></div>; }"""
+if old_notice not in s:
+    raise SystemExit('Missing Notice function')
+s = s.replace(old_notice, new_notice, 1)
+
+old_settings = """<div className="mt-4 grid grid-cols-2 gap-2">{(Object.keys(ROLE_INFO) as Role[]).map(item => <button key={item} onClick={() => onRoleChange(item)} className={`h-10 rounded-lg border text-[13px] font-semibold ${item === role ? 'border-[#255ec8] bg-blue-50 text-[#255ec8]' : 'border-slate-300'}`}>{ROLE_INFO[item].name.replace('人员', '')}</button>)}</div>"""
+new_settings = """<div className="mt-4 grid grid-cols-1 gap-2">{(Object.keys(ROLE_INFO) as Role[]).map(item => <button key={item} onClick={() => onRoleChange(item)} className={`h-10 px-3 text-left rounded-md border text-[13px] font-semibold whitespace-nowrap ${item === role ? 'border-[#245fc4] bg-blue-50 text-[#1c4c9e]' : 'border-slate-300 hover:bg-slate-50'}`}>{ROLE_INFO[item].name}</button>)}</div>"""
+if old_settings not in s:
+    raise SystemExit('Missing settings roles')
+s = s.replace(old_settings, new_settings, 1)
+
+s = s.replace('max-w-[460px] h-full bg-white shadow-2xl overflow-y-auto', 'task-drawer max-w-[460px] h-full bg-white overflow-y-auto')
+s = s.replace('max-w-[460px] h-full bg-white task-drawer overflow-y-auto', 'task-drawer max-w-[460px] h-full bg-white overflow-y-auto')
+
+path.write_text(s)
+print('Replaced remaining generic notice popup and preserved full role names')
