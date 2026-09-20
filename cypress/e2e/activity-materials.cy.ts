@@ -71,4 +71,33 @@ describe('活动资料界面回归', () => {
       expect(texts.length).to.be.greaterThan(1)
     })
   })
+
+  it('主体材料短标签保持单行且三类材料均有示意预览', () => {
+    login()
+    cy.contains('button', '主办方主体档案').click()
+    cy.get('[data-cy="conditional-tag"]').should('have.css', 'white-space', 'nowrap')
+    cy.get('[data-cy="subject-material-table"]')
+      .contains('button', '查看或更新')
+      .should('have.css', 'white-space', 'nowrap')
+    cy.contains('button', '上传主体材料').click()
+
+    ;[
+      ['营业执照或主体登记证明', 'quji-business-license-demo'],
+      ['法定代表人或经办授权材料', 'quji-authorization-demo'],
+      ['经营性业务相关许可', 'quji-business-permit-demo'],
+    ].forEach(([name, imageKey]) => {
+      cy.contains('[data-cy="material-option"]', name).click()
+      cy.get('[data-cy="subject-material-preview"] img')
+        .should('be.visible')
+        .and('have.attr', 'src')
+        .and('include', imageKey)
+    })
+  })
+
+  it('工作台数据说明文字不小于14像素', () => {
+    login()
+    cy.get('.metric-sub').each(($note) => {
+      expect(parseFloat(getComputedStyle($note[0]).fontSize)).to.be.at.least(14)
+    })
+  })
 })
