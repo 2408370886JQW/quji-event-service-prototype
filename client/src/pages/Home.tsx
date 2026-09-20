@@ -1,30 +1,129 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from "react";
 import {
-  Activity, AlertTriangle, Archive, ArrowLeft, ArrowRight, BadgeCheck, Bell,
-  Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight,
-  ClipboardCheck, ClipboardList, Clock3, Database, Download, FileArchive,
-  FileCheck2, FileText, FolderOpen, Gauge, Grid2X2, LayoutDashboard, ListChecks,
-  LockKeyhole, LogIn, LogOut, MapPin, Menu, MoreHorizontal, PackageCheck,
-  PanelLeftClose, Plus, QrCode, ReceiptText, RefreshCcw, Search, Send,
-  Settings2, ShieldCheck, Smartphone, Sparkles, Ticket, TicketCheck, Upload,
-  UserCheck, UserCog, Users, WalletCards, Waypoints, X, XCircle, ScanLine,
-  Radio, CircleAlert, CircleCheckBig, SlidersHorizontal, Building, ChartNoAxesCombined,
-  Eye, UserRound, UserPlus, Image, Shirt, ScrollText
-} from 'lucide-react';
-import { ActivityMaterials, OrganizerMaterials } from '@/components/ComplianceMaterials';
-
-type Role = 'platform' | 'organizer' | 'culture' | 'collaborator';
-type Page = 'workspace' | 'events' | 'activity' | 'tickets' | 'costumes' | 'onsite' | 'archive' | 'organizer' | 'data';
-type ActivityTab = 'overview' | 'materials' | 'participants' | 'tickets' | 'costumes' | 'onsite' | 'data' | 'issues' | 'archive';
-type Locale = 'zh' | 'en' | 'ug';
+  Activity,
+  AlertTriangle,
+  Archive,
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  Bell,
+  Building2,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardList,
+  Clock3,
+  Database,
+  Download,
+  FileArchive,
+  FileCheck2,
+  FileText,
+  FolderOpen,
+  Gauge,
+  Grid2X2,
+  LayoutDashboard,
+  ListChecks,
+  LockKeyhole,
+  LogIn,
+  LogOut,
+  MapPin,
+  Menu,
+  MoreHorizontal,
+  PackageCheck,
+  PanelLeftClose,
+  Plus,
+  QrCode,
+  ReceiptText,
+  RefreshCcw,
+  Search,
+  Send,
+  Settings2,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Ticket,
+  TicketCheck,
+  Upload,
+  UserCheck,
+  UserCog,
+  Users,
+  WalletCards,
+  Waypoints,
+  X,
+  XCircle,
+  ScanLine,
+  Radio,
+  CircleAlert,
+  CircleCheckBig,
+  SlidersHorizontal,
+  Building,
+  ChartNoAxesCombined,
+  Eye,
+  UserRound,
+  UserPlus,
+  Image,
+  Shirt,
+  ScrollText,
+} from "lucide-react";
+import {
+  ActivityMaterials,
+  OrganizerMaterials,
+} from "@/components/ComplianceMaterials";
+import {
+  ActivityCreationWizard,
+  ActivityPublished,
+  AdmissionReview,
+  OrganizerOnboarding,
+  OrganizerRegistration,
+  OnboardingWorkspaceGate,
+  createApprovedAdmission,
+  createEmptyAdmission,
+  type AdmissionState,
+} from "@/components/OnboardingFlow";
+type Role = "platform" | "organizer" | "culture" | "collaborator";
+type Page =
+  | "workspace"
+  | "events"
+  | "activity"
+  | "tickets"
+  | "costumes"
+  | "onsite"
+  | "archive"
+  | "organizer"
+  | "data"
+  | "onboarding"
+  | "admissions"
+  | "activity-create"
+  | "activity-published";
+type ActivityTab =
+  | "overview"
+  | "materials"
+  | "participants"
+  | "tickets"
+  | "costumes"
+  | "onsite"
+  | "data"
+  | "issues"
+  | "archive";
+type Locale = "zh" | "en" | "ug";
 const RECORD_VISUALS = {
-  poster: '/manus-storage/quji-event-poster_ea223b22.webp',
-  character: '/manus-storage/quji-character-reference_066e947c.webp',
-  costume: '/manus-storage/quji-costume-reference_610f2304.webp',
-  prop: '/manus-storage/quji-prop-reference_ca4a00a7.webp'
+  poster: "/manus-storage/quji-event-poster_ea223b22.webp",
+  character: "/manus-storage/quji-character-reference_066e947c.webp",
+  costume: "/manus-storage/quji-costume-reference_610f2304.webp",
+  prop: "/manus-storage/quji-prop-reference_ca4a00a7.webp",
 };
 
-type EventStatus = 'created' | 'preparing' | 'verifying' | 'selling' | 'live' | 'ended' | 'archived';
+type EventStatus =
+  | "created"
+  | "preparing"
+  | "verifying"
+  | "selling"
+  | "live"
+  | "ended"
+  | "archived";
 
 type EventItem = {
   id: string;
@@ -41,184 +140,1968 @@ type EventItem = {
 };
 
 const EVENTS: EventItem[] = [
-  { id: 'EVT-2026-0628', name: '2026 魔都动漫嘉年华', subtitle: '乌鲁木齐特别巡回展', date: '2026-06-28 09:00—18:00', venue: '新疆国际会展中心 3号馆', organizer: '新疆星河文化传媒有限公司', status: 'selling', tickets: 4662, checkedIn: 0, pending: 3, updated: '今天 10:36' },
-  { id: 'EVT-2026-0720', name: '2026 丝路数字国风文创新潮博览会', subtitle: '国风文创与青年消费专题活动', date: '2026-07-20—07-21', venue: '乌鲁木齐文化中心 A馆', organizer: '丝路文创联合会', status: 'verifying', tickets: 0, checkedIn: 0, pending: 5, updated: '今天 11:05' },
-  { id: 'EVT-2026-0731', name: '天山青年数字潮玩嘉年华', subtitle: '数字互动与潮玩体验活动', date: '2026-07-31—08-02', venue: '新疆国际会展中心 5号馆', organizer: '天山青年文化发展中心', status: 'preparing', tickets: 0, checkedIn: 0, pending: 7, updated: '昨天 18:20' },
-  { id: 'EVT-2026-0808', name: '城市青年音乐与插画周', subtitle: '音乐、插画与原创市集', date: '2026-08-08—08-10', venue: '乌鲁木齐文创园', organizer: '新声艺术空间', status: 'ended', tickets: 1260, checkedIn: 1186, pending: 0, updated: '9月16日' }
+  {
+    id: "EVT-2026-0628",
+    name: "2026 魔都动漫嘉年华",
+    subtitle: "乌鲁木齐特别巡回展",
+    date: "2026-06-28 09:00—18:00",
+    venue: "新疆国际会展中心 3号馆",
+    organizer: "新疆星河文化传媒有限公司",
+    status: "selling",
+    tickets: 4662,
+    checkedIn: 0,
+    pending: 3,
+    updated: "今天 10:36",
+  },
+  {
+    id: "EVT-2026-0720",
+    name: "2026 丝路数字国风文创新潮博览会",
+    subtitle: "国风文创与青年消费专题活动",
+    date: "2026-07-20—07-21",
+    venue: "乌鲁木齐文化中心 A馆",
+    organizer: "丝路文创联合会",
+    status: "verifying",
+    tickets: 0,
+    checkedIn: 0,
+    pending: 5,
+    updated: "今天 11:05",
+  },
+  {
+    id: "EVT-2026-0731",
+    name: "天山青年数字潮玩嘉年华",
+    subtitle: "数字互动与潮玩体验活动",
+    date: "2026-07-31—08-02",
+    venue: "新疆国际会展中心 5号馆",
+    organizer: "天山青年文化发展中心",
+    status: "preparing",
+    tickets: 0,
+    checkedIn: 0,
+    pending: 7,
+    updated: "昨天 18:20",
+  },
+  {
+    id: "EVT-2026-0808",
+    name: "城市青年音乐与插画周",
+    subtitle: "音乐、插画与原创市集",
+    date: "2026-08-08—08-10",
+    venue: "乌鲁木齐文创园",
+    organizer: "新声艺术空间",
+    status: "ended",
+    tickets: 1260,
+    checkedIn: 1186,
+    pending: 0,
+    updated: "9月16日",
+  },
 ];
 
-const STATUS_META: Record<EventStatus, { label: string; color: string; step: number }> = {
-  created: { label: '活动创建', color: 'bg-slate-100 text-slate-700', step: 0 },
-  preparing: { label: '资料准备', color: 'bg-blue-50 text-blue-700', step: 1 },
-  verifying: { label: '信息核验', color: 'bg-amber-50 text-amber-700', step: 2 },
-  selling: { label: '售票中', color: 'bg-emerald-50 text-emerald-700', step: 3 },
-  live: { label: '活动进行中', color: 'bg-violet-50 text-violet-700', step: 4 },
-  ended: { label: '活动结束', color: 'bg-slate-100 text-slate-600', step: 5 },
-  archived: { label: '归档完成', color: 'bg-indigo-50 text-indigo-700', step: 6 }
+const STATUS_META: Record<
+  EventStatus,
+  { label: string; color: string; step: number }
+> = {
+  created: { label: "活动创建", color: "bg-slate-100 text-slate-700", step: 0 },
+  preparing: { label: "资料准备", color: "bg-blue-50 text-blue-700", step: 1 },
+  verifying: {
+    label: "信息核验",
+    color: "bg-amber-50 text-amber-700",
+    step: 2,
+  },
+  selling: {
+    label: "售票中",
+    color: "bg-emerald-50 text-emerald-700",
+    step: 3,
+  },
+  live: { label: "活动进行中", color: "bg-violet-50 text-violet-700", step: 4 },
+  ended: { label: "活动结束", color: "bg-slate-100 text-slate-600", step: 5 },
+  archived: {
+    label: "归档完成",
+    color: "bg-indigo-50 text-indigo-700",
+    step: 6,
+  },
 };
 
-const PROGRESS = ['活动创建', '资料准备', '信息核验', '售票中', '活动进行中', '活动结束', '归档完成'];
+const PROGRESS = [
+  "活动创建",
+  "资料准备",
+  "信息核验",
+  "售票中",
+  "活动进行中",
+  "活动结束",
+  "归档完成",
+];
 
 const TEXT = {
-  zh: { app: '趣集', sub: '文化活动协同管理平台', roleLogin: '选择工作身份', enter: '进入协同平台', workspace: '工作台', events: '活动管理', activity: '活动档案', tickets: '票务管理', costumes: '角色服装道具', onsite: '现场管理', archive: '数字档案', organizer: '主办方主体档案', data: '数据中心', notification: '通知中心', settings: '系统设置', switchRole: '切换身份', logout: '退出登录' },
-  en: { app: 'Quji', sub: 'Cultural Event Operations', roleLogin: 'Choose a workspace role', enter: 'Enter platform', workspace: 'Workspace', events: 'Events', activity: 'Event record', tickets: 'Ticketing', costumes: 'Costume & props', onsite: 'On-site', archive: 'Digital archive', organizer: 'Organizer profile', data: 'Data center', notification: 'Notifications', settings: 'Settings', switchRole: 'Switch role', logout: 'Log out' },
-  ug: { app: 'Quji', sub: 'مەدەنىيەت پائالىيەت ھەمكارلىق باشقۇرۇش سۇپىسى', roleLogin: 'خىزمەت سالاھىيىتىنى تاللاڭ', enter: 'ھەمكارلىق سۇپىسىغا كىرىش', workspace: 'خىزمەت ئۈستىلى', events: 'پائالىيەت باشقۇرۇش', activity: 'پائالىيەت ھۆججىتى', tickets: 'بېلەت باشقۇرۇش', costumes: 'رول كىيىم ۋە ئەسۋاب', onsite: 'نەق مەيدان باشقۇرۇش', archive: 'رەقەملىك ھۆججەت', organizer: 'تەشكىللىگۈچى ھۆججىتى', data: 'سانلىق مەلۇمات مەركىزى', notification: 'ئۇقتۇرۇش مەركىزى', settings: 'سىستېما تەڭشىكى', switchRole: 'سالاھىيەت ئالماشتۇرۇش', logout: 'چىقىش' }
+  zh: {
+    app: "趣集",
+    sub: "文化活动协同管理平台",
+    roleLogin: "选择工作身份",
+    enter: "进入协同平台",
+    workspace: "工作台",
+    events: "活动管理",
+    activity: "活动档案",
+    tickets: "票务管理",
+    costumes: "角色服装道具",
+    onsite: "现场管理",
+    archive: "数字档案",
+    organizer: "主办方主体档案",
+    data: "数据中心",
+    notification: "通知中心",
+    settings: "系统设置",
+    switchRole: "切换身份",
+    logout: "退出登录",
+  },
+  en: {
+    app: "Quji",
+    sub: "Cultural Event Operations",
+    roleLogin: "Choose a workspace role",
+    enter: "Enter platform",
+    workspace: "Workspace",
+    events: "Events",
+    activity: "Event record",
+    tickets: "Ticketing",
+    costumes: "Costume & props",
+    onsite: "On-site",
+    archive: "Digital archive",
+    organizer: "Organizer profile",
+    data: "Data center",
+    notification: "Notifications",
+    settings: "Settings",
+    switchRole: "Switch role",
+    logout: "Log out",
+  },
+  ug: {
+    app: "Quji",
+    sub: "مەدەنىيەت پائالىيەت ھەمكارلىق باشقۇرۇش سۇپىسى",
+    roleLogin: "خىزمەت سالاھىيىتىنى تاللاڭ",
+    enter: "ھەمكارلىق سۇپىسىغا كىرىش",
+    workspace: "خىزمەت ئۈستىلى",
+    events: "پائالىيەت باشقۇرۇش",
+    activity: "پائالىيەت ھۆججىتى",
+    tickets: "بېلەت باشقۇرۇش",
+    costumes: "رول كىيىم ۋە ئەسۋاب",
+    onsite: "نەق مەيدان باشقۇرۇش",
+    archive: "رەقەملىك ھۆججەت",
+    organizer: "تەشكىللىگۈچى ھۆججىتى",
+    data: "سانلىق مەلۇمات مەركىزى",
+    notification: "ئۇقتۇرۇش مەركىزى",
+    settings: "سىستېما تەڭشىكى",
+    switchRole: "سالاھىيەت ئالماشتۇرۇش",
+    logout: "چىقىش",
+  },
 } as const;
 
-const ROLE_INFO: Record<Role, { name: string; note: string; icon: typeof Building2; color: string; permissions: Page[] }> = {
-  platform: { name: '平台运营人员', note: '配置活动流程、账号权限与服务运营', icon: Settings2, color: 'bg-blue-600', permissions: ['workspace', 'events', 'activity', 'tickets', 'costumes', 'onsite', 'archive', 'organizer', 'data'] },
-  organizer: { name: '主办方活动运营人员', note: '维护活动资料、票务、现场与参与人员', icon: Building2, color: 'bg-violet-600', permissions: ['workspace', 'events', 'activity', 'tickets', 'costumes', 'onsite', 'archive', 'organizer', 'data'] },
-  culture: { name: '文旅业务指导人员', note: '查看活动电子档案、服务进度与汇总数据', icon: Building, color: 'bg-amber-700', permissions: ['workspace', 'events', 'activity', 'archive', 'organizer', 'data'] },
-  collaborator: { name: '现场协同人员', note: '处理现场核验、异常记录与处置反馈', icon: ShieldCheck, color: 'bg-teal-600', permissions: ['workspace', 'activity', 'costumes', 'onsite'] }
+const ROLE_INFO: Record<
+  Role,
+  {
+    name: string;
+    note: string;
+    icon: typeof Building2;
+    color: string;
+    permissions: Page[];
+  }
+> = {
+  platform: {
+    name: "平台运营人员",
+    note: "配置活动流程、账号权限与服务运营",
+    icon: Settings2,
+    color: "bg-blue-600",
+    permissions: [
+      "workspace",
+      "admissions",
+      "events",
+      "activity",
+      "tickets",
+      "costumes",
+      "onsite",
+      "archive",
+      "organizer",
+      "data",
+    ],
+  },
+  organizer: {
+    name: "主办方活动运营人员",
+    note: "维护活动资料、票务、现场与参与人员",
+    icon: Building2,
+    color: "bg-violet-600",
+    permissions: [
+      "workspace",
+      "onboarding",
+      "activity-create",
+      "activity-published",
+      "events",
+      "activity",
+      "tickets",
+      "costumes",
+      "onsite",
+      "archive",
+      "organizer",
+      "data",
+    ],
+  },
+  culture: {
+    name: "文旅业务指导人员",
+    note: "查看活动电子档案、服务进度与汇总数据",
+    icon: Building,
+    color: "bg-amber-700",
+    permissions: [
+      "workspace",
+      "events",
+      "activity",
+      "archive",
+      "organizer",
+      "data",
+    ],
+  },
+  collaborator: {
+    name: "现场协同人员",
+    note: "处理现场核验、异常记录与处置反馈",
+    icon: ShieldCheck,
+    color: "bg-teal-600",
+    permissions: ["workspace", "activity", "costumes", "onsite"],
+  },
 };
 
 const TICKETS = [
-  { type: '普通观众票', price: '¥88', stock: 6000, sold: 3548, status: '售票中', sales: '2026-06-01 10:00 开售', channel: '漫圈用户端 / 现场窗口' },
-  { type: 'Coser 专属票', price: '¥68', stock: 500, sold: 326, status: '售票中', sales: '2026-06-01 10:00 开售', channel: '漫圈用户端（实名 + 提报）' },
-  { type: '学生早鸟票', price: '¥58', stock: 800, sold: 788, status: '已停售', sales: '2026-06-10 23:59 停售', channel: '漫圈用户端' },
-  { type: '现场当日票', price: '¥98', stock: 1000, sold: 0, status: '待开售', sales: '活动日 08:30 开售', channel: '现场售票点' }
+  {
+    type: "普通观众票",
+    price: "¥88",
+    stock: 6000,
+    sold: 3548,
+    status: "售票中",
+    sales: "2026-06-01 10:00 开售",
+    channel: "漫圈用户端 / 现场窗口",
+  },
+  {
+    type: "Coser 专属票",
+    price: "¥68",
+    stock: 500,
+    sold: 326,
+    status: "售票中",
+    sales: "2026-06-01 10:00 开售",
+    channel: "漫圈用户端（实名 + 提报）",
+  },
+  {
+    type: "学生早鸟票",
+    price: "¥58",
+    stock: 800,
+    sold: 788,
+    status: "已停售",
+    sales: "2026-06-10 23:59 停售",
+    channel: "漫圈用户端",
+  },
+  {
+    type: "现场当日票",
+    price: "¥98",
+    stock: 1000,
+    sold: 0,
+    status: "待开售",
+    sales: "活动日 08:30 开售",
+    channel: "现场售票点",
+  },
 ];
 
 const COSERS = [
-  { person: '张三', character: '甘雨', source: '《原神》', ref: '角色原案图', costume: '白色长袍 / 渐变蓝发 / 羊角发箍', props: '紫色铃铛挂饰，无锐利金属', status: '已通过', log: '林洁 · 10:35 完成初核', risk: '低风险' },
-  { person: '古丽米热·阿布都', character: '敦煌伎乐飞天', source: '国风原创', ref: '飞天服装设计图', costume: '石青色长裙 / 朱砂红飘带', props: 'EVA 泡棉琵琶，非金属材质', status: '已通过', log: '陈涛 · 11:22 完成初核', risk: '低风险' },
-  { person: '李思远', character: '机甲重装佣兵', source: '原创设定', ref: '机甲设定图', costume: '黑色仿战术背心 / 外骨骼臂甲', props: '仿真重弩模型，长约 1.2 米', status: '协同核验', log: '已转现场安保复验', risk: '高关注' },
-  { person: '何晓晨', character: '雷电将军', source: '《原神》', ref: '角色参考图', costume: '紫色印花振袖 / 编发发簪', props: '轻质木质长刀，海绵安全鞘', status: '待审核', log: '用户端 12:05 提交', risk: '常规核验' }
+  {
+    person: "张三",
+    character: "甘雨",
+    source: "《原神》",
+    ref: "角色原案图",
+    costume: "白色长袍 / 渐变蓝发 / 羊角发箍",
+    props: "紫色铃铛挂饰，无锐利金属",
+    status: "已通过",
+    log: "林洁 · 10:35 完成初核",
+    risk: "低风险",
+  },
+  {
+    person: "古丽米热·阿布都",
+    character: "敦煌伎乐飞天",
+    source: "国风原创",
+    ref: "飞天服装设计图",
+    costume: "石青色长裙 / 朱砂红飘带",
+    props: "EVA 泡棉琵琶，非金属材质",
+    status: "已通过",
+    log: "陈涛 · 11:22 完成初核",
+    risk: "低风险",
+  },
+  {
+    person: "李思远",
+    character: "机甲重装佣兵",
+    source: "原创设定",
+    ref: "机甲设定图",
+    costume: "黑色仿战术背心 / 外骨骼臂甲",
+    props: "仿真重弩模型，长约 1.2 米",
+    status: "协同核验",
+    log: "已转现场安保复验",
+    risk: "高关注",
+  },
+  {
+    person: "何晓晨",
+    character: "雷电将军",
+    source: "《原神》",
+    ref: "角色参考图",
+    costume: "紫色印花振袖 / 编发发簪",
+    props: "轻质木质长刀，海绵安全鞘",
+    status: "待审核",
+    log: "用户端 12:05 提交",
+    risk: "常规核验",
+  },
 ];
 
 const MATERIALS = [
-  { name: '活动基本信息表', category: '基础资料', status: '已提交', update: '2026-06-12 15:20', operator: '新疆星河文化传媒', next: '无需补充' },
-  { name: '活动规则与入场须知', category: '规则配置', status: '已发布', update: '2026-06-14 09:40', operator: '主办方运营组', next: '已同步用户端' },
-  { name: '现场服务与应急联络表', category: '现场保障', status: '待补充', update: '2026-06-15 11:05', operator: '主办方运营组', next: '请补充夜间值守联系人' },
-  { name: '场地平面与安检点位图', category: '现场保障', status: '已提交', update: '2026-06-13 16:30', operator: '场馆协调组', next: '等待活动前复核' },
-  { name: '主办方主体资质材料', category: '主体材料', status: '已通过', update: '2026-06-10 14:15', operator: '平台运营组', next: '有效期至 2027-06-09' }
+  {
+    name: "活动基本信息表",
+    category: "基础资料",
+    status: "已提交",
+    update: "2026-06-12 15:20",
+    operator: "新疆星河文化传媒",
+    next: "无需补充",
+  },
+  {
+    name: "活动规则与入场须知",
+    category: "规则配置",
+    status: "已发布",
+    update: "2026-06-14 09:40",
+    operator: "主办方运营组",
+    next: "已同步用户端",
+  },
+  {
+    name: "现场服务与应急联络表",
+    category: "现场保障",
+    status: "待补充",
+    update: "2026-06-15 11:05",
+    operator: "主办方运营组",
+    next: "请补充夜间值守联系人",
+  },
+  {
+    name: "场地平面与安检点位图",
+    category: "现场保障",
+    status: "已提交",
+    update: "2026-06-13 16:30",
+    operator: "场馆协调组",
+    next: "等待活动前复核",
+  },
+  {
+    name: "主办方主体资质材料",
+    category: "主体材料",
+    status: "已通过",
+    update: "2026-06-10 14:15",
+    operator: "平台运营组",
+    next: "有效期至 2027-06-09",
+  },
 ];
 
 function Brand({ mini = false }: { mini?: boolean }) {
-  return <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-lg bg-[#255ec8] text-white flex items-center justify-center"><Sparkles className="w-5 h-5" /></div>{!mini && <div><div className="text-[16px] font-semibold tracking-[-0.03em]">趣集</div><div className="text-[12px] text-slate-500 mt-0.5">文化活动协同管理平台</div></div>}</div>;
-}
-function Status({ status }: { status: EventStatus }) { const s = STATUS_META[status]; return <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-[13px] font-semibold ${s.color}`}>{s.label}</span>; }
-function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: 'slate' | 'blue' | 'green' | 'amber' | 'rose' }) { const colors = { slate: 'bg-slate-100 text-slate-700', blue: 'bg-blue-50 text-blue-700', green: 'bg-emerald-50 text-emerald-700', amber: 'bg-amber-50 text-amber-700', rose: 'bg-rose-50 text-rose-700' }; return <span className={`inline-flex shrink-0 whitespace-nowrap px-2 py-1 rounded-md text-[12px] font-semibold ${colors[tone]}`}>{children}</span>; }
-function ModuleTitle({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) { return <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4"><div>{eyebrow && <div className="text-[12px] font-semibold text-slate-500 tracking-wide">{eyebrow}</div>}<h2 className="mt-1 text-[24px] leading-8 font-semibold tracking-[-0.04em]">{title}</h2>{description && <p className="mt-2 text-[15px] leading-6 text-slate-600">{description}</p>}</div>{actions && <div className="flex gap-2 shrink-0">{actions}</div>}</div>; }
-function EmptyState({ icon, title, text, action }: { icon: ReactNode; title: string; text: string; action: string }) { return <div className="border border-dashed border-slate-300 bg-slate-50 rounded-lg p-10 text-center"><div className="mx-auto w-11 h-11 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center">{icon}</div><h3 className="mt-4 text-[17px] font-semibold">{title}</h3><p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">{text}</p><div className="mt-5 inline-flex"><ActionButton label={action} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold" title={action} description="可在此开始建立新的活动档案并补充基础资料。" /></div></div>; }
-
-function ActionButton({ label, className, title, description, icon }: { label: string; className: string; title?: string; description?: string; icon?: ReactNode }) {
-  const [state, setState] = useState<'view' | 'edit' | 'done' | null>(null);
-  const [note, setNote] = useState('');
-  const heading = title || label;
-  const exporting = label.includes('导出');
-  const reviewing = /查看|记录|资料/.test(label);
-  const secondStep = exporting ? '选择范围' : reviewing ? '补充或更新' : '确认处理';
-  const finalStep = exporting ? '生成文件' : '提交并写入记录';
-  const close = () => { setState(null); setNote(''); };
-  const meta = exporting ? '当前活动 数据归集范围已加载' : '当前活动 关联资料与操作记录已加载';
-  return <>
-    <button onClick={() => setState('view')} className={className}>{icon}{label}</button>
-    {state && <div className="fixed inset-0 z-[60] flex justify-end">
-      <button aria-label="关闭任务面板" onClick={close} className="absolute inset-0 bg-slate-950/20" />
-      <aside data-cy="task-drawer" dir="ltr" className="task-drawer relative h-full w-full max-w-[560px] bg-white flex flex-col text-left">
-        <header className="relative border-b border-slate-200 px-6 py-5 text-left">
-          <div data-cy="task-heading" className="w-full min-w-0 pr-12 text-left">
-            <div className="text-[13px] font-semibold text-slate-500">任务处理</div>
-            <h2 className="mt-1 text-[22px] leading-7 font-semibold text-slate-900">{heading}</h2>
-            <p className="mt-1 text-[14px] leading-6 text-slate-600">{meta}</p>
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-9 h-9 rounded-lg bg-[#255ec8] text-white flex items-center justify-center">
+        <Sparkles className="w-5 h-5" />
+      </div>
+      {!mini && (
+        <div>
+          <div className="text-[16px] font-semibold tracking-[-0.03em]">
+            趣集
           </div>
-          <button onClick={close} aria-label="关闭" className="absolute right-5 top-5 w-9 h-9 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button>
-        </header>
-        <div className="px-6 py-4 border-b border-slate-200 grid grid-cols-3 gap-2">{[['查看当前资料', 'view'], [secondStep, 'edit'], [finalStep, 'done']].map(([step, id], index) => <div key={id as string} data-active={state === id} className="task-step rounded-md border border-transparent px-3 py-2 min-w-0 text-left"><div className="text-[11px] font-semibold text-slate-500">0{index + 1}</div><div className="mt-1 text-[13px] font-semibold whitespace-nowrap">{step}</div></div>)}</div>
-        <div className="flex-1 overflow-y-auto p-6">{state === 'view' && <div className="space-y-5">
-          <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
-            <TaskField label="当前状态" value={exporting ? '数据已汇总 可按范围生成文件' : '资料已归集 可查看版本与处理记录'} />
-            <TaskField label="关联内容" value={description?.replace(/[，。；、·]/g, ' ') || '当前活动关联材料 处理意见与操作时间'} />
-            <TaskField label="最近更新" value="今天 10:36 主办方运营组" />
-          </section>
-          <section><h3 className="text-[15px] font-semibold">操作记录</h3><div className="mt-3 space-y-3"><TimelineRow text="已加载当前版本与关联记录" time="刚刚" /><TimelineRow text="主办方更新活动材料" time="今天 10:36" /><TimelineRow text="协同人员完成资料核验" time="昨天 16:30" /></div></section>
-        </div>}
-        {state === 'edit' && <div className="space-y-5"><section className="border border-slate-200 rounded-lg p-4"><h3 className="text-[15px] font-semibold">{exporting ? '导出范围' : '处理说明'}</h3><p className="mt-1 text-[14px] leading-6 text-slate-600">{exporting ? '默认包含当前活动的已归集数据与操作记录' : '填写本次补充 修订或处理说明 提交后写入活动记录'}</p><textarea value={note} onChange={e => setNote(e.target.value)} placeholder={exporting ? '例如 用于本周运营复盘' : '例如 已补充主体资质文件第 2 版'} className="mt-4 w-full min-h-28 resize-none rounded-md border border-slate-300 px-3 py-2 text-[14px] leading-6 outline-none focus:border-[#245fc4]" /></section><label className="flex items-start gap-3 rounded-lg bg-slate-50 p-4 text-[14px] leading-6 text-slate-700"><input type="checkbox" defaultChecked className="mt-1 w-4 h-4 accent-[#245fc4]" />同步写入当前活动操作记录并保留本次处理时间与操作人</label></div>}
-        {state === 'done' && <div className="py-12 text-center"><div className="mx-auto w-11 h-11 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center"><CheckCircle2 className="w-6 h-6" /></div><h3 className="mt-4 text-[20px] font-semibold">{exporting ? '活动文件已生成' : '任务已提交并登记'}</h3><p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">{exporting ? '文件已按当前活动数据范围生成 可在活动档案中继续查看' : '本次处理已写入当前活动操作记录 可继续处理下一项待办'}</p></div>}</div>
-        <footer className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3"><button onClick={close} className="h-10 px-4 rounded-md border border-slate-300 text-[14px] font-semibold text-slate-700 hover:bg-slate-50">{state === 'done' ? '返回列表' : '暂存并返回'}</button>{state !== 'done' && <button onClick={() => setState(state === 'view' ? 'edit' : 'done')} className="h-10 px-4 rounded-md bg-[#245fc4] hover:bg-[#1c4c9e] text-white text-[14px] font-semibold flex items-center gap-2">{state === 'view' ? `下一步 ${secondStep}` : finalStep}<ArrowRight className="w-4 h-4" /></button>}</footer>
-      </aside>
-    </div>}
-  </>;
+          <div className="text-[12px] text-slate-500 mt-0.5">
+            文化活动协同管理平台
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
-function TaskField({ label, value }: { label: string; value: string }) { return <div className="task-field grid gap-1.5 px-4 py-3 text-left"><div className="text-[12px] font-semibold text-slate-500">{label}</div><div className="task-field__value text-[14px] leading-6 text-slate-800 semantic-copy">{value}</div></div>; }
-function TimelineRow({ text, time }: { text: string; time: string }) { return <div className="timeline-row grid grid-cols-[8px_minmax(0,1fr)] items-start gap-3 text-left"><div className="mt-2 w-2 h-2 rounded-full bg-[#245fc4]" /><div className="min-w-0"><div className="text-[14px] leading-6 text-slate-800">{text}</div><div className="mt-1 text-[12px] leading-5 tabular-nums text-slate-500">{time}</div></div></div>; }
-function Login({ role, setRole, onEnter, locale, setLocale }: { role: Role; setRole: (role: Role) => void; onEnter: () => void; locale: Locale; setLocale: (locale: Locale) => void }) {
+function Status({ status }: { status: EventStatus }) {
+  const s = STATUS_META[status];
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[13px] font-semibold ${s.color}`}
+    >
+      {s.label}
+    </span>
+  );
+}
+function Pill({
+  children,
+  tone = "slate",
+}: {
+  children: ReactNode;
+  tone?: "slate" | "blue" | "green" | "amber" | "rose";
+}) {
+  const colors = {
+    slate: "bg-slate-100 text-slate-700",
+    blue: "bg-blue-50 text-blue-700",
+    green: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    rose: "bg-rose-50 text-rose-700",
+  };
+  return (
+    <span
+      className={`inline-flex shrink-0 whitespace-nowrap px-2 py-1 rounded-md text-[12px] font-semibold ${colors[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+function ModuleTitle({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <div>
+        {eyebrow && (
+          <div className="text-[12px] font-semibold text-slate-500 tracking-wide">
+            {eyebrow}
+          </div>
+        )}
+        <h2 className="mt-1 text-[24px] leading-8 font-semibold tracking-[-0.04em]">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-2 text-[15px] leading-6 text-slate-600">
+            {description}
+          </p>
+        )}
+      </div>
+      {actions && <div className="flex gap-2 shrink-0">{actions}</div>}
+    </div>
+  );
+}
+function EmptyState({
+  icon,
+  title,
+  text,
+  action,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  action: string;
+}) {
+  return (
+    <div className="border border-dashed border-slate-300 bg-slate-50 rounded-lg p-10 text-center">
+      <div className="mx-auto w-11 h-11 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center">
+        {icon}
+      </div>
+      <h3 className="mt-4 text-[17px] font-semibold">{title}</h3>
+      <p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">
+        {text}
+      </p>
+      <div className="mt-5 inline-flex">
+        <ActionButton
+          label={action}
+          className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+          title={action}
+          description="可在此开始建立新的活动档案并补充基础资料。"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  className,
+  title,
+  description,
+  icon,
+}: {
+  label: string;
+  className: string;
+  title?: string;
+  description?: string;
+  icon?: ReactNode;
+}) {
+  const [state, setState] = useState<"view" | "edit" | "done" | null>(null);
+  const [note, setNote] = useState("");
+  const heading = title || label;
+  const exporting = label.includes("导出");
+  const reviewing = /查看|记录|资料/.test(label);
+  const secondStep = exporting
+    ? "选择范围"
+    : reviewing
+      ? "补充或更新"
+      : "确认处理";
+  const finalStep = exporting ? "生成文件" : "提交并写入记录";
+  const close = () => {
+    setState(null);
+    setNote("");
+  };
+  const meta = exporting
+    ? "当前活动 数据归集范围已加载"
+    : "当前活动 关联资料与操作记录已加载";
+  return (
+    <>
+      <button onClick={() => setState("view")} className={className}>
+        {icon}
+        {label}
+      </button>
+      {state && (
+        <div className="fixed inset-0 z-[60] flex justify-end">
+          <button
+            aria-label="关闭任务面板"
+            onClick={close}
+            className="absolute inset-0 bg-slate-950/20"
+          />
+          <aside
+            data-cy="task-drawer"
+            dir="ltr"
+            className="task-drawer relative h-full w-full max-w-[560px] bg-white flex flex-col text-left"
+          >
+            <header className="relative border-b border-slate-200 px-6 py-5 text-left">
+              <div
+                data-cy="task-heading"
+                className="w-full min-w-0 pr-12 text-left"
+              >
+                <div className="text-[13px] font-semibold text-slate-500">
+                  任务处理
+                </div>
+                <h2 className="mt-1 text-[22px] leading-7 font-semibold text-slate-900">
+                  {heading}
+                </h2>
+                <p className="mt-1 text-[14px] leading-6 text-slate-600">
+                  {meta}
+                </p>
+              </div>
+              <button
+                onClick={close}
+                aria-label="关闭"
+                className="absolute right-5 top-5 w-9 h-9 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </header>
+            <div className="px-6 py-4 border-b border-slate-200 grid grid-cols-3 gap-2">
+              {[
+                ["查看当前资料", "view"],
+                [secondStep, "edit"],
+                [finalStep, "done"],
+              ].map(([step, id], index) => (
+                <div
+                  key={id as string}
+                  data-active={state === id}
+                  className="task-step rounded-md border border-transparent px-3 py-2 min-w-0 text-left"
+                >
+                  <div className="text-[11px] font-semibold text-slate-500">
+                    0{index + 1}
+                  </div>
+                  <div className="mt-1 text-[13px] font-semibold whitespace-nowrap">
+                    {step}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {state === "view" && (
+                <div className="space-y-5">
+                  <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+                    <TaskField
+                      label="当前状态"
+                      value={
+                        exporting
+                          ? "数据已汇总 可按范围生成文件"
+                          : "资料已归集 可查看版本与处理记录"
+                      }
+                    />
+                    <TaskField
+                      label="关联内容"
+                      value={
+                        description?.replace(/[，。；、·]/g, " ") ||
+                        "当前活动关联材料 处理意见与操作时间"
+                      }
+                    />
+                    <TaskField
+                      label="最近更新"
+                      value="今天 10:36 主办方运营组"
+                    />
+                  </section>
+                  <section>
+                    <h3 className="text-[15px] font-semibold">操作记录</h3>
+                    <div className="mt-3 space-y-3">
+                      <TimelineRow
+                        text="已加载当前版本与关联记录"
+                        time="刚刚"
+                      />
+                      <TimelineRow
+                        text="主办方更新活动材料"
+                        time="今天 10:36"
+                      />
+                      <TimelineRow
+                        text="协同人员完成资料核验"
+                        time="昨天 16:30"
+                      />
+                    </div>
+                  </section>
+                </div>
+              )}
+              {state === "edit" && (
+                <div className="space-y-5">
+                  <section className="border border-slate-200 rounded-lg p-4">
+                    <h3 className="text-[15px] font-semibold">
+                      {exporting ? "导出范围" : "处理说明"}
+                    </h3>
+                    <p className="mt-1 text-[14px] leading-6 text-slate-600">
+                      {exporting
+                        ? "默认包含当前活动的已归集数据与操作记录"
+                        : "填写本次补充 修订或处理说明 提交后写入活动记录"}
+                    </p>
+                    <textarea
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      placeholder={
+                        exporting
+                          ? "例如 用于本周运营复盘"
+                          : "例如 已补充主体资质文件第 2 版"
+                      }
+                      className="mt-4 w-full min-h-28 resize-none rounded-md border border-slate-300 px-3 py-2 text-[14px] leading-6 outline-none focus:border-[#245fc4]"
+                    />
+                  </section>
+                  <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-4 text-[14px] leading-6 text-slate-700">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="mt-1 w-4 h-4 accent-[#245fc4]"
+                    />
+                    同步写入当前活动操作记录并保留本次处理时间与操作人
+                  </label>
+                </div>
+              )}
+              {state === "done" && (
+                <div className="py-12 text-center">
+                  <div className="mx-auto w-11 h-11 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="mt-4 text-[20px] font-semibold">
+                    {exporting ? "活动文件已生成" : "任务已提交并登记"}
+                  </h3>
+                  <p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">
+                    {exporting
+                      ? "文件已按当前活动数据范围生成 可在活动档案中继续查看"
+                      : "本次处理已写入当前活动操作记录 可继续处理下一项待办"}
+                  </p>
+                </div>
+              )}
+            </div>
+            <footer className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
+              <button
+                onClick={close}
+                className="h-10 px-4 rounded-md border border-slate-300 text-[14px] font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {state === "done" ? "返回列表" : "暂存并返回"}
+              </button>
+              {state !== "done" && (
+                <button
+                  onClick={() => setState(state === "view" ? "edit" : "done")}
+                  className="h-10 px-4 rounded-md bg-[#245fc4] hover:bg-[#1c4c9e] text-white text-[14px] font-semibold flex items-center gap-2"
+                >
+                  {state === "view" ? `下一步 ${secondStep}` : finalStep}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </footer>
+          </aside>
+        </div>
+      )}
+    </>
+  );
+}
+function TaskField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="task-field grid gap-1.5 px-4 py-3 text-left">
+      <div className="text-[12px] font-semibold text-slate-500">{label}</div>
+      <div className="task-field__value text-[14px] leading-6 text-slate-800 semantic-copy">
+        {value}
+      </div>
+    </div>
+  );
+}
+function TimelineRow({ text, time }: { text: string; time: string }) {
+  return (
+    <div className="timeline-row grid grid-cols-[8px_minmax(0,1fr)] items-start gap-3 text-left">
+      <div className="mt-2 w-2 h-2 rounded-full bg-[#245fc4]" />
+      <div className="min-w-0">
+        <div className="text-[14px] leading-6 text-slate-800">{text}</div>
+        <div className="mt-1 text-[12px] leading-5 tabular-nums text-slate-500">
+          {time}
+        </div>
+      </div>
+    </div>
+  );
+}
+function Login({
+  role,
+  setRole,
+  onEnter,
+  onRegister,
+  locale,
+  setLocale,
+}: {
+  role: Role;
+  setRole: (role: Role) => void;
+  onEnter: () => void;
+  onRegister: () => void;
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+}) {
   const t = TEXT[locale];
-  const [account, setAccount] = useState('linjie@quji.cn');
-  const [password, setPassword] = useState('123456');
-  const [error, setError] = useState('');
-  const roles = Object.entries(ROLE_INFO) as [Role, typeof ROLE_INFO[Role]][];
-  const noteLines: Record<Role, [string, string]> = { platform: ['配置活动流程', '账号权限 服务运营'], organizer: ['维护活动资料 票务', '现场与参与人员'], culture: ['查看活动电子档案', '服务进度与汇总数据'], collaborator: ['处理现场核验', '异常记录与处置反馈'] };
-  const submit = () => { if (!account.trim() || !password.trim()) { setError('请输入账号和密码'); return; } if (password !== '123456') { setError('密码不正确 请使用预置密码 123456'); return; } setError(''); onEnter(); };
-  return <div className="relative min-h-screen overflow-hidden bg-[#eef3f3]" dir={locale === 'ug' ? 'rtl' : 'ltr'}>
-    <div className="absolute inset-0 overflow-hidden"><div className="login-scenic-background absolute -inset-6" /><div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/52 to-white/26" /><div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_26%,rgba(255,255,255,0.78),transparent_28%)]" /></div>
-    <header className="relative z-10 h-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between border-b border-white/60 bg-white/70 backdrop-blur-xl"><Brand /><LocaleSwitch locale={locale} setLocale={setLocale} /></header>
-    <main className="relative z-10 max-w-[1220px] w-full mx-auto px-5 py-8 lg:py-12 grid lg:grid-cols-[0.9fr_1.05fr] gap-8 lg:gap-14 items-center"><section className="max-w-[510px] rounded-xl bg-white/60 backdrop-blur-md border border-white/70 p-6 sm:p-8 shadow-[0_16px_50px_rgba(35,69,87,0.10)]"><Pill tone="blue">新疆 · 多元文化活动协同</Pill><h1 className="mt-5 text-[38px] sm:text-[48px] leading-[1.12] font-semibold tracking-[-0.06em]">一场活动<br />一套完整数字档案</h1><p className="mt-5 text-[17px] leading-7 text-slate-700"><span className="block">以活动为核心对象 连接主办方资料 参与人员</span><span className="block">票务 角色服装道具 现场核验与活动归档</span></p><div className="mt-8 grid grid-cols-3 gap-3"><LoginMetric value="01" label="统一工作台" /><LoginMetric value="09" label="活动档案模块" /><LoginMetric value="全程" label="操作留痕" /></div></section>
-      <form onSubmit={event => { event.preventDefault(); submit(); }} className="bg-white/94 border border-white rounded-xl p-6 lg:p-8 shadow-[0_22px_70px_rgba(35,69,87,0.18)] backdrop-blur-xl"><ModuleTitle eyebrow="角色登录" title={t.roleLogin} description="同一套后台按角色展示可用菜单与业务数据" /><div className="mt-6 grid sm:grid-cols-2 gap-3">{roles.map(([key, item]) => { const Icon = item.icon; const selected = role === key; const [note1, note2] = noteLines[key]; return <button type="button" key={key} onClick={() => { setRole(key); setError(''); }} className={`role-login-card text-left rounded-lg border p-4 min-h-[138px] transition-colors ${selected ? 'border-[#255ec8] bg-blue-50 ring-1 ring-[#255ec8]' : 'border-slate-200 bg-white/80 hover:border-slate-400'}`}><div className={`w-9 h-9 rounded-lg ${item.color} text-white flex items-center justify-center`}><Icon className="w-5 h-5" /></div><div className="mt-3 text-[16px] leading-5 font-semibold whitespace-nowrap">{item.name}</div><div className="mt-2 text-[13px] leading-5 text-slate-600"><span className="block whitespace-nowrap">{note1}</span><span className="block whitespace-nowrap">{note2}</span></div></button>; })}</div><div className="mt-6 grid sm:grid-cols-2 gap-4"><label><span className="text-[14px] font-semibold">账号</span><input value={account} onChange={e => setAccount(e.target.value)} autoComplete="username" className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white" /></label><label><span className="text-[14px] font-semibold">密码</span><input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete="current-password" className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white" /></label></div><div className="mt-3 text-[13px] leading-5 text-slate-500">预置账号 linjie@quji.cn<br />预置密码 123456</div>{error && <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}<button type="button" onClick={submit} className="mt-5 w-full h-12 rounded-lg bg-[#255ec8] hover:bg-[#1d4fae] text-white text-[15px] font-semibold flex items-center justify-center gap-2">{t.enter}<ArrowRight className="w-4 h-4" /></button></form></main></div>;
+  const [account, setAccount] = useState("linjie@quji.cn");
+  const [password, setPassword] = useState("123456");
+  const [error, setError] = useState("");
+  const roles = Object.entries(ROLE_INFO) as [Role, (typeof ROLE_INFO)[Role]][];
+  const noteLines: Record<Role, [string, string]> = {
+    platform: ["配置活动流程", "账号权限 服务运营"],
+    organizer: ["维护活动资料 票务", "现场与参与人员"],
+    culture: ["查看活动电子档案", "服务进度与汇总数据"],
+    collaborator: ["处理现场核验", "异常记录与处置反馈"],
+  };
+  const submit = () => {
+    if (!account.trim() || !password.trim()) {
+      setError("请输入账号和密码");
+      return;
+    }
+    if (password !== "123456") {
+      setError("密码不正确 请使用预置密码 123456");
+      return;
+    }
+    setError("");
+    onEnter();
+  };
+  return (
+    <div
+      className="relative min-h-screen overflow-hidden bg-[#eef3f3]"
+      dir={locale === "ug" ? "rtl" : "ltr"}
+    >
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="login-scenic-background absolute -inset-6" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/52 to-white/26" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_26%,rgba(255,255,255,0.78),transparent_28%)]" />
+      </div>
+      <header className="relative z-10 h-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between border-b border-white/60 bg-white/70 backdrop-blur-xl">
+        <Brand />
+        <LocaleSwitch locale={locale} setLocale={setLocale} />
+      </header>
+      <main className="relative z-10 max-w-[1220px] w-full mx-auto px-5 py-8 lg:py-12 grid lg:grid-cols-[0.9fr_1.05fr] gap-8 lg:gap-14 items-center">
+        <section className="max-w-[510px] rounded-xl bg-white/60 backdrop-blur-md border border-white/70 p-6 sm:p-8 shadow-[0_16px_50px_rgba(35,69,87,0.10)]">
+          <Pill tone="blue">新疆 · 多元文化活动协同</Pill>
+          <h1 className="mt-5 text-[38px] sm:text-[48px] leading-[1.12] font-semibold tracking-[-0.06em]">
+            一场活动
+            <br />
+            一套完整数字档案
+          </h1>
+          <p className="mt-5 text-[17px] leading-7 text-slate-700">
+            <span className="block">
+              以活动为核心对象 连接主办方资料 参与人员
+            </span>
+            <span className="block">票务 角色服装道具 现场核验与活动归档</span>
+          </p>
+          <div className="mt-8 grid grid-cols-3 gap-3">
+            <LoginMetric value="01" label="统一工作台" />
+            <LoginMetric value="09" label="活动档案模块" />
+            <LoginMetric value="全程" label="操作留痕" />
+          </div>
+        </section>
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            submit();
+          }}
+          className="bg-white/94 border border-white rounded-xl p-6 lg:p-8 shadow-[0_22px_70px_rgba(35,69,87,0.18)] backdrop-blur-xl"
+        >
+          <ModuleTitle
+            eyebrow="角色登录"
+            title={t.roleLogin}
+            description="同一套后台按角色展示可用菜单与业务数据"
+          />
+          <div className="mt-6 grid sm:grid-cols-2 gap-3">
+            {roles.map(([key, item]) => {
+              const Icon = item.icon;
+              const selected = role === key;
+              const [note1, note2] = noteLines[key];
+              return (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => {
+                    setRole(key);
+                    setError("");
+                  }}
+                  className={`role-login-card text-left rounded-lg border p-4 min-h-[138px] transition-colors ${selected ? "border-[#255ec8] bg-blue-50 ring-1 ring-[#255ec8]" : "border-slate-200 bg-white/80 hover:border-slate-400"}`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-lg ${item.color} text-white flex items-center justify-center`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="mt-3 text-[16px] leading-5 font-semibold whitespace-nowrap">
+                    {item.name}
+                  </div>
+                  <div className="mt-2 text-[13px] leading-5 text-slate-600">
+                    <span className="block whitespace-nowrap">{note1}</span>
+                    <span className="block whitespace-nowrap">{note2}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+            <label>
+              <span className="text-[14px] font-semibold">账号</span>
+              <input
+                value={account}
+                onChange={e => setAccount(e.target.value)}
+                autoComplete="username"
+                className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white"
+              />
+            </label>
+            <label>
+              <span className="text-[14px] font-semibold">密码</span>
+              <input
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white"
+              />
+            </label>
+          </div>
+          <div className="mt-3 text-[13px] leading-5 text-slate-500">
+            预置账号 linjie@quji.cn
+            <br />
+            预置密码 123456
+          </div>
+          {error && (
+            <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+              {error}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={submit}
+            className="mt-5 w-full h-12 rounded-lg bg-[#255ec8] hover:bg-[#1d4fae] text-white text-[15px] font-semibold flex items-center justify-center gap-2"
+          >
+            {t.enter}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          {role === "organizer" && (
+            <button
+              type="button"
+              onClick={onRegister}
+              data-cy="organizer-register"
+              className="mt-3 w-full h-11 rounded-lg border border-[#255ec8] bg-white text-[#1c4c9e] text-[14px] font-semibold flex items-center justify-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              首次入驻注册
+            </button>
+          )}
+          <p className="mt-3 text-center text-[12px] leading-5 text-slate-500">
+            新主办方先完成手机号注册 实名核验与主体材料审核
+          </p>
+        </form>
+      </main>
+    </div>
+  );
 }
-function LoginMetric({ value, label }: { value: string; label: string }) { return <div className="bg-white border border-slate-200 rounded-lg p-3"><div className="text-[22px] font-semibold tracking-[-0.05em]">{value}</div><div className="mt-1 text-[12px] text-slate-600">{label}</div></div>; }
-function Field({ label, value }: { label: string; value: string }) { return <label><span className="text-[14px] font-semibold">{label}</span><div className="mt-2 h-11 px-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center text-[14px] text-slate-700">{value}</div></label>; }
-function LocaleSwitch({ locale, setLocale }: { locale: Locale; setLocale: (locale: Locale) => void }) { return <div className="flex rounded-lg p-1 bg-slate-100"><button onClick={() => setLocale('zh')} className={`h-7 px-2.5 text-[12px] rounded-md ${locale === 'zh' ? 'bg-white shadow-sm font-semibold' : 'text-slate-500'}`}>中文</button><button onClick={() => setLocale('en')} className={`h-7 px-2.5 text-[12px] rounded-md ${locale === 'en' ? 'bg-white shadow-sm font-semibold' : 'text-slate-500'}`}>EN</button><button onClick={() => setLocale('ug')} className={`h-7 px-2.5 text-[12px] rounded-md ${locale === 'ug' ? 'bg-white shadow-sm font-semibold' : 'text-slate-500'}`}>ئۇيغۇرچە</button></div>; }
+function LoginMetric({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-3">
+      <div className="text-[22px] font-semibold tracking-[-0.05em]">
+        {value}
+      </div>
+      <div className="mt-1 text-[12px] text-slate-600">{label}</div>
+    </div>
+  );
+}
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <label>
+      <span className="text-[14px] font-semibold">{label}</span>
+      <div className="mt-2 h-11 px-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center text-[14px] text-slate-700">
+        {value}
+      </div>
+    </label>
+  );
+}
+function LocaleSwitch({
+  locale,
+  setLocale,
+}: {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+}) {
+  return (
+    <div className="flex rounded-lg p-1 bg-slate-100">
+      <button
+        onClick={() => setLocale("zh")}
+        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "zh" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+      >
+        中文
+      </button>
+      <button
+        onClick={() => setLocale("en")}
+        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "en" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+      >
+        EN
+      </button>
+      <button
+        onClick={() => setLocale("ug")}
+        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "ug" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+      >
+        ئۇيغۇرچە
+      </button>
+    </div>
+  );
+}
 
 export default function Home() {
   const [signedIn, setSignedIn] = useState(false);
-  const [role, setRole] = useState<Role>('organizer');
-  const [locale, setLocale] = useState<Locale>('zh');
-  const [page, setPage] = useState<Page>('workspace');
+  const [role, setRole] = useState<Role>("organizer");
+  const [locale, setLocale] = useState<Locale>("zh");
+  const [page, setPage] = useState<Page>("workspace");
   const [selectedEvent, setSelectedEvent] = useState<EventItem>(EVENTS[0]);
-  const [activityTab, setActivityTab] = useState<ActivityTab>('overview');
+  const [activityTab, setActivityTab] = useState<ActivityTab>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [settingOpen, setSettingOpen] = useState(false);
   const [checkins, setCheckins] = useState(0);
   const [issueOpen, setIssueOpen] = useState(false);
-  const [ticketMode, setTicketMode] = useState<'all' | 'orders' | 'refunds'>('all');
+  const [ticketMode, setTicketMode] = useState<"all" | "orders" | "refunds">(
+    "all"
+  );
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [admission, setAdmission] = useState<AdmissionState>(() => {
+    try {
+      const saved = localStorage.getItem("quji_admission_state");
+      return saved
+        ? (JSON.parse(saved) as AdmissionState)
+        : createEmptyAdmission();
+    } catch {
+      return createEmptyAdmission();
+    }
+  });
+  const updateAdmission = (next: AdmissionState) => {
+    setAdmission(next);
+    localStorage.setItem("quji_admission_state", JSON.stringify(next));
+  };
   const t = TEXT[locale];
   const permissions = ROLE_INFO[role].permissions;
-  const nav = ([
-    { id: 'workspace', label: t.workspace, icon: LayoutDashboard, group: '工作协同' },
-    { id: 'events', label: t.events, icon: CalendarDays, group: '工作协同' },
-    { id: 'tickets', label: t.tickets, icon: Ticket, group: '活动运营' },
-    { id: 'costumes', label: t.costumes, icon: Shirt, group: '活动运营' },
-    { id: 'onsite', label: t.onsite, icon: ScanLine, group: '活动运营' },
-    { id: 'archive', label: t.archive, icon: FileArchive, group: '资料与复盘' },
-    { id: 'organizer', label: t.organizer, icon: Building2, group: '资料与复盘' },
-    { id: 'data', label: t.data, icon: ChartNoAxesCombined, group: '资料与复盘' }
-  ] as { id: Page; label: string; icon: typeof LayoutDashboard; group: string }[]).filter(item => permissions.includes(item.id));
-  const changePage = (next: Page, tab?: ActivityTab) => { if (permissions.includes(next) || next === 'activity') { setPage(next); if (tab) setActivityTab(tab); } };
+  const nav = (
+    [
+      {
+        id: "workspace",
+        label: t.workspace,
+        icon: LayoutDashboard,
+        group: "工作协同",
+      },
+      {
+        id: "onboarding",
+        label: "入驻与认证",
+        icon: UserCheck,
+        group: "账号与主体",
+      },
+      {
+        id: "admissions",
+        label: "入驻审核",
+        icon: ClipboardCheck,
+        group: "账号与主体",
+      },
+      {
+        id: "activity-create",
+        label: "创建活动",
+        icon: Plus,
+        group: "活动运营",
+      },
+      { id: "events", label: t.events, icon: CalendarDays, group: "工作协同" },
+      { id: "tickets", label: t.tickets, icon: Ticket, group: "活动运营" },
+      { id: "costumes", label: t.costumes, icon: Shirt, group: "活动运营" },
+      { id: "onsite", label: t.onsite, icon: ScanLine, group: "活动运营" },
+      {
+        id: "archive",
+        label: t.archive,
+        icon: FileArchive,
+        group: "资料与复盘",
+      },
+      {
+        id: "organizer",
+        label: t.organizer,
+        icon: Building2,
+        group: "资料与复盘",
+      },
+      {
+        id: "data",
+        label: t.data,
+        icon: ChartNoAxesCombined,
+        group: "资料与复盘",
+      },
+    ] as {
+      id: Page;
+      label: string;
+      icon: typeof LayoutDashboard;
+      group: string;
+    }[]
+  ).filter(item => permissions.includes(item.id));
+  const currentPageLabel =
+    nav.find(item => item.id === page)?.label ||
+    (page === "activity-published" ? "发布完成" : t.activity);
+  const changePage = (next: Page, tab?: ActivityTab) => {
+    if (permissions.includes(next) || next === "activity") {
+      setPage(next);
+      if (tab) setActivityTab(tab);
+    }
+  };
   const roleLabel = ROLE_INFO[role].name;
-  if (!signedIn) return <Login role={role} setRole={setRole} onEnter={() => setSignedIn(true)} locale={locale} setLocale={setLocale} />;
-  return <div className="min-h-screen bg-[#f6f7f9] text-slate-900" dir={locale === 'ug' ? 'rtl' : 'ltr'}>
-    <div className="flex min-h-screen">
-      <aside data-cy="desktop-sidebar" className={`hidden lg:flex ${sidebarCollapsed ? 'w-[64px]' : 'w-[232px]'} shrink-0 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen transition-[width] duration-200`}>
-        <div data-cy="sidebar-brand" className={`h-16 ${sidebarCollapsed ? 'px-3 justify-center' : 'px-5'} flex items-center border-b border-slate-200`}><Brand mini={sidebarCollapsed} /></div>
-        <nav className="p-3 flex-1 overflow-y-auto">{['工作协同', '活动运营', '资料与复盘'].map(group => { const items = nav.filter(item => item.group === group); if (!items.length) return null; return <div key={group} className="mb-6"><div className={`px-3 mb-2 text-[12px] font-semibold tracking-wide text-slate-500 ${sidebarCollapsed ? 'hidden' : ''}`}>{group}</div>{items.map(item => { const Icon = item.icon; const active = page === item.id || (page === 'activity' && item.id === 'events'); return <button key={item.id} title={item.label} onClick={() => changePage(item.id)} className={`w-full h-11 mb-1 rounded-lg flex items-center text-[14px] transition-colors ${sidebarCollapsed ? 'justify-center px-2' : 'px-3 gap-3'} ${active ? 'bg-blue-50 text-[#1c4c9e] font-semibold border-l-2 border-[#245fc4]' : 'text-slate-700 hover:bg-slate-100 border-l-2 border-transparent'}`}><Icon className="w-[18px] h-[18px] shrink-0" />{!sidebarCollapsed && <span>{item.label}</span>}{!sidebarCollapsed && item.id === 'costumes' && <span className={`ml-auto px-1.5 py-0.5 text-[11px] rounded ${active ? 'bg-white/20' : 'bg-rose-100 text-rose-700'}`}>2</span>}</button>; })}</div>; })}</nav>
-        <div className={`sidebar-footer shrink-0 border-t border-slate-200 ${sidebarCollapsed ? 'p-2' : 'p-3'}`}><div className={`flex ${sidebarCollapsed ? 'flex-col items-center gap-2' : 'flex-col gap-1'}`}><button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} aria-label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} className={`sidebar-toggle h-8 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 ${sidebarCollapsed ? 'w-8' : 'w-8 mb-1'}`}><PanelLeftClose className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} /></button><button onClick={() => setNotificationOpen(true)} title="通知中心" aria-label="通知中心" className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? 'w-8 justify-center' : 'w-full px-3 gap-3'}`}><span className="relative flex"><Bell className="w-[18px] h-[18px]" />{sidebarCollapsed && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500" />}</span>{!sidebarCollapsed && <span>通知中心</span>}{!sidebarCollapsed && <span className="ml-auto w-2 h-2 rounded-full bg-rose-500" />}</button><button onClick={() => setSettingOpen(true)} title="系统设置" aria-label="系统设置" className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? 'w-8 justify-center' : 'w-full px-3 gap-3'}`}><Settings2 className="w-[18px] h-[18px]" />{!sidebarCollapsed && <span>系统设置</span>}</button></div><div className={`sidebar-profile mt-2 ${sidebarCollapsed ? 'flex justify-center' : 'rounded-md bg-slate-50 border border-slate-200 p-3 flex items-center gap-2'}`}><div title={sidebarCollapsed ? roleLabel : undefined} className={`w-8 h-8 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold`}>{role === 'organizer' ? '林' : role === 'culture' ? '王' : role === 'collaborator' ? '艾' : '周'}</div>{!sidebarCollapsed && <><div className="min-w-0 flex-1"><div className="text-[13px] font-semibold truncate">{role === 'organizer' ? '林洁' : role === 'culture' ? '王处长' : role === 'collaborator' ? '艾警官' : '周可'}</div><div className="text-[12px] text-slate-500 truncate">{roleLabel}</div></div><button onClick={() => setSignedIn(false)} title={t.logout} aria-label={t.logout} className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-500"><LogOut className="w-4 h-4" /></button></>}</div></div>
-      </aside>
-      <div className="flex-1 min-w-0"><header data-cy="workspace-topbar" className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20"><div className="flex items-center gap-3"><button onClick={() => setMenuOpen(!menuOpen)} className="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center"><Menu className="w-5 h-5" /></button><div className="hidden sm:flex items-center gap-2 text-[14px] text-slate-500"><button onClick={() => changePage('events')} className="hover:text-[#255ec8]">活动管理</button><ChevronRight className="w-4 h-4" /><button onClick={() => changePage('activity')} className="font-semibold text-slate-800 truncate max-w-[320px]">{selectedEvent.name} · {selectedEvent.subtitle}</button></div><div className="sm:hidden text-[15px] font-semibold">{page === 'workspace' ? '工作台' : t[page === 'activity' ? 'activity' : page]}</div></div><div className="flex items-center gap-2"><button onClick={() => setPage('activity')} className="hidden md:flex h-9 px-3 rounded-lg border border-slate-300 text-[13px] font-semibold items-center gap-1.5 hover:bg-slate-50"><FolderOpen className="w-4 h-4" />当前活动档案</button><LocaleSwitch locale={locale} setLocale={setLocale} /><button onClick={() => setNotificationOpen(true)} className="relative w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><Bell className="w-[18px] h-[18px]" /><span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500" /></button></div></header>
-        {menuOpen && <MobileMenu nav={nav} page={page} onNavigate={page => { setMenuOpen(false); changePage(page); }} />}
-        <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">{page === 'workspace' && <Workspace events={EVENTS} onOpenEvent={event => { setSelectedEvent(event); changePage('activity'); }} onNavigate={changePage} />}{page === 'events' && <EventsPage events={EVENTS} onOpen={event => { setSelectedEvent(event); changePage('activity'); }} />}{page === 'activity' && <ActivityRecord event={selectedEvent} tab={activityTab} setTab={setActivityTab} onNavigate={changePage} canEdit={role === 'organizer' || role === 'platform'} />}{page === 'tickets' && <TicketPage mode={ticketMode} setMode={setTicketMode} />}{page === 'costumes' && <CostumePage />}{page === 'onsite' && <OnsitePage checkins={checkins} setCheckins={setCheckins} issueOpen={issueOpen} setIssueOpen={setIssueOpen} />}{page === 'archive' && <ArchivePage />}{page === 'organizer' && <OrganizerMaterials canEdit={role === 'organizer' || role === 'platform'} />}{page === 'data' && <DataCenter />}</main>
+  if (registrationOpen)
+    return (
+      <OrganizerRegistration
+        onBack={() => setRegistrationOpen(false)}
+        onComplete={next => {
+          updateAdmission(next);
+          setRegistrationOpen(false);
+          setRole("organizer");
+          setSignedIn(true);
+          setPage("onboarding");
+        }}
+      />
+    );
+  if (!signedIn)
+    return (
+      <Login
+        role={role}
+        setRole={setRole}
+        onRegister={() => {
+          updateAdmission(createEmptyAdmission());
+          setRegistrationOpen(true);
+        }}
+        onEnter={() => {
+          if (role === "organizer" && admission.status === "not_started")
+            updateAdmission(createApprovedAdmission());
+          setSignedIn(true);
+        }}
+        locale={locale}
+        setLocale={setLocale}
+      />
+    );
+  return (
+    <div
+      className="min-h-screen bg-[#f6f7f9] text-slate-900"
+      dir={locale === "ug" ? "rtl" : "ltr"}
+    >
+      <div className="flex min-h-screen">
+        <aside
+          data-cy="desktop-sidebar"
+          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen transition-[width] duration-200`}
+        >
+          <div
+            data-cy="sidebar-brand"
+            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-slate-200`}
+          >
+            <Brand mini={sidebarCollapsed} />
+          </div>
+          <nav className="p-3 flex-1 overflow-y-auto">
+            {["账号与主体", "工作协同", "活动运营", "资料与复盘"].map(group => {
+              const items = nav.filter(item => item.group === group);
+              if (!items.length) return null;
+              return (
+                <div key={group} className="mb-6">
+                  <div
+                    className={`px-3 mb-2 text-[12px] font-semibold tracking-wide text-slate-500 ${sidebarCollapsed ? "hidden" : ""}`}
+                  >
+                    {group}
+                  </div>
+                  {items.map(item => {
+                    const Icon = item.icon;
+                    const active =
+                      page === item.id ||
+                      (page === "activity" && item.id === "events");
+                    return (
+                      <button
+                        key={item.id}
+                        title={item.label}
+                        onClick={() => changePage(item.id)}
+                        className={`w-full h-11 mb-1 rounded-lg flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-2" : "px-3 gap-3"} ${active ? "bg-blue-50 text-[#1c4c9e] font-semibold border-l-2 border-[#245fc4]" : "text-slate-700 hover:bg-slate-100 border-l-2 border-transparent"}`}
+                      >
+                        <Icon className="w-[18px] h-[18px] shrink-0" />
+                        {!sidebarCollapsed && <span>{item.label}</span>}
+                        {!sidebarCollapsed && item.id === "costumes" && (
+                          <span
+                            className={`ml-auto px-1.5 py-0.5 text-[11px] rounded ${active ? "bg-white/20" : "bg-rose-100 text-rose-700"}`}
+                          >
+                            2
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </nav>
+          <div
+            className={`sidebar-footer shrink-0 border-t border-slate-200 ${sidebarCollapsed ? "p-2" : "p-3"}`}
+          >
+            <div
+              className={`flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "flex-col gap-1"}`}
+            >
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                className={`sidebar-toggle h-8 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
+              >
+                <PanelLeftClose
+                  className={`w-4 h-4 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
+                />
+              </button>
+              <button
+                onClick={() => setNotificationOpen(true)}
+                title="通知中心"
+                aria-label="通知中心"
+                className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+              >
+                <span className="relative flex">
+                  <Bell className="w-[18px] h-[18px]" />
+                  {sidebarCollapsed && (
+                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  )}
+                </span>
+                {!sidebarCollapsed && <span>通知中心</span>}
+                {!sidebarCollapsed && (
+                  <span className="ml-auto w-2 h-2 rounded-full bg-rose-500" />
+                )}
+              </button>
+              <button
+                onClick={() => setSettingOpen(true)}
+                title="系统设置"
+                aria-label="系统设置"
+                className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+              >
+                <Settings2 className="w-[18px] h-[18px]" />
+                {!sidebarCollapsed && <span>系统设置</span>}
+              </button>
+            </div>
+            <div
+              className={`sidebar-profile mt-2 ${sidebarCollapsed ? "flex justify-center" : "rounded-md bg-slate-50 border border-slate-200 p-3 flex items-center gap-2"}`}
+            >
+              <div
+                title={sidebarCollapsed ? roleLabel : undefined}
+                className={`w-8 h-8 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold`}
+              >
+                {role === "organizer"
+                  ? "林"
+                  : role === "culture"
+                    ? "王"
+                    : role === "collaborator"
+                      ? "艾"
+                      : "周"}
+              </div>
+              {!sidebarCollapsed && (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-semibold truncate">
+                      {role === "organizer"
+                        ? "林洁"
+                        : role === "culture"
+                          ? "王处长"
+                          : role === "collaborator"
+                            ? "艾警官"
+                            : "周可"}
+                    </div>
+                    <div className="text-[12px] text-slate-500 truncate">
+                      {roleLabel}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSignedIn(false)}
+                    title={t.logout}
+                    aria-label={t.logout}
+                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-500"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0">
+          <header
+            data-cy="workspace-topbar"
+            className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20"
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="hidden sm:flex items-center gap-2 text-[14px] text-slate-500">
+                <button
+                  onClick={() => changePage("events")}
+                  className="hover:text-[#255ec8]"
+                >
+                  活动管理
+                </button>
+                <ChevronRight className="w-4 h-4" />
+                <button
+                  onClick={() => changePage("activity")}
+                  className="font-semibold text-slate-800 truncate max-w-[320px]"
+                >
+                  {selectedEvent.name} · {selectedEvent.subtitle}
+                </button>
+              </div>
+              <div className="sm:hidden text-[15px] font-semibold">
+                {currentPageLabel}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage("activity")}
+                className="hidden md:flex h-9 px-3 rounded-lg border border-slate-300 text-[13px] font-semibold items-center gap-1.5 hover:bg-slate-50"
+              >
+                <FolderOpen className="w-4 h-4" />
+                当前活动档案
+              </button>
+              <LocaleSwitch locale={locale} setLocale={setLocale} />
+              <button
+                onClick={() => setNotificationOpen(true)}
+                className="relative w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+              >
+                <Bell className="w-[18px] h-[18px]" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500" />
+              </button>
+            </div>
+          </header>
+          {menuOpen && (
+            <MobileMenu
+              nav={nav}
+              page={page}
+              onNavigate={page => {
+                setMenuOpen(false);
+                changePage(page);
+              }}
+            />
+          )}
+          <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+            {page === "workspace" && (
+              <>
+                {role === "organizer" && admission.status !== "approved" && (
+                  <OnboardingWorkspaceGate
+                    state={admission}
+                    onContinue={() => setPage("onboarding")}
+                  />
+                )}
+                <Workspace
+                  events={EVENTS}
+                  onOpenEvent={event => {
+                    setSelectedEvent(event);
+                    changePage("activity");
+                  }}
+                  onNavigate={changePage}
+                />
+              </>
+            )}
+            {page === "events" && (
+              <EventsPage
+                events={EVENTS}
+                onOpen={event => {
+                  setSelectedEvent(event);
+                  changePage("activity");
+                }}
+              />
+            )}
+            {page === "activity" && (
+              <ActivityRecord
+                event={selectedEvent}
+                tab={activityTab}
+                setTab={setActivityTab}
+                onNavigate={changePage}
+                canEdit={role === "organizer" || role === "platform"}
+              />
+            )}
+            {page === "tickets" && (
+              <TicketPage mode={ticketMode} setMode={setTicketMode} />
+            )}
+            {page === "costumes" && <CostumePage />}
+            {page === "onsite" && (
+              <OnsitePage
+                checkins={checkins}
+                setCheckins={setCheckins}
+                issueOpen={issueOpen}
+                setIssueOpen={setIssueOpen}
+              />
+            )}
+            {page === "archive" && <ArchivePage />}
+            {page === "organizer" && (
+              <OrganizerMaterials
+                canEdit={role === "organizer" || role === "platform"}
+              />
+            )}
+            {page === "data" && <DataCenter />}
+            {page === "onboarding" && (
+              <OrganizerOnboarding
+                state={admission}
+                onChange={updateAdmission}
+                onCreateActivity={() => setPage("activity-create")}
+              />
+            )}
+            {page === "admissions" && (
+              <AdmissionReview state={admission} onChange={updateAdmission} />
+            )}
+            {page === "activity-create" && (
+              <ActivityCreationWizard
+                approved={admission.status === "approved"}
+                onBack={() => setPage("onboarding")}
+                onFinish={() => setPage("activity-published")}
+              />
+            )}
+            {page === "activity-published" && (
+              <ActivityPublished
+                onWorkspace={() => setPage("events")}
+                onTickets={() => setPage("tickets")}
+              />
+            )}
+          </main>
+        </div>
       </div>
+      {notificationOpen && (
+        <NotificationPanel
+          onClose={() => setNotificationOpen(false)}
+          onOpenCostume={() => {
+            setNotificationOpen(false);
+            setPage("costumes");
+          }}
+        />
+      )}
+      {settingOpen && (
+        <SettingsPanel
+          role={role}
+          onRoleChange={next => {
+            setRole(next);
+            if (!ROLE_INFO[next].permissions.includes(page))
+              setPage("workspace");
+          }}
+          onClose={() => setSettingOpen(false)}
+          onLogout={() => {
+            setSettingOpen(false);
+            setSignedIn(false);
+          }}
+        />
+      )}
     </div>
-    {notificationOpen && <NotificationPanel onClose={() => setNotificationOpen(false)} onOpenCostume={() => { setNotificationOpen(false); setPage('costumes'); }} />}
-    {settingOpen && <SettingsPanel role={role} onRoleChange={next => { setRole(next); if (!ROLE_INFO[next].permissions.includes(page)) setPage('workspace'); }} onClose={() => setSettingOpen(false)} onLogout={() => { setSettingOpen(false); setSignedIn(false); }} />}
-  </div>;
+  );
 }
 
-function MobileMenu({ nav, page, onNavigate }: { nav: { id: Page; label: string; icon: typeof LayoutDashboard }[]; page: Page; onNavigate: (page: Page) => void }) { return <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-slate-200 shadow-lg p-3 grid grid-cols-2 gap-2">{nav.map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => onNavigate(item.id)} className={`h-11 rounded-lg flex items-center gap-2 px-3 text-[14px] ${page === item.id ? 'bg-blue-50 text-[#255ec8] font-semibold' : 'bg-slate-50 text-slate-700'}`}><Icon className="w-4 h-4" />{item.label}</button>; })}</div>; }
+function MobileMenu({
+  nav,
+  page,
+  onNavigate,
+}: {
+  nav: { id: Page; label: string; icon: typeof LayoutDashboard }[];
+  page: Page;
+  onNavigate: (page: Page) => void;
+}) {
+  return (
+    <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-slate-200 shadow-lg p-3 grid grid-cols-2 gap-2">
+      {nav.map(item => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={`h-11 rounded-lg flex items-center gap-2 px-3 text-[14px] ${page === item.id ? "bg-blue-50 text-[#255ec8] font-semibold" : "bg-slate-50 text-slate-700"}`}
+          >
+            <Icon className="w-4 h-4" />
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-function Workspace({ events, onOpenEvent, onNavigate }: { events: EventItem[]; onOpenEvent: (event: EventItem) => void; onNavigate: (page: Page, tab?: ActivityTab) => void }) { return <div className="space-y-6"><ModuleTitle eyebrow="工作台" title="近期活动与协同待办" description="围绕正在筹备、售票或进行中的活动开展日常协同。" actions={<><button onClick={() => onNavigate('events')} className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-[14px] font-semibold">全部活动</button><button onClick={() => onNavigate('events')} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"><Plus className="w-4 h-4" />创建活动</button></>} /><section className="grid xl:grid-cols-[1.45fr_0.85fr] gap-5"><div className="bg-white border border-slate-200 rounded-lg overflow-hidden"><div className="p-5 border-b border-slate-200 flex items-center justify-between"><div><h3 className="text-[18px] font-semibold">近期活动</h3><p className="mt-1 text-[14px] text-slate-600">每场活动进入独立数字档案，统一管理资料、票务与现场服务。</p></div><button onClick={() => onNavigate('events')} className="text-[14px] font-semibold text-[#255ec8]">查看列表</button></div><div className="divide-y divide-slate-200">{events.slice(0, 3).map(event => <button key={event.id} onClick={() => onOpenEvent(event)} className="w-full text-left p-5 hover:bg-slate-50 transition-colors"><div className="flex items-start gap-4"><div className="w-10 h-10 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center shrink-0"><CalendarDays className="w-5 h-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap gap-2 items-center"><div className="text-[16px] leading-6 font-semibold">{event.name}</div><Status status={event.status} /></div><div className="mt-1 text-[14px] leading-5 text-slate-600">{event.subtitle}</div><div className="mt-3 grid sm:grid-cols-3 gap-y-1 gap-x-4 text-[13px] text-slate-600"><span className="flex items-center gap-1.5"><Clock3 className="w-3.5 h-3.5" />{event.date}</span><span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{event.venue}</span><span className="flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5" />待办 {event.pending} 项</span></div></div><ChevronRight className="w-5 h-5 text-slate-400 self-center" /></div></button>)}</div></div><div className="space-y-5"><TaskPanel onNavigate={onNavigate} /><AlertPanel onNavigate={onNavigate} /></div></section><section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4"><TodayStat label="今日售票" value="286" sub="普通票 241 · Coser 45" icon={<Ticket className="w-5 h-5" />} /><TodayStat label="待处理事项" value="08" sub="资料补充 3 · 内容初核 5" icon={<ListChecks className="w-5 h-5" />} tone="amber" /><TodayStat label="异常提醒" value="02" sub="高关注道具 · 实名复核" icon={<CircleAlert className="w-5 h-5" />} tone="rose" /><TodayStat label="快捷入口" value="现场核验" sub="进入现场核验" icon={<ScanLine className="w-5 h-5" />} tone="blue" link={() => onNavigate('onsite')} /></section><section className="grid lg:grid-cols-3 gap-4"><QuickAction icon={<Upload className="w-5 h-5" />} title="补充活动资料" text="主办方材料、规则与现场保障文件" action="进入资料管理" onClick={() => onNavigate('activity', 'materials')} /><QuickAction icon={<QrCode className="w-5 h-5" />} title="进入现场核验" text="检票、实名、角色服装和异常处置" action="进入现场管理" onClick={() => onNavigate('onsite')} /><QuickAction icon={<FileArchive className="w-5 h-5" />} title="形成活动档案" text="活动结束后汇集数据、问题记录与操作日志" action="查看归档清单" onClick={() => onNavigate('archive')} /></section></div>; }
-function TaskPanel({ onNavigate }: { onNavigate: (page: Page, tab?: ActivityTab) => void }) { const tasks = [['补充夜间值守联系人', '丝路数字国风文创新潮博览会', '资料管理'], ['完成 2 条角色道具初核', '魔都动漫嘉年华', '角色服装道具'], ['确认现场售票点库存', '魔都动漫嘉年华', '票务管理']]; return <div className="bg-white border border-slate-200 rounded-lg p-5"><div className="flex items-center justify-between"><h3 className="text-[18px] font-semibold">我的待办</h3><Pill tone="amber">8 项</Pill></div><div className="mt-4 space-y-3">{tasks.map(([title, sub, target]) => <button key={title} onClick={() => onNavigate(target === '资料管理' ? 'activity' : target === '角色服装道具' ? 'costumes' : 'tickets', target === '资料管理' ? 'materials' : undefined)} className="w-full text-left rounded-lg border border-slate-200 p-3 hover:border-blue-300 hover:bg-blue-50"><div className="text-[14px] font-semibold">{title}</div><div className="mt-1 text-[13px] text-slate-600">{sub}</div></button>)}</div></div>; }
-function AlertPanel({ onNavigate }: { onNavigate: (page: Page, tab?: ActivityTab) => void }) { return <div className="bg-white border border-slate-200 rounded-lg p-5"><div className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-rose-600" /><h3 className="text-[18px] font-semibold">异常提醒</h3></div><button onClick={() => onNavigate('costumes')} className="mt-4 w-full text-left p-3 rounded-lg bg-rose-50 border border-rose-100"><div className="text-[14px] font-semibold text-rose-800">仿真重弩模型待现场复验</div><div className="mt-1 text-[13px] leading-5 text-rose-700">机甲重装佣兵 · 需核对道具尺寸与材质</div></button><button onClick={() => onNavigate('activity', 'materials')} className="mt-3 w-full text-left p-3 rounded-lg bg-amber-50 border border-amber-100"><div className="text-[14px] font-semibold text-amber-800">现场服务联系人缺失</div><div className="mt-1 text-[13px] text-amber-700">请主办方补充夜间值守人员</div></button></div>; }
-function TodayStat({ label, value, sub, icon, tone = 'blue', link }: { label: string; value: string; sub: string; icon: ReactNode; tone?: 'blue' | 'amber' | 'rose'; link?: () => void }) { const colors = { blue: 'bg-blue-50 text-[#255ec8]', amber: 'bg-amber-50 text-amber-700', rose: 'bg-rose-50 text-rose-700' }[tone]; const inner = <><div className="flex items-center justify-between"><div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colors}`}>{icon}</div>{link && <ArrowRight className="w-4 h-4 text-[#255ec8]" />}</div><div className="mt-4 text-[14px] leading-5 text-slate-600 [word-break:keep-all]">{label}</div><div className="metric-value mt-1 text-[28px] leading-8 font-semibold tracking-[-0.05em]">{value}</div><div className="metric-sub mt-2 text-[14px] leading-6 font-medium text-slate-600">{sub}</div></>; const classes = `metric-card bg-white border border-slate-200 rounded-lg p-5 text-left ${link ? 'hover:border-blue-300 hover:bg-blue-50/30' : ''}`; return link ? <button onClick={link} className={classes}>{inner}</button> : <div className={classes}>{inner}</div>; }
-function QuickAction({ icon, title, text, action, onClick }: { icon: ReactNode; title: string; text: string; action: string; onClick: () => void }) { return <div className="bg-white border border-slate-200 rounded-lg p-5"><div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">{icon}</div><h3 className="mt-4 text-[17px] font-semibold">{title}</h3><p className="mt-2 text-[14px] leading-6 text-slate-600">{text}</p><button onClick={onClick} className="mt-4 text-[14px] font-semibold text-[#255ec8]">{action} →</button></div>; }
+function Workspace({
+  events,
+  onOpenEvent,
+  onNavigate,
+}: {
+  events: EventItem[];
+  onOpenEvent: (event: EventItem) => void;
+  onNavigate: (page: Page, tab?: ActivityTab) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <ModuleTitle
+        eyebrow="工作台"
+        title="近期活动与协同待办"
+        description="围绕正在筹备、售票或进行中的活动开展日常协同。"
+        actions={
+          <>
+            <button
+              onClick={() => onNavigate("events")}
+              className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-[14px] font-semibold"
+            >
+              全部活动
+            </button>
+            <button
+              onClick={() => onNavigate("events")}
+              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              创建活动
+            </button>
+          </>
+        }
+      />
+      <section className="grid xl:grid-cols-[1.45fr_0.85fr] gap-5">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-[18px] font-semibold">近期活动</h3>
+              <p className="mt-1 text-[14px] text-slate-600">
+                每场活动进入独立数字档案，统一管理资料、票务与现场服务。
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate("events")}
+              className="text-[14px] font-semibold text-[#255ec8]"
+            >
+              查看列表
+            </button>
+          </div>
+          <div className="divide-y divide-slate-200">
+            {events.slice(0, 3).map(event => (
+              <button
+                key={event.id}
+                onClick={() => onOpenEvent(event)}
+                className="w-full text-left p-5 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <div className="text-[16px] leading-6 font-semibold">
+                        {event.name}
+                      </div>
+                      <Status status={event.status} />
+                    </div>
+                    <div className="mt-1 text-[14px] leading-5 text-slate-600">
+                      {event.subtitle}
+                    </div>
+                    <div className="mt-3 grid sm:grid-cols-3 gap-y-1 gap-x-4 text-[13px] text-slate-600">
+                      <span className="flex items-center gap-1.5">
+                        <Clock3 className="w-3.5 h-3.5" />
+                        {event.date}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {event.venue}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        待办 {event.pending} 项
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-400 self-center" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-5">
+          <TaskPanel onNavigate={onNavigate} />
+          <AlertPanel onNavigate={onNavigate} />
+        </div>
+      </section>
+      <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
+        <TodayStat
+          label="今日售票"
+          value="286"
+          sub="普通票 241 · Coser 45"
+          icon={<Ticket className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="待处理事项"
+          value="08"
+          sub="资料补充 3 · 内容初核 5"
+          icon={<ListChecks className="w-5 h-5" />}
+          tone="amber"
+        />
+        <TodayStat
+          label="异常提醒"
+          value="02"
+          sub="高关注道具 · 实名复核"
+          icon={<CircleAlert className="w-5 h-5" />}
+          tone="rose"
+        />
+        <TodayStat
+          label="快捷入口"
+          value="现场核验"
+          sub="进入现场核验"
+          icon={<ScanLine className="w-5 h-5" />}
+          tone="blue"
+          link={() => onNavigate("onsite")}
+        />
+      </section>
+      <section className="grid lg:grid-cols-3 gap-4">
+        <QuickAction
+          icon={<Upload className="w-5 h-5" />}
+          title="补充活动资料"
+          text="主办方材料、规则与现场保障文件"
+          action="进入资料管理"
+          onClick={() => onNavigate("activity", "materials")}
+        />
+        <QuickAction
+          icon={<QrCode className="w-5 h-5" />}
+          title="进入现场核验"
+          text="检票、实名、角色服装和异常处置"
+          action="进入现场管理"
+          onClick={() => onNavigate("onsite")}
+        />
+        <QuickAction
+          icon={<FileArchive className="w-5 h-5" />}
+          title="形成活动档案"
+          text="活动结束后汇集数据、问题记录与操作日志"
+          action="查看归档清单"
+          onClick={() => onNavigate("archive")}
+        />
+      </section>
+    </div>
+  );
+}
+function TaskPanel({
+  onNavigate,
+}: {
+  onNavigate: (page: Page, tab?: ActivityTab) => void;
+}) {
+  const tasks = [
+    ["补充夜间值守联系人", "丝路数字国风文创新潮博览会", "资料管理"],
+    ["完成 2 条角色道具初核", "魔都动漫嘉年华", "角色服装道具"],
+    ["确认现场售票点库存", "魔都动漫嘉年华", "票务管理"],
+  ];
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[18px] font-semibold">我的待办</h3>
+        <Pill tone="amber">8 项</Pill>
+      </div>
+      <div className="mt-4 space-y-3">
+        {tasks.map(([title, sub, target]) => (
+          <button
+            key={title}
+            onClick={() =>
+              onNavigate(
+                target === "资料管理"
+                  ? "activity"
+                  : target === "角色服装道具"
+                    ? "costumes"
+                    : "tickets",
+                target === "资料管理" ? "materials" : undefined
+              )
+            }
+            className="w-full text-left rounded-lg border border-slate-200 p-3 hover:border-blue-300 hover:bg-blue-50"
+          >
+            <div className="text-[14px] font-semibold">{title}</div>
+            <div className="mt-1 text-[13px] text-slate-600">{sub}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+function AlertPanel({
+  onNavigate,
+}: {
+  onNavigate: (page: Page, tab?: ActivityTab) => void;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-5">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="w-5 h-5 text-rose-600" />
+        <h3 className="text-[18px] font-semibold">异常提醒</h3>
+      </div>
+      <button
+        onClick={() => onNavigate("costumes")}
+        className="mt-4 w-full text-left p-3 rounded-lg bg-rose-50 border border-rose-100"
+      >
+        <div className="text-[14px] font-semibold text-rose-800">
+          仿真重弩模型待现场复验
+        </div>
+        <div className="mt-1 text-[13px] leading-5 text-rose-700">
+          机甲重装佣兵 · 需核对道具尺寸与材质
+        </div>
+      </button>
+      <button
+        onClick={() => onNavigate("activity", "materials")}
+        className="mt-3 w-full text-left p-3 rounded-lg bg-amber-50 border border-amber-100"
+      >
+        <div className="text-[14px] font-semibold text-amber-800">
+          现场服务联系人缺失
+        </div>
+        <div className="mt-1 text-[13px] text-amber-700">
+          请主办方补充夜间值守人员
+        </div>
+      </button>
+    </div>
+  );
+}
+function TodayStat({
+  label,
+  value,
+  sub,
+  icon,
+  tone = "blue",
+  link,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  icon: ReactNode;
+  tone?: "blue" | "amber" | "rose";
+  link?: () => void;
+}) {
+  const colors = {
+    blue: "bg-blue-50 text-[#255ec8]",
+    amber: "bg-amber-50 text-amber-700",
+    rose: "bg-rose-50 text-rose-700",
+  }[tone];
+  const inner = (
+    <>
+      <div className="flex items-center justify-between">
+        <div
+          className={`w-9 h-9 rounded-lg flex items-center justify-center ${colors}`}
+        >
+          {icon}
+        </div>
+        {link && <ArrowRight className="w-4 h-4 text-[#255ec8]" />}
+      </div>
+      <div className="mt-4 text-[14px] leading-5 text-slate-600 [word-break:keep-all]">
+        {label}
+      </div>
+      <div className="metric-value mt-1 text-[28px] leading-8 font-semibold tracking-[-0.05em]">
+        {value}
+      </div>
+      <div className="metric-sub mt-2 text-[14px] leading-6 font-medium text-slate-600">
+        {sub}
+      </div>
+    </>
+  );
+  const classes = `metric-card bg-white border border-slate-200 rounded-lg p-5 text-left ${link ? "hover:border-blue-300 hover:bg-blue-50/30" : ""}`;
+  return link ? (
+    <button onClick={link} className={classes}>
+      {inner}
+    </button>
+  ) : (
+    <div className={classes}>{inner}</div>
+  );
+}
+function QuickAction({
+  icon,
+  title,
+  text,
+  action,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  action: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-5">
+      <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+        {icon}
+      </div>
+      <h3 className="mt-4 text-[17px] font-semibold">{title}</h3>
+      <p className="mt-2 text-[14px] leading-6 text-slate-600">{text}</p>
+      <button
+        onClick={onClick}
+        className="mt-4 text-[14px] font-semibold text-[#255ec8]"
+      >
+        {action} →
+      </button>
+    </div>
+  );
+}
 
-function EventsPage({ events, onOpen }: { events: EventItem[]; onOpen: (event: EventItem) => void }) { const [query, setQuery] = useState(''); const results = events.filter(event => [event.name, event.subtitle, event.organizer].join(' ').toLowerCase().includes(query.toLowerCase())); return <div className="space-y-6"><ModuleTitle eyebrow="活动管理" title="活动数字档案库" description="每场活动对应一套独立数字档案，贯穿创建、准备、核验、售票、现场、结束与归档。" actions={<ActionButton label="创建活动" className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5" icon={<Plus className="w-4 h-4" />} description="将创建活动基础档案，并进入资料准备阶段。" />} /><div className="bg-white border border-slate-200 rounded-lg"><div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 sm:items-center justify-between"><div className="relative w-full sm:w-[360px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索活动名称、主办方或场地" className="w-full h-11 pl-9 pr-3 border border-slate-300 rounded-lg text-[14px] outline-none focus:border-[#255ec8]" /></div><div className="flex gap-2"><ActionButton label="状态筛选" className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium" description="可按活动创建、资料准备、信息核验、售票、进行中、结束和归档状态筛选。" /><ActionButton label="时间范围" className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium" description="可按活动时间、创建时间和更新时间筛选。" /></div></div>{results.length ? <div className="overflow-x-auto"><table className="min-w-[1040px] w-full text-left"><thead><tr className="bg-slate-50 text-[13px] text-slate-600"><th className="p-4 font-semibold">活动名称</th><th className="p-4 font-semibold">时间与场地</th><th className="p-4 font-semibold">主办方</th><th className="p-4 font-semibold">当前阶段</th><th className="p-4 font-semibold">待办事项</th><th className="p-4 font-semibold text-right">操作</th></tr></thead><tbody className="divide-y divide-slate-200">{results.map(event => <tr key={event.id} className="hover:bg-slate-50"><td className="p-4"><div className="text-[15px] font-semibold">{event.name}</div><div className="mt-1 text-[14px] text-slate-600">{event.subtitle}</div><div className="mt-2 flex gap-1.5"><Pill tone="blue">电子档案</Pill><Pill tone="slate">{event.id}</Pill></div></td><td className="p-4"><div className="text-[14px] font-medium">{event.date}</div><div className="mt-2 text-[14px] text-slate-600">{event.venue}</div></td><td className="p-4 text-[14px] font-medium">{event.organizer}</td><td className="p-4"><Status status={event.status} /></td><td className="p-4"><span className={`text-[14px] font-semibold ${event.pending ? 'text-amber-700' : 'text-emerald-700'}`}>{event.pending ? `${event.pending} 项待处理` : '已无待办'}</span></td><td className="p-4 text-right"><button onClick={() => onOpen(event)} className="h-9 px-3.5 rounded-lg text-[14px] font-semibold text-[#255ec8] hover:bg-blue-50">进入档案</button></td></tr>)}</tbody></table></div> : <EmptyState icon={<Search className="w-5 h-5" />} title="未找到匹配活动" text="可调整搜索关键词，或创建一场新的活动并开始建立数字档案。" action="创建活动" />}</div></div>; }
+function EventsPage({
+  events,
+  onOpen,
+}: {
+  events: EventItem[];
+  onOpen: (event: EventItem) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const results = events.filter(event =>
+    [event.name, event.subtitle, event.organizer]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase())
+  );
+  return (
+    <div className="space-y-6">
+      <ModuleTitle
+        eyebrow="活动管理"
+        title="活动数字档案库"
+        description="每场活动对应一套独立数字档案，贯穿创建、准备、核验、售票、现场、结束与归档。"
+        actions={
+          <ActionButton
+            label="创建活动"
+            className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+            icon={<Plus className="w-4 h-4" />}
+            description="将创建活动基础档案，并进入资料准备阶段。"
+          />
+        }
+      />
+      <div className="bg-white border border-slate-200 rounded-lg">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+          <div className="relative w-full sm:w-[360px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="搜索活动名称、主办方或场地"
+              className="w-full h-11 pl-9 pr-3 border border-slate-300 rounded-lg text-[14px] outline-none focus:border-[#255ec8]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <ActionButton
+              label="状态筛选"
+              className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium"
+              description="可按活动创建、资料准备、信息核验、售票、进行中、结束和归档状态筛选。"
+            />
+            <ActionButton
+              label="时间范围"
+              className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium"
+              description="可按活动时间、创建时间和更新时间筛选。"
+            />
+          </div>
+        </div>
+        {results.length ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1040px] w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 text-[13px] text-slate-600">
+                  <th className="p-4 font-semibold">活动名称</th>
+                  <th className="p-4 font-semibold">时间与场地</th>
+                  <th className="p-4 font-semibold">主办方</th>
+                  <th className="p-4 font-semibold">当前阶段</th>
+                  <th className="p-4 font-semibold">待办事项</th>
+                  <th className="p-4 font-semibold text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {results.map(event => (
+                  <tr key={event.id} className="hover:bg-slate-50">
+                    <td className="p-4">
+                      <div className="text-[15px] font-semibold">
+                        {event.name}
+                      </div>
+                      <div className="mt-1 text-[14px] text-slate-600">
+                        {event.subtitle}
+                      </div>
+                      <div className="mt-2 flex gap-1.5">
+                        <Pill tone="blue">电子档案</Pill>
+                        <Pill tone="slate">{event.id}</Pill>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-[14px] font-medium">
+                        {event.date}
+                      </div>
+                      <div className="mt-2 text-[14px] text-slate-600">
+                        {event.venue}
+                      </div>
+                    </td>
+                    <td className="p-4 text-[14px] font-medium">
+                      {event.organizer}
+                    </td>
+                    <td className="p-4">
+                      <Status status={event.status} />
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`text-[14px] font-semibold ${event.pending ? "text-amber-700" : "text-emerald-700"}`}
+                      >
+                        {event.pending
+                          ? `${event.pending} 项待处理`
+                          : "已无待办"}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => onOpen(event)}
+                        className="h-9 px-3.5 rounded-lg text-[14px] font-semibold text-[#255ec8] hover:bg-blue-50"
+                      >
+                        进入档案
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Search className="w-5 h-5" />}
+            title="未找到匹配活动"
+            text="可调整搜索关键词，或创建一场新的活动并开始建立数字档案。"
+            action="创建活动"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
-function ActivityRecord({ event, tab, setTab, onNavigate, canEdit }: { event: EventItem; tab: ActivityTab; setTab: (tab: ActivityTab) => void; onNavigate: (page: Page, tab?: ActivityTab) => void; canEdit: boolean }) { const [tabCheckins, setTabCheckins] = useState(0); const [summaryOpen, setSummaryOpen] = useState(false); const tabs: { id: ActivityTab; label: string; icon: typeof FileText }[] = [{ id: 'overview', label: '活动概况', icon: Grid2X2 }, { id: 'materials', label: '活动资料', icon: FileText }, { id: 'participants', label: '参与人员', icon: Users }, { id: 'tickets', label: '票务管理', icon: Ticket }, { id: 'costumes', label: '角色服装道具', icon: Shirt }, { id: 'onsite', label: '现场核验', icon: ScanLine }, { id: 'data', label: '活动数据', icon: Activity }, { id: 'issues', label: '问题记录', icon: CircleAlert }, { id: 'archive', label: '活动档案', icon: FileArchive }]; const currentStep = STATUS_META[event.status].step; return <div className="space-y-6"><section className="bg-white border border-slate-200 rounded-lg"><div className="p-5 lg:p-6 border-b border-slate-200"><div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><button onClick={() => onNavigate('events')} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></button><Status status={event.status} /><span className="text-[13px] text-slate-500">活动编号 {event.id}</span></div><h1 className="mt-4 text-[26px] leading-8 font-semibold tracking-[-0.04em]">{event.name}</h1><p className="mt-1 text-[17px] text-slate-600">{event.subtitle}</p><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-slate-600"><span className="flex items-center gap-1.5"><Clock3 className="w-4 h-4" />{event.date}</span><span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" />{event.venue}</span><span className="flex items-center gap-1.5"><Building2 className="w-4 h-4" />{event.organizer}</span></div></div><div className="flex gap-2"><button onClick={() => setSummaryOpen(true)} className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"><FileText className="w-4 h-4" />导出活动摘要</button><button onClick={() => onNavigate('onsite')} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold">进入现场管理</button></div></div></div><ProgressFlow current={currentStep} /></section><div className="bg-white border border-slate-200 rounded-lg overflow-x-auto"><div className="min-w-[900px] flex p-2 gap-1">{tabs.map(item => { const Icon = item.icon; const active = tab === item.id; return <button key={item.id} onClick={() => setTab(item.id)} className={`h-10 px-3 rounded-lg flex items-center gap-1.5 whitespace-nowrap text-[14px] ${active ? 'bg-[#255ec8] text-white font-semibold' : 'text-slate-600 hover:bg-slate-100'}`}><Icon className="w-4 h-4" />{item.label}</button>; })}</div></div>{tab === 'overview' && <ActivityOverview event={event} onTab={setTab} />}{tab === 'materials' && <ActivityMaterials canEdit={canEdit} />}{tab === 'participants' && <Participants />}{tab === 'tickets' && <TicketPage compact />}{tab === 'costumes' && <CostumePage compact />}{tab === 'onsite' && <OnsitePage checkins={tabCheckins} setCheckins={setTabCheckins} issueOpen={false} setIssueOpen={() => {}} compact />}{tab === 'data' && <EventData />}{tab === 'issues' && <Issues />}{tab === 'archive' && <ArchivePage compact />}{summaryOpen && <ActivitySummaryReport event={event} onClose={() => setSummaryOpen(false)} />}</div>; }
-function ActivitySummaryReport({ event, onClose }: { event: EventItem; onClose: () => void }) { const [downloaded, setDownloaded] = useState(false); const download = () => { const content = `活动摘要
+function ActivityRecord({
+  event,
+  tab,
+  setTab,
+  onNavigate,
+  canEdit,
+}: {
+  event: EventItem;
+  tab: ActivityTab;
+  setTab: (tab: ActivityTab) => void;
+  onNavigate: (page: Page, tab?: ActivityTab) => void;
+  canEdit: boolean;
+}) {
+  const [tabCheckins, setTabCheckins] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const tabs: { id: ActivityTab; label: string; icon: typeof FileText }[] = [
+    { id: "overview", label: "活动概况", icon: Grid2X2 },
+    { id: "materials", label: "活动资料", icon: FileText },
+    { id: "participants", label: "参与人员", icon: Users },
+    { id: "tickets", label: "票务管理", icon: Ticket },
+    { id: "costumes", label: "角色服装道具", icon: Shirt },
+    { id: "onsite", label: "现场核验", icon: ScanLine },
+    { id: "data", label: "活动数据", icon: Activity },
+    { id: "issues", label: "问题记录", icon: CircleAlert },
+    { id: "archive", label: "活动档案", icon: FileArchive },
+  ];
+  const currentStep = STATUS_META[event.status].step;
+  return (
+    <div className="space-y-6">
+      <section className="bg-white border border-slate-200 rounded-lg">
+        <div className="p-5 lg:p-6 border-b border-slate-200">
+          <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => onNavigate("events")}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Status status={event.status} />
+                <span className="text-[13px] text-slate-500">
+                  活动编号 {event.id}
+                </span>
+              </div>
+              <h1 className="mt-4 text-[26px] leading-8 font-semibold tracking-[-0.04em]">
+                {event.name}
+              </h1>
+              <p className="mt-1 text-[17px] text-slate-600">
+                {event.subtitle}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-slate-600">
+                <span className="flex items-center gap-1.5">
+                  <Clock3 className="w-4 h-4" />
+                  {event.date}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  {event.venue}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4" />
+                  {event.organizer}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSummaryOpen(true)}
+                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+              >
+                <FileText className="w-4 h-4" />
+                导出活动摘要
+              </button>
+              <button
+                onClick={() => onNavigate("onsite")}
+                className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+              >
+                进入现场管理
+              </button>
+            </div>
+          </div>
+        </div>
+        <ProgressFlow current={currentStep} />
+      </section>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="min-w-[900px] flex p-2 gap-1">
+          {tabs.map(item => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                className={`h-10 px-3 rounded-lg flex items-center gap-1.5 whitespace-nowrap text-[14px] ${active ? "bg-[#255ec8] text-white font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {tab === "overview" && <ActivityOverview event={event} onTab={setTab} />}
+      {tab === "materials" && <ActivityMaterials canEdit={canEdit} />}
+      {tab === "participants" && <Participants />}
+      {tab === "tickets" && <TicketPage compact />}
+      {tab === "costumes" && <CostumePage compact />}
+      {tab === "onsite" && (
+        <OnsitePage
+          checkins={tabCheckins}
+          setCheckins={setTabCheckins}
+          issueOpen={false}
+          setIssueOpen={() => {}}
+          compact
+        />
+      )}
+      {tab === "data" && <EventData />}
+      {tab === "issues" && <Issues />}
+      {tab === "archive" && <ArchivePage compact />}
+      {summaryOpen && (
+        <ActivitySummaryReport
+          event={event}
+          onClose={() => setSummaryOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+function ActivitySummaryReport({
+  event,
+  onClose,
+}: {
+  event: EventItem;
+  onClose: () => void;
+}) {
+  const [downloaded, setDownloaded] = useState(false);
+  const download = () => {
+    const content = `活动摘要
 ${event.name} ${event.subtitle}
 活动编号 ${event.id}
 活动阶段 售票中
@@ -226,48 +2109,2026 @@ ${event.name} ${event.subtitle}
 实名完成 4,484 人
 角色服装道具 326 份申报 2 项协同核验
 异常核验 2 项
-待处理事项 角色道具初核 现场售票点库存 夜间值守联系人`; const blob = new Blob([content], { type: 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${event.id}_活动摘要.txt`; a.click(); URL.revokeObjectURL(url); setDownloaded(true); }; return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button onClick={onClose} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" /><section className="relative w-full max-w-[900px] max-h-[88vh] overflow-y-auto bg-[#fbfcfe] rounded-xl shadow-2xl"><div className="sticky top-0 z-10 p-5 bg-white/95 backdrop-blur border-b border-slate-200 flex items-center justify-between"><div><div className="text-[13px] text-slate-500">活动数字档案</div><h2 className="mt-1 text-[21px] font-semibold">活动摘要预览</h2></div><button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button></div><div className="p-5 sm:p-7 space-y-5"><section className="bg-white border border-slate-200 rounded-lg p-5"><div className="flex flex-wrap items-center gap-2"><Status status={event.status} /><span className="text-[13px] text-slate-500">{event.id}</span></div><h3 className="mt-4 text-[24px] font-semibold">{event.name}</h3><p className="mt-1 text-[16px] text-slate-600">{event.subtitle}</p><div className="mt-4 grid sm:grid-cols-3 gap-3 text-[14px] text-slate-700"><span className="flex items-center gap-1.5"><Clock3 className="w-4 h-4 text-slate-500" />{event.date}</span><span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-slate-500" />{event.venue}</span><span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-slate-500" />{event.organizer}</span></div></section><section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-3"><ReportMetric label="已售票" value="4,662 张" /><ReportMetric label="实名完成" value="4,484 人" /><ReportMetric label="现场入场" value="3,218 人" /><ReportMetric label="异常核验" value="2 项" tone="rose" /></section><section className="grid lg:grid-cols-2 gap-5"><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[17px] font-semibold">活动生命周期</h3><div className="mt-4 space-y-3"><ReportLine label="已完成" text="活动创建 资料准备 信息核验" tone="green" /><ReportLine label="当前阶段" text="售票中 票种与电子票已开放" tone="blue" /><ReportLine label="待处理" text="角色道具初核 现场售票点库存 夜间值守联系人" tone="amber" /></div></div><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[17px] font-semibold">业务汇总</h3><div className="mt-4 space-y-3 text-[14px] leading-6"><ReportList label="票务" text="普通观众票 3,548 张 Coser 专属票 326 张 学生早鸟票 788 张" /><ReportList label="角色服装道具" text="326 份申报 已通过 318 份 协同核验 2 份" /><ReportList label="资料与问题" text="活动资料 5 项 已完成 2 项异常核验均已登记" /></div></div></section>{downloaded && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[14px] text-emerald-800">活动摘要文件已下载到本地下载目录</div>}<div className="flex justify-end gap-2"><button onClick={onClose} className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold">关闭</button><button onClick={download} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"><Download className="w-4 h-4" />下载活动摘要</button></div></div></section></div>; }
-function ReportMetric({ label, value, tone = 'blue' }: { label: string; value: string; tone?: 'blue' | 'rose' }) { return <div className={`rounded-lg border p-4 ${tone === 'rose' ? 'border-rose-200 bg-rose-50' : 'border-blue-100 bg-blue-50'}`}><div className="text-[13px] text-slate-600">{label}</div><div className={`mt-2 text-[22px] font-semibold ${tone === 'rose' ? 'text-rose-700' : 'text-[#255ec8]'}`}>{value}</div></div>; }
-function ReportLine({ label, text, tone }: { label: string; text: string; tone: 'green' | 'blue' | 'amber' }) { const styles = { green: 'bg-emerald-50 text-emerald-800', blue: 'bg-blue-50 text-blue-800', amber: 'bg-amber-50 text-amber-800' }[tone]; return <div className={`rounded-lg p-3 ${styles}`}><div className="text-[13px] font-semibold">{label}</div><div className="mt-1 text-[14px] leading-6">{text}</div></div>; }
-function ReportList({ label, text }: { label: string; text: string }) { return <div><div className="text-[13px] font-semibold text-slate-500">{label}</div><div className="mt-1">{text}</div></div>; }
-function ProgressFlow({ current }: { current: number }) { return <div className="p-5 lg:px-6 overflow-x-auto"><div className="min-w-[780px] grid grid-cols-7">{PROGRESS.map((label, index) => { const done = index < current; const active = index === current; return <div key={label} className="relative text-center"><div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold relative z-10 ${done ? 'bg-emerald-600 text-white' : active ? 'bg-[#255ec8] text-white ring-4 ring-blue-100' : 'bg-slate-100 text-slate-500'}`}>{done ? <Check className="w-4 h-4" /> : index + 1}</div>{index < PROGRESS.length - 1 && <div className={`absolute top-4 left-[calc(50%+16px)] w-[calc(100%-32px)] h-0.5 ${index < current ? 'bg-emerald-500' : 'bg-slate-200'}`} />}<div className={`mt-2 text-[13px] leading-5 font-medium ${active ? 'text-[#255ec8]' : done ? 'text-emerald-700' : 'text-slate-500'}`}>{label}</div><div className="mt-1 text-[11px] text-slate-500">{done ? '已完成' : active ? '当前阶段' : '待进行'}</div></div>; })}</div><div className="mt-5 grid md:grid-cols-3 gap-3"><ProgressInfo title="当前阶段" text={`${PROGRESS[current]} · 活动资料已完成核验并开放售票`} tone="blue" /><ProgressInfo title="已完成事项" text="活动创建、主体材料、场地信息、参与规则、票种配置" tone="green" /><ProgressInfo title="待处理事项" text={"2 条角色道具初核、现场售票点库存确认\n夜间值守联系人补充"} tone="amber" /></div></div>; }
-function ProgressInfo({ title, text, tone }: { title: string; text: string; tone: 'blue' | 'green' | 'amber' }) { const styles = { blue: 'border-blue-200 bg-blue-50 text-blue-800', green: 'border-emerald-200 bg-emerald-50 text-emerald-800', amber: 'border-amber-200 bg-amber-50 text-amber-800' }[tone]; return <div className={`rounded-lg border p-3 ${styles}`}><div className="text-[13px] font-semibold">{title}</div><div className="mt-1 text-[13px] leading-5 whitespace-pre-line">{text}</div></div>; }
-function ActivityOverview({ event, onTab }: { event: EventItem; onTab: (tab: ActivityTab) => void }) { return <div className="grid xl:grid-cols-[1.35fr_0.85fr] gap-5"><div className="space-y-5"><section className="bg-white border border-slate-200 rounded-lg p-5"><div className="flex flex-col min-[640px]:flex-row gap-4"><img src={RECORD_VISUALS.poster} alt="2026 魔都动漫嘉年华活动海报" className="w-full min-[640px]:w-[104px] h-[140px] object-cover rounded-md border border-slate-200 bg-slate-100 shrink-0" /><div className="min-w-0 flex-1"><ModuleTitle title="活动概况" description="活动基础信息、当前任务和跨环节服务状态汇总。" actions={<button onClick={() => onTab('materials')} className="text-[14px] font-semibold text-[#255ec8] whitespace-nowrap">查看活动资料</button>} /></div></div><div className="mt-5 grid sm:grid-cols-2 gap-4"><InfoBlock label="活动类型" value="动漫展览 / 青年文化活动" /><InfoBlock label="活动规模" value="预计 6,000 人次" /><InfoBlock label="票务状态" value="4 类票种已配置，2 类正在售卖" /><InfoBlock label="角色服装规则" value="326 份提报，2 份待协同核验" /></div></section><section className="bg-white border border-slate-200 rounded-lg overflow-hidden"><div className="p-5 border-b border-slate-200 flex items-center justify-between"><div><h3 className="text-[18px] font-semibold">活动待办</h3><p className="mt-1 text-[14px] text-slate-600">按处理时限排序，操作后自动写入活动记录。</p></div><button onClick={() => onTab('issues')} className="w-24 text-center text-[14px] font-semibold text-[#255ec8]">问题记录</button></div><div className="divide-y divide-slate-200"><TaskRow icon={<FileText className="w-4 h-4" />} title="补充现场服务与应急联络表" note="主办方运营组 · 截止时间 6月18日 18:00" action="补充资料" onClick={() => onTab('materials')} /><TaskRow icon={<Shirt className="w-4 h-4" />} title="复核高关注道具申报" note="机甲重装佣兵 · 需联合现场安保确认" action="查看申报" onClick={() => onTab('costumes')} /><TaskRow icon={<Ticket className="w-4 h-4" />} title="确认现场售票点库存与票价" note="现场当日票 · 预计 1,000 张" action="票务设置" onClick={() => onTab('tickets')} /></div></section></div><div className="space-y-5"><section className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">当前活动数据</h3><div className="mt-4 space-y-4"><MiniMetric label="已售票" value={`${event.tickets.toLocaleString()} 张`} sub="售票进度 56%" /><MiniMetric label="实名完成" value="4,484 人" sub="实名完成率 96.2%" /><MiniMetric label="角色服装提报" value="326 份" sub="已通过 318 · 待处理 8" /><MiniMetric label="异常核验" value="2 项" sub="均已建立处置记录" tone="rose" /></div></section><section className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">活动操作记录</h3><div className="mt-4 space-y-4"><LogLine time="今天 10:36" text="主办方更新了活动入场规则" /><LogLine time="今天 10:35" text="审核组完成角色服装辅助初核" /><LogLine time="昨天 16:30" text="场馆协调组更新安检点位图" /></div></section></div></div>; }
-function InfoBlock({ label, value }: { label: string; value: string }) { return <div className="p-4 rounded-md bg-slate-50"><div className="text-[13px] text-slate-500 whitespace-nowrap">{label}</div><div className="data-token mt-2 text-[15px] leading-6 font-semibold">{value}</div></div>; }
-function TaskRow({ icon, title, note, action, onClick }: { icon: ReactNode; title: string; note: string; action: string; onClick: () => void }) { return <div className="p-4 grid grid-cols-[36px_minmax(0,1fr)_96px] items-center gap-3"><div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">{icon}</div><div className="min-w-0 flex-1"><div className="text-[15px] font-semibold">{title}</div><div className="mt-1 text-[13px] text-slate-600">{note}</div></div><button onClick={onClick} className="h-9 w-24 rounded-lg text-center text-[13px] font-semibold text-[#255ec8] hover:bg-blue-50">{action}</button></div>; }
-function MiniMetric({ label, value, sub, tone = 'blue' }: { label: string; value: string; sub: string; tone?: 'blue' | 'rose' }) { return <div className="border-b border-slate-200 pb-4 last:border-0 last:pb-0"><div className="text-[13px] text-slate-500">{label}</div><div className={`mt-1 text-[22px] font-semibold tracking-[-0.04em] ${tone === 'rose' ? 'text-rose-700' : ''}`}>{value}</div><div className="mt-1 text-[13px] text-slate-600">{sub}</div></div>; }
-function LogLine({ time, text }: { time: string; text: string }) { return <div className="relative pl-4"><span className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-[#255ec8]" /><div className="text-[14px] leading-5 font-medium">{text}</div><div className="mt-1 text-[12px] text-slate-500">{time}</div></div>; }
+待处理事项 角色道具初核 现场售票点库存 夜间值守联系人`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${event.id}_活动摘要.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setDownloaded(true);
+  };
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
+      />
+      <section className="relative w-full max-w-[900px] max-h-[88vh] overflow-y-auto bg-[#fbfcfe] rounded-xl shadow-2xl">
+        <div className="sticky top-0 z-10 p-5 bg-white/95 backdrop-blur border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <div className="text-[13px] text-slate-500">活动数字档案</div>
+            <h2 className="mt-1 text-[21px] font-semibold">活动摘要预览</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5 sm:p-7 space-y-5">
+          <section className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Status status={event.status} />
+              <span className="text-[13px] text-slate-500">{event.id}</span>
+            </div>
+            <h3 className="mt-4 text-[24px] font-semibold">{event.name}</h3>
+            <p className="mt-1 text-[16px] text-slate-600">{event.subtitle}</p>
+            <div className="mt-4 grid sm:grid-cols-3 gap-3 text-[14px] text-slate-700">
+              <span className="flex items-center gap-1.5">
+                <Clock3 className="w-4 h-4 text-slate-500" />
+                {event.date}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-slate-500" />
+                {event.venue}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-slate-500" />
+                {event.organizer}
+              </span>
+            </div>
+          </section>
+          <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-3">
+            <ReportMetric label="已售票" value="4,662 张" />
+            <ReportMetric label="实名完成" value="4,484 人" />
+            <ReportMetric label="现场入场" value="3,218 人" />
+            <ReportMetric label="异常核验" value="2 项" tone="rose" />
+          </section>
+          <section className="grid lg:grid-cols-2 gap-5">
+            <div className="bg-white border border-slate-200 rounded-lg p-5">
+              <h3 className="text-[17px] font-semibold">活动生命周期</h3>
+              <div className="mt-4 space-y-3">
+                <ReportLine
+                  label="已完成"
+                  text="活动创建 资料准备 信息核验"
+                  tone="green"
+                />
+                <ReportLine
+                  label="当前阶段"
+                  text="售票中 票种与电子票已开放"
+                  tone="blue"
+                />
+                <ReportLine
+                  label="待处理"
+                  text="角色道具初核 现场售票点库存 夜间值守联系人"
+                  tone="amber"
+                />
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg p-5">
+              <h3 className="text-[17px] font-semibold">业务汇总</h3>
+              <div className="mt-4 space-y-3 text-[14px] leading-6">
+                <ReportList
+                  label="票务"
+                  text="普通观众票 3,548 张 Coser 专属票 326 张 学生早鸟票 788 张"
+                />
+                <ReportList
+                  label="角色服装道具"
+                  text="326 份申报 已通过 318 份 协同核验 2 份"
+                />
+                <ReportList
+                  label="资料与问题"
+                  text="活动资料 5 项 已完成 2 项异常核验均已登记"
+                />
+              </div>
+            </div>
+          </section>
+          {downloaded && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[14px] text-emerald-800">
+              活动摘要文件已下载到本地下载目录
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            >
+              关闭
+            </button>
+            <button
+              onClick={download}
+              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+              下载活动摘要
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+function ReportMetric({
+  label,
+  value,
+  tone = "blue",
+}: {
+  label: string;
+  value: string;
+  tone?: "blue" | "rose";
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-4 ${tone === "rose" ? "border-rose-200 bg-rose-50" : "border-blue-100 bg-blue-50"}`}
+    >
+      <div className="text-[13px] text-slate-600">{label}</div>
+      <div
+        className={`mt-2 text-[22px] font-semibold ${tone === "rose" ? "text-rose-700" : "text-[#255ec8]"}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+function ReportLine({
+  label,
+  text,
+  tone,
+}: {
+  label: string;
+  text: string;
+  tone: "green" | "blue" | "amber";
+}) {
+  const styles = {
+    green: "bg-emerald-50 text-emerald-800",
+    blue: "bg-blue-50 text-blue-800",
+    amber: "bg-amber-50 text-amber-800",
+  }[tone];
+  return (
+    <div className={`rounded-lg p-3 ${styles}`}>
+      <div className="text-[13px] font-semibold">{label}</div>
+      <div className="mt-1 text-[14px] leading-6">{text}</div>
+    </div>
+  );
+}
+function ReportList({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <div className="text-[13px] font-semibold text-slate-500">{label}</div>
+      <div className="mt-1">{text}</div>
+    </div>
+  );
+}
+function ProgressFlow({ current }: { current: number }) {
+  return (
+    <div className="p-5 lg:px-6 overflow-x-auto">
+      <div className="min-w-[780px] grid grid-cols-7">
+        {PROGRESS.map((label, index) => {
+          const done = index < current;
+          const active = index === current;
+          return (
+            <div key={label} className="relative text-center">
+              <div
+                className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold relative z-10 ${done ? "bg-emerald-600 text-white" : active ? "bg-[#255ec8] text-white ring-4 ring-blue-100" : "bg-slate-100 text-slate-500"}`}
+              >
+                {done ? <Check className="w-4 h-4" /> : index + 1}
+              </div>
+              {index < PROGRESS.length - 1 && (
+                <div
+                  className={`absolute top-4 left-[calc(50%+16px)] w-[calc(100%-32px)] h-0.5 ${index < current ? "bg-emerald-500" : "bg-slate-200"}`}
+                />
+              )}
+              <div
+                className={`mt-2 text-[13px] leading-5 font-medium ${active ? "text-[#255ec8]" : done ? "text-emerald-700" : "text-slate-500"}`}
+              >
+                {label}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-500">
+                {done ? "已完成" : active ? "当前阶段" : "待进行"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-5 grid md:grid-cols-3 gap-3">
+        <ProgressInfo
+          title="当前阶段"
+          text={`${PROGRESS[current]} · 活动资料已完成核验并开放售票`}
+          tone="blue"
+        />
+        <ProgressInfo
+          title="已完成事项"
+          text="活动创建、主体材料、场地信息、参与规则、票种配置"
+          tone="green"
+        />
+        <ProgressInfo
+          title="待处理事项"
+          text={"2 条角色道具初核、现场售票点库存确认\n夜间值守联系人补充"}
+          tone="amber"
+        />
+      </div>
+    </div>
+  );
+}
+function ProgressInfo({
+  title,
+  text,
+  tone,
+}: {
+  title: string;
+  text: string;
+  tone: "blue" | "green" | "amber";
+}) {
+  const styles = {
+    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+  }[tone];
+  return (
+    <div className={`rounded-lg border p-3 ${styles}`}>
+      <div className="text-[13px] font-semibold">{title}</div>
+      <div className="mt-1 text-[13px] leading-5 whitespace-pre-line">
+        {text}
+      </div>
+    </div>
+  );
+}
+function ActivityOverview({
+  event,
+  onTab,
+}: {
+  event: EventItem;
+  onTab: (tab: ActivityTab) => void;
+}) {
+  return (
+    <div className="grid xl:grid-cols-[1.35fr_0.85fr] gap-5">
+      <div className="space-y-5">
+        <section className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="flex flex-col min-[640px]:flex-row gap-4">
+            <img
+              src={RECORD_VISUALS.poster}
+              alt="2026 魔都动漫嘉年华活动海报"
+              className="w-full min-[640px]:w-[104px] h-[140px] object-cover rounded-md border border-slate-200 bg-slate-100 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <ModuleTitle
+                title="活动概况"
+                description="活动基础信息、当前任务和跨环节服务状态汇总。"
+                actions={
+                  <button
+                    onClick={() => onTab("materials")}
+                    className="text-[14px] font-semibold text-[#255ec8] whitespace-nowrap"
+                  >
+                    查看活动资料
+                  </button>
+                }
+              />
+            </div>
+          </div>
+          <div className="mt-5 grid sm:grid-cols-2 gap-4">
+            <InfoBlock label="活动类型" value="动漫展览 / 青年文化活动" />
+            <InfoBlock label="活动规模" value="预计 6,000 人次" />
+            <InfoBlock label="票务状态" value="4 类票种已配置，2 类正在售卖" />
+            <InfoBlock
+              label="角色服装规则"
+              value="326 份提报，2 份待协同核验"
+            />
+          </div>
+        </section>
+        <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-[18px] font-semibold">活动待办</h3>
+              <p className="mt-1 text-[14px] text-slate-600">
+                按处理时限排序，操作后自动写入活动记录。
+              </p>
+            </div>
+            <button
+              onClick={() => onTab("issues")}
+              className="w-24 text-center text-[14px] font-semibold text-[#255ec8]"
+            >
+              问题记录
+            </button>
+          </div>
+          <div className="divide-y divide-slate-200">
+            <TaskRow
+              icon={<FileText className="w-4 h-4" />}
+              title="补充现场服务与应急联络表"
+              note="主办方运营组 · 截止时间 6月18日 18:00"
+              action="补充资料"
+              onClick={() => onTab("materials")}
+            />
+            <TaskRow
+              icon={<Shirt className="w-4 h-4" />}
+              title="复核高关注道具申报"
+              note="机甲重装佣兵 · 需联合现场安保确认"
+              action="查看申报"
+              onClick={() => onTab("costumes")}
+            />
+            <TaskRow
+              icon={<Ticket className="w-4 h-4" />}
+              title="确认现场售票点库存与票价"
+              note="现场当日票 · 预计 1,000 张"
+              action="票务设置"
+              onClick={() => onTab("tickets")}
+            />
+          </div>
+        </section>
+      </div>
+      <div className="space-y-5">
+        <section className="bg-white border border-slate-200 rounded-lg p-5">
+          <h3 className="text-[18px] font-semibold">当前活动数据</h3>
+          <div className="mt-4 space-y-4">
+            <MiniMetric
+              label="已售票"
+              value={`${event.tickets.toLocaleString()} 张`}
+              sub="售票进度 56%"
+            />
+            <MiniMetric
+              label="实名完成"
+              value="4,484 人"
+              sub="实名完成率 96.2%"
+            />
+            <MiniMetric
+              label="角色服装提报"
+              value="326 份"
+              sub="已通过 318 · 待处理 8"
+            />
+            <MiniMetric
+              label="异常核验"
+              value="2 项"
+              sub="均已建立处置记录"
+              tone="rose"
+            />
+          </div>
+        </section>
+        <section className="bg-white border border-slate-200 rounded-lg p-5">
+          <h3 className="text-[18px] font-semibold">活动操作记录</h3>
+          <div className="mt-4 space-y-4">
+            <LogLine time="今天 10:36" text="主办方更新了活动入场规则" />
+            <LogLine time="今天 10:35" text="审核组完成角色服装辅助初核" />
+            <LogLine time="昨天 16:30" text="场馆协调组更新安检点位图" />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-4 rounded-md bg-slate-50">
+      <div className="text-[13px] text-slate-500 whitespace-nowrap">
+        {label}
+      </div>
+      <div className="data-token mt-2 text-[15px] leading-6 font-semibold">
+        {value}
+      </div>
+    </div>
+  );
+}
+function TaskRow({
+  icon,
+  title,
+  note,
+  action,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  note: string;
+  action: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="p-4 grid grid-cols-[36px_minmax(0,1fr)_96px] items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] font-semibold">{title}</div>
+        <div className="mt-1 text-[13px] text-slate-600">{note}</div>
+      </div>
+      <button
+        onClick={onClick}
+        className="h-9 w-24 rounded-lg text-center text-[13px] font-semibold text-[#255ec8] hover:bg-blue-50"
+      >
+        {action}
+      </button>
+    </div>
+  );
+}
+function MiniMetric({
+  label,
+  value,
+  sub,
+  tone = "blue",
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone?: "blue" | "rose";
+}) {
+  return (
+    <div className="border-b border-slate-200 pb-4 last:border-0 last:pb-0">
+      <div className="text-[13px] text-slate-500">{label}</div>
+      <div
+        className={`mt-1 text-[22px] font-semibold tracking-[-0.04em] ${tone === "rose" ? "text-rose-700" : ""}`}
+      >
+        {value}
+      </div>
+      <div className="mt-1 text-[13px] text-slate-600">{sub}</div>
+    </div>
+  );
+}
+function LogLine({ time, text }: { time: string; text: string }) {
+  return (
+    <div className="relative pl-4">
+      <span className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-[#255ec8]" />
+      <div className="text-[14px] leading-5 font-medium">{text}</div>
+      <div className="mt-1 text-[12px] text-slate-500">{time}</div>
+    </div>
+  );
+}
 
-function Participants() { const people = [{ name: '普通观众', total: '4,536', status: '实名完成 4,384', action: '查看名单' }, { name: 'Coser 参与者', total: '326', status: '角色提报 326', action: '进入审核' }, { name: '参展商与工作人员', total: '268', status: '资料核验 255', action: '查看资料' }]; return <div className="space-y-5"><ModuleTitle title="参与人员" description="统一查看普通观众、Coser、参展商与工作人员的报名、实名与入场状态。" actions={<ActionButton label="导出脱敏名单" className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold" description="将按权限导出参与人员脱敏汇总，不包含原始敏感身份信息。" />} /><div className="grid md:grid-cols-3 gap-4">{people.map(item => <div key={item.name} className="bg-white border border-slate-200 rounded-lg p-5"><Users className="w-5 h-5 text-[#255ec8]" /><div className="mt-4 text-[16px] font-semibold">{item.name}</div><div className="mt-2 text-[28px] leading-8 font-semibold">{item.total}</div><div className="mt-2 text-[13px] text-slate-600">{item.status}</div><ActionButton label={`${item.action} →`} className="mt-5 text-[14px] font-semibold text-[#255ec8] text-left" title={item.action} description={`可按权限查阅${item.name}的实名、报名或资料核验明细。`} /></div>)}</div><EmptyState icon={<UserPlus className="w-5 h-5" />} title="需要新增参与人员吗？" text="可由主办方在活动内维护工作人员和参展主体信息，系统自动写入活动档案。" action="新增工作人员" /></div>; }
+function Participants() {
+  const people = [
+    {
+      name: "普通观众",
+      total: "4,536",
+      status: "实名完成 4,384",
+      action: "查看名单",
+    },
+    {
+      name: "Coser 参与者",
+      total: "326",
+      status: "角色提报 326",
+      action: "进入审核",
+    },
+    {
+      name: "参展商与工作人员",
+      total: "268",
+      status: "资料核验 255",
+      action: "查看资料",
+    },
+  ];
+  return (
+    <div className="space-y-5">
+      <ModuleTitle
+        title="参与人员"
+        description="统一查看普通观众、Coser、参展商与工作人员的报名、实名与入场状态。"
+        actions={
+          <ActionButton
+            label="导出脱敏名单"
+            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            description="将按权限导出参与人员脱敏汇总，不包含原始敏感身份信息。"
+          />
+        }
+      />
+      <div className="grid md:grid-cols-3 gap-4">
+        {people.map(item => (
+          <div
+            key={item.name}
+            className="bg-white border border-slate-200 rounded-lg p-5"
+          >
+            <Users className="w-5 h-5 text-[#255ec8]" />
+            <div className="mt-4 text-[16px] font-semibold">{item.name}</div>
+            <div className="mt-2 text-[28px] leading-8 font-semibold">
+              {item.total}
+            </div>
+            <div className="mt-2 text-[13px] text-slate-600">{item.status}</div>
+            <ActionButton
+              label={`${item.action} →`}
+              className="mt-5 text-[14px] font-semibold text-[#255ec8] text-left"
+              title={item.action}
+              description={`可按权限查阅${item.name}的实名、报名或资料核验明细。`}
+            />
+          </div>
+        ))}
+      </div>
+      <EmptyState
+        icon={<UserPlus className="w-5 h-5" />}
+        title="需要新增参与人员吗？"
+        text="可由主办方在活动内维护工作人员和参展主体信息，系统自动写入活动档案。"
+        action="新增工作人员"
+      />
+    </div>
+  );
+}
 
-function TicketPage({ compact = false, mode, setMode }: { compact?: boolean; mode?: 'all' | 'orders' | 'refunds'; setMode?: (mode: 'all' | 'orders' | 'refunds') => void }) { const selected = mode || 'all'; const set = setMode || (() => {}); return <div className="space-y-5">{!compact && <ModuleTitle eyebrow="票务管理" title="票种、订单与现场售票" description="统一管理票种、票价、库存、开售停售、订单、退款、实名信息、电子票和二维码核验。" actions={<ActionButton label="新增票种" className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5" icon={<Plus className="w-4 h-4" />} description="可配置票种名称、票价、库存、开售时间、停售时间和实名规则。" />} />}<section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4"><TodayStat label="票务库存" value="8,300" sub="已配置票种 4 类" icon={<PackageCheck className="w-5 h-5" />} /><TodayStat label="已售票" value="4,662" sub="电子票均已生成" icon={<TicketCheck className="w-5 h-5" />} tone="blue" /><TodayStat label="退款订单" value="18" sub="待处理 3 笔" icon={<RefreshCcw className="w-5 h-5" />} tone="amber" /><TodayStat label="现场当日票" value="1,000" sub="活动日 08:30 开售" icon={<WalletCards className="w-5 h-5" />} /></section><section className="bg-white border border-slate-200 rounded-lg overflow-hidden"><div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 justify-between"><div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">{([['all', '票种配置'], ['orders', '订单管理'], ['refunds', '退款处理']] as const).map(([id, label]) => <button key={id} onClick={() => set(id)} className={`h-8 px-3 rounded-md text-[13px] font-semibold ${selected === id ? 'bg-white shadow-sm text-[#255ec8]' : 'text-slate-600'}`}>{label}</button>)}</div><ActionButton label="导出数据" className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5" icon={<Download className="w-4 h-4" />} description="导出当前票务视图中的票种、订单或退款数据。" /></div>{selected === 'all' ? <TicketTypes /> : selected === 'orders' ? <OrderTable /> : <RefundTable />}</section></div>; }
-function TicketTypes() { return <div className="overflow-x-auto"><table className="min-w-[960px] w-full text-left"><thead><tr className="bg-slate-50 text-[13px] text-slate-600"><th className="p-4 font-semibold">票种</th><th className="p-4 font-semibold">票价</th><th className="p-4 font-semibold">库存</th><th className="p-4 font-semibold">开售 / 停售</th><th className="p-4 font-semibold">渠道</th><th className="p-4 font-semibold">状态</th><th className="p-4 text-right font-semibold">操作</th></tr></thead><tbody className="divide-y divide-slate-200">{TICKETS.map(ticket => <tr key={ticket.type}><td className="p-4 text-[15px] font-semibold">{ticket.type}</td><td className="p-4 text-[15px] font-semibold">{ticket.price}</td><td className="p-4"><div className="text-[14px] font-semibold">{ticket.sold} / {ticket.stock}</div><div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-[#255ec8]" style={{ width: `${Math.min(ticket.sold / ticket.stock * 100, 100)}%` }} /></div></td><td className="p-4 text-[14px] leading-5 text-slate-600">{ticket.sales}</td><td className="p-4 text-[14px] text-slate-600">{ticket.channel}</td><td className="p-4"><Pill tone={ticket.status === '售票中' ? 'green' : ticket.status === '待开售' ? 'blue' : 'slate'}>{ticket.status}</Pill></td><td className="p-4 text-right"><ActionButton label="管理" className="text-[14px] font-semibold text-[#255ec8]" description="可调整库存、开售停售时间、渠道和实名规则。" /></td></tr>)}</tbody></table></div>; }
-function OrderTable() { const orders = [['ORD1789301148305', '张三', 'Coser 专属票', '¥68', '实名认证完成', '已支付', '电子票已生成'], ['ORD1789301149112', '古丽米热·阿布都', 'Coser 专属票', '¥68', '实名认证完成', '已支付', '电子票已生成'], ['ORD1789301151870', '何晓晨', '普通观众票', '¥88', '实名认证完成', '已支付', '待入场']]; return <SimpleTable headers={['订单号', '购票人', '票种', '金额', '实名信息', '订单状态', '电子票']} rows={orders} />; }
-function RefundTable() { const rows = [['ORD1789301120316', '普通观众票', '¥88', '重复购票', '申请退款', '核对订单'], ['ORD1789301120762', 'Coser 专属票', '¥68', '活动时间冲突', '退款处理中', '查看材料'], ['ORD1789301098175', '学生早鸟票', '¥58', '个人原因', '已退款', '查看记录']]; return <SimpleTable headers={['订单号', '票种', '金额', '退款原因', '处理状态', '操作']} rows={rows} />; }
-function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] }) { return <div className="overflow-x-auto"><table className="min-w-[820px] w-full text-left"><thead><tr className="bg-slate-50">{headers.map(header => <th key={header} className="p-4 text-[13px] font-semibold text-slate-600">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{rows.map((row, index) => <tr key={index}>{row.map((cell, idx) => <td key={idx} className={`p-4 text-[14px] ${idx === 0 ? 'font-semibold' : 'text-slate-700'}`}>{cell}</td>)}</tr>)}</tbody></table></div>; }
+function TicketPage({
+  compact = false,
+  mode,
+  setMode,
+}: {
+  compact?: boolean;
+  mode?: "all" | "orders" | "refunds";
+  setMode?: (mode: "all" | "orders" | "refunds") => void;
+}) {
+  const selected = mode || "all";
+  const set = setMode || (() => {});
+  return (
+    <div className="space-y-5">
+      {!compact && (
+        <ModuleTitle
+          eyebrow="票务管理"
+          title="票种、订单与现场售票"
+          description="统一管理票种、票价、库存、开售停售、订单、退款、实名信息、电子票和二维码核验。"
+          actions={
+            <ActionButton
+              label="新增票种"
+              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              icon={<Plus className="w-4 h-4" />}
+              description="可配置票种名称、票价、库存、开售时间、停售时间和实名规则。"
+            />
+          }
+        />
+      )}
+      <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
+        <TodayStat
+          label="票务库存"
+          value="8,300"
+          sub="已配置票种 4 类"
+          icon={<PackageCheck className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="已售票"
+          value="4,662"
+          sub="电子票均已生成"
+          icon={<TicketCheck className="w-5 h-5" />}
+          tone="blue"
+        />
+        <TodayStat
+          label="退款订单"
+          value="18"
+          sub="待处理 3 笔"
+          icon={<RefreshCcw className="w-5 h-5" />}
+          tone="amber"
+        />
+        <TodayStat
+          label="现场当日票"
+          value="1,000"
+          sub="活动日 08:30 开售"
+          icon={<WalletCards className="w-5 h-5" />}
+        />
+      </section>
+      <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+            {(
+              [
+                ["all", "票种配置"],
+                ["orders", "订单管理"],
+                ["refunds", "退款处理"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => set(id)}
+                className={`h-8 px-3 rounded-md text-[13px] font-semibold ${selected === id ? "bg-white shadow-sm text-[#255ec8]" : "text-slate-600"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <ActionButton
+            label="导出数据"
+            className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            icon={<Download className="w-4 h-4" />}
+            description="导出当前票务视图中的票种、订单或退款数据。"
+          />
+        </div>
+        {selected === "all" ? (
+          <TicketTypes />
+        ) : selected === "orders" ? (
+          <OrderTable />
+        ) : (
+          <RefundTable />
+        )}
+      </section>
+    </div>
+  );
+}
+function TicketTypes() {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[960px] w-full text-left">
+        <thead>
+          <tr className="bg-slate-50 text-[13px] text-slate-600">
+            <th className="p-4 font-semibold">票种</th>
+            <th className="p-4 font-semibold">票价</th>
+            <th className="p-4 font-semibold">库存</th>
+            <th className="p-4 font-semibold">开售 / 停售</th>
+            <th className="p-4 font-semibold">渠道</th>
+            <th className="p-4 font-semibold">状态</th>
+            <th className="p-4 text-right font-semibold">操作</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-200">
+          {TICKETS.map(ticket => (
+            <tr key={ticket.type}>
+              <td className="p-4 text-[15px] font-semibold">{ticket.type}</td>
+              <td className="p-4 text-[15px] font-semibold">{ticket.price}</td>
+              <td className="p-4">
+                <div className="text-[14px] font-semibold">
+                  {ticket.sold} / {ticket.stock}
+                </div>
+                <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#255ec8]"
+                    style={{
+                      width: `${Math.min((ticket.sold / ticket.stock) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+              </td>
+              <td className="p-4 text-[14px] leading-5 text-slate-600">
+                {ticket.sales}
+              </td>
+              <td className="p-4 text-[14px] text-slate-600">
+                {ticket.channel}
+              </td>
+              <td className="p-4">
+                <Pill
+                  tone={
+                    ticket.status === "售票中"
+                      ? "green"
+                      : ticket.status === "待开售"
+                        ? "blue"
+                        : "slate"
+                  }
+                >
+                  {ticket.status}
+                </Pill>
+              </td>
+              <td className="p-4 text-right">
+                <ActionButton
+                  label="管理"
+                  className="text-[14px] font-semibold text-[#255ec8]"
+                  description="可调整库存、开售停售时间、渠道和实名规则。"
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function OrderTable() {
+  const orders = [
+    [
+      "ORD1789301148305",
+      "张三",
+      "Coser 专属票",
+      "¥68",
+      "实名认证完成",
+      "已支付",
+      "电子票已生成",
+    ],
+    [
+      "ORD1789301149112",
+      "古丽米热·阿布都",
+      "Coser 专属票",
+      "¥68",
+      "实名认证完成",
+      "已支付",
+      "电子票已生成",
+    ],
+    [
+      "ORD1789301151870",
+      "何晓晨",
+      "普通观众票",
+      "¥88",
+      "实名认证完成",
+      "已支付",
+      "待入场",
+    ],
+  ];
+  return (
+    <SimpleTable
+      headers={[
+        "订单号",
+        "购票人",
+        "票种",
+        "金额",
+        "实名信息",
+        "订单状态",
+        "电子票",
+      ]}
+      rows={orders}
+    />
+  );
+}
+function RefundTable() {
+  const rows = [
+    [
+      "ORD1789301120316",
+      "普通观众票",
+      "¥88",
+      "重复购票",
+      "申请退款",
+      "核对订单",
+    ],
+    [
+      "ORD1789301120762",
+      "Coser 专属票",
+      "¥68",
+      "活动时间冲突",
+      "退款处理中",
+      "查看材料",
+    ],
+    ["ORD1789301098175", "学生早鸟票", "¥58", "个人原因", "已退款", "查看记录"],
+  ];
+  return (
+    <SimpleTable
+      headers={["订单号", "票种", "金额", "退款原因", "处理状态", "操作"]}
+      rows={rows}
+    />
+  );
+}
+function SimpleTable({
+  headers,
+  rows,
+}: {
+  headers: string[];
+  rows: string[][];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-[820px] w-full text-left">
+        <thead>
+          <tr className="bg-slate-50">
+            {headers.map(header => (
+              <th
+                key={header}
+                className="p-4 text-[13px] font-semibold text-slate-600"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-200">
+          {rows.map((row, index) => (
+            <tr key={index}>
+              {row.map((cell, idx) => (
+                <td
+                  key={idx}
+                  className={`p-4 text-[14px] ${idx === 0 ? "font-semibold" : "text-slate-700"}`}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-function CostumePage({ compact = false }: { compact?: boolean }) { const [detail, setDetail] = useState<(typeof COSERS)[number] | null>(null); const [tool, setTool] = useState<'export' | 'batch' | null>(null); return <div className="space-y-5">{!compact && <ModuleTitle eyebrow="角色服装道具" title="角色、服装与道具申报管理" description="承接用户端 Coser 提交的信息，统一查看参与人、角色名、作品来源、参考图、服装图、道具信息、申报状态与操作记录。" actions={<><button onClick={() => setTool('export')} className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold">导出清单</button><button onClick={() => setTool('batch')} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold">批量处理</button></>} />}<section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4"><TodayStat label="申报总数" value="326" sub="来自已支付 Coser 票订单" icon={<ClipboardCheck className="w-5 h-5" />} /><TodayStat label="已通过" value="318" sub="可进入现场核验" icon={<CircleCheckBig className="w-5 h-5" />} tone="blue" /><TodayStat label="待审核" value="6" sub="资料完整性待确认" icon={<Clock3 className="w-5 h-5" />} tone="amber" /><TodayStat label="协同核验" value="2" sub="需现场安保复验" icon={<ShieldCheck className="w-5 h-5" />} tone="rose" /></section><section className="bg-white border border-slate-200 rounded-lg overflow-x-auto"><table className="min-w-[1260px] w-full text-left"><thead><tr className="bg-slate-50 text-[13px] text-slate-600"><th className="p-4 font-semibold">参与人 / 角色</th><th className="p-4 font-semibold">作品来源</th><th className="p-4 font-semibold">参考图 / 服装图</th><th className="p-4 font-semibold">服装信息</th><th className="p-4 font-semibold">道具信息</th><th className="p-4 font-semibold">申报状态</th><th className="p-4 font-semibold">操作记录</th><th className="p-4 text-right font-semibold">操作</th></tr></thead><tbody className="divide-y divide-slate-200">{COSERS.map((item, index) => <tr key={item.person}><td className="p-4"><div className="text-[15px] font-semibold">{item.person}</div><div className="mt-1 text-[14px] text-slate-700">{item.character}</div></td><td className="p-4 text-[14px] font-medium">{item.source}</td><td className="p-4"><div className="flex items-center gap-2"><div className="flex -space-x-2"><img src={RECORD_VISUALS.character} alt={`${item.character}角色参考图`} className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100" /><img src={RECORD_VISUALS.costume} alt={`${item.character}服装全身图`} className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100" /></div><div className="text-[13px] leading-5 text-slate-600"><span className="block whitespace-nowrap">角色参考图已上传</span><span className="block whitespace-nowrap">服装全身图已上传</span></div></div></td><td className="p-4 text-[14px] leading-5 max-w-[200px]">{item.costume}</td><td className="p-4 text-[14px] leading-5 max-w-[210px]">{item.props}</td><td className="p-4"><div className="w-[96px] flex flex-col items-center gap-2"><Pill tone={item.status === '已通过' ? 'green' : item.status === '协同核验' ? 'rose' : 'amber'}>{item.status}</Pill><div className="text-[12px] text-slate-500 text-center">{item.risk}</div></div></td><td className="p-4 text-[13px] leading-5 text-slate-600">{item.log}</td><td className="p-4 text-right"><button onClick={() => setDetail(item)} className="text-[14px] font-semibold text-[#255ec8]">查看详情</button></td></tr>)}</tbody></table></section>{detail && <CostumeDetailDrawer item={detail} onClose={() => setDetail(null)} />}{tool && <CostumeToolPanel type={tool} onClose={() => setTool(null)} />}</div>; }
+function CostumePage({ compact = false }: { compact?: boolean }) {
+  const [detail, setDetail] = useState<(typeof COSERS)[number] | null>(null);
+  const [tool, setTool] = useState<"export" | "batch" | null>(null);
+  return (
+    <div className="space-y-5">
+      {!compact && (
+        <ModuleTitle
+          eyebrow="角色服装道具"
+          title="角色、服装与道具申报管理"
+          description="承接用户端 Coser 提交的信息，统一查看参与人、角色名、作品来源、参考图、服装图、道具信息、申报状态与操作记录。"
+          actions={
+            <>
+              <button
+                onClick={() => setTool("export")}
+                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+              >
+                导出清单
+              </button>
+              <button
+                onClick={() => setTool("batch")}
+                className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+              >
+                批量处理
+              </button>
+            </>
+          }
+        />
+      )}
+      <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
+        <TodayStat
+          label="申报总数"
+          value="326"
+          sub="来自已支付 Coser 票订单"
+          icon={<ClipboardCheck className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="已通过"
+          value="318"
+          sub="可进入现场核验"
+          icon={<CircleCheckBig className="w-5 h-5" />}
+          tone="blue"
+        />
+        <TodayStat
+          label="待审核"
+          value="6"
+          sub="资料完整性待确认"
+          icon={<Clock3 className="w-5 h-5" />}
+          tone="amber"
+        />
+        <TodayStat
+          label="协同核验"
+          value="2"
+          sub="需现场安保复验"
+          icon={<ShieldCheck className="w-5 h-5" />}
+          tone="rose"
+        />
+      </section>
+      <section className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <table className="min-w-[1260px] w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-[13px] text-slate-600">
+              <th className="p-4 font-semibold">参与人 / 角色</th>
+              <th className="p-4 font-semibold">作品来源</th>
+              <th className="p-4 font-semibold">参考图 / 服装图</th>
+              <th className="p-4 font-semibold">服装信息</th>
+              <th className="p-4 font-semibold">道具信息</th>
+              <th className="p-4 font-semibold">申报状态</th>
+              <th className="p-4 font-semibold">操作记录</th>
+              <th className="p-4 text-right font-semibold">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {COSERS.map((item, index) => (
+              <tr key={item.person}>
+                <td className="p-4">
+                  <div className="text-[15px] font-semibold">{item.person}</div>
+                  <div className="mt-1 text-[14px] text-slate-700">
+                    {item.character}
+                  </div>
+                </td>
+                <td className="p-4 text-[14px] font-medium">{item.source}</td>
+                <td className="p-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      <img
+                        src={RECORD_VISUALS.character}
+                        alt={`${item.character}角色参考图`}
+                        className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100"
+                      />
+                      <img
+                        src={RECORD_VISUALS.costume}
+                        alt={`${item.character}服装全身图`}
+                        className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100"
+                      />
+                    </div>
+                    <div className="text-[13px] leading-5 text-slate-600">
+                      <span className="block whitespace-nowrap">
+                        角色参考图已上传
+                      </span>
+                      <span className="block whitespace-nowrap">
+                        服装全身图已上传
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4 text-[14px] leading-5 max-w-[200px]">
+                  {item.costume}
+                </td>
+                <td className="p-4 text-[14px] leading-5 max-w-[210px]">
+                  {item.props}
+                </td>
+                <td className="p-4">
+                  <div className="w-[96px] flex flex-col items-center gap-2">
+                    <Pill
+                      tone={
+                        item.status === "已通过"
+                          ? "green"
+                          : item.status === "协同核验"
+                            ? "rose"
+                            : "amber"
+                      }
+                    >
+                      {item.status}
+                    </Pill>
+                    <div className="text-[12px] text-slate-500 text-center">
+                      {item.risk}
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4 text-[13px] leading-5 text-slate-600">
+                  {item.log}
+                </td>
+                <td className="p-4 text-right">
+                  <button
+                    onClick={() => setDetail(item)}
+                    className="text-[14px] font-semibold text-[#255ec8]"
+                  >
+                    查看详情
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      {detail && (
+        <CostumeDetailDrawer item={detail} onClose={() => setDetail(null)} />
+      )}
+      {tool && <CostumeToolPanel type={tool} onClose={() => setTool(null)} />}
+    </div>
+  );
+}
 
-function CostumeDetailDrawer({ item, onClose }: { item: (typeof COSERS)[number]; onClose: () => void }) { return <div className="fixed inset-0 z-50 flex justify-end"><button onClick={onClose} className="absolute inset-0 bg-black/25" /><section className="relative w-full max-w-[560px] h-full bg-white shadow-2xl overflow-y-auto"><div className="sticky top-0 z-10 p-5 bg-white border-b border-slate-200 flex items-center justify-between"><div><div className="text-[13px] text-slate-500">角色服装道具申报详情</div><h2 className="mt-1 text-[21px] font-semibold">{item.character}</h2></div><button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button></div><div className="p-5 space-y-5"><section className="grid grid-cols-2 gap-3"><InfoBlock label="参与人" value={item.person} /><InfoBlock label="作品来源" value={item.source} /><InfoBlock label="申报状态" value={item.status} /><InfoBlock label="风险提示" value={item.risk} /></section><section className="border border-slate-200 rounded-lg p-4"><div className="flex items-center justify-between gap-3"><h3 className="text-[16px] font-semibold">角色、服装与道具资料</h3><span className="text-[13px] text-slate-500 whitespace-nowrap">3 项已上传</span></div><div className="mt-3 grid grid-cols-1 min-[460px]:grid-cols-3 gap-3"><figure className="min-w-0"><img src={RECORD_VISUALS.character} alt={`${item.character}角色参考图`} className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100" /><figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">角色参考图</figcaption></figure><figure className="min-w-0"><img src={RECORD_VISUALS.costume} alt={`${item.character}服装全身图`} className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100" /><figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">服装全身图</figcaption></figure><figure className="min-w-0"><img src={RECORD_VISUALS.prop} alt={`${item.character}道具参考图`} className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100" /><figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">道具参考图</figcaption></figure></div></section><section className="border border-slate-200 rounded-lg divide-y divide-slate-200"><div className="p-4"><div className="text-[13px] font-semibold text-slate-500">服装信息</div><div className="mt-2 text-[15px] leading-6">{item.costume}</div></div><div className="p-4"><div className="text-[13px] font-semibold text-slate-500">道具信息</div><div className="mt-2 text-[15px] leading-6">{item.props}</div></div><div className="p-4"><div className="text-[13px] font-semibold text-slate-500">操作记录</div><div className="mt-2 text-[15px] leading-6">{item.log}</div></div></section><div className="flex gap-2"><button onClick={onClose} className="flex-1 h-11 rounded-lg border border-slate-300 text-[14px] font-semibold">退回补充</button><button onClick={onClose} className="flex-1 h-11 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold">确认通过</button></div></div></section></div>; }
-function CostumeToolPanel({ type, onClose }: { type: 'export' | 'batch'; onClose: () => void }) { const [done, setDone] = useState(false); const exportMode = type === 'export'; return <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><button onClick={onClose} className="absolute inset-0 bg-black/30" /><section className="relative w-full max-w-[460px] bg-white rounded-lg shadow-2xl p-6"><div className="w-11 h-11 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center">{exportMode ? <Download className="w-5 h-5" /> : <ClipboardCheck className="w-5 h-5" />}</div><h2 className="mt-4 text-[21px] font-semibold">{done ? (exportMode ? '清单已生成' : '批量处理已提交') : (exportMode ? '导出角色服装道具清单' : '批量处理角色道具申报')}</h2><p className="mt-2 text-[14px] leading-6 text-slate-600">{done ? (exportMode ? '已按当前筛选范围生成清单。' : '已将 6 条待审核申报加入统一处理队列。') : (exportMode ? '导出参与人、角色、服装、道具、申报状态与操作记录。' : '可统一分配审核人员、发送补充提醒或更新申报状态。')}</p><div className="mt-6 flex justify-end gap-2"><button onClick={onClose} className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold">{done ? '关闭' : '取消'}</button>{!done && <button onClick={() => setDone(true)} className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold">{exportMode ? '生成清单' : '确认处理'}</button>}</div></section></div>; }
+function CostumeDetailDrawer({
+  item,
+  onClose,
+}: {
+  item: (typeof COSERS)[number];
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
+      <section className="relative w-full max-w-[560px] h-full bg-white shadow-2xl overflow-y-auto">
+        <div className="sticky top-0 z-10 p-5 bg-white border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <div className="text-[13px] text-slate-500">
+              角色服装道具申报详情
+            </div>
+            <h2 className="mt-1 text-[21px] font-semibold">{item.character}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5 space-y-5">
+          <section className="grid grid-cols-2 gap-3">
+            <InfoBlock label="参与人" value={item.person} />
+            <InfoBlock label="作品来源" value={item.source} />
+            <InfoBlock label="申报状态" value={item.status} />
+            <InfoBlock label="风险提示" value={item.risk} />
+          </section>
+          <section className="border border-slate-200 rounded-lg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-[16px] font-semibold">
+                角色、服装与道具资料
+              </h3>
+              <span className="text-[13px] text-slate-500 whitespace-nowrap">
+                3 项已上传
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 min-[460px]:grid-cols-3 gap-3">
+              <figure className="min-w-0">
+                <img
+                  src={RECORD_VISUALS.character}
+                  alt={`${item.character}角色参考图`}
+                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
+                />
+                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
+                  角色参考图
+                </figcaption>
+              </figure>
+              <figure className="min-w-0">
+                <img
+                  src={RECORD_VISUALS.costume}
+                  alt={`${item.character}服装全身图`}
+                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
+                />
+                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
+                  服装全身图
+                </figcaption>
+              </figure>
+              <figure className="min-w-0">
+                <img
+                  src={RECORD_VISUALS.prop}
+                  alt={`${item.character}道具参考图`}
+                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
+                />
+                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
+                  道具参考图
+                </figcaption>
+              </figure>
+            </div>
+          </section>
+          <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+            <div className="p-4">
+              <div className="text-[13px] font-semibold text-slate-500">
+                服装信息
+              </div>
+              <div className="mt-2 text-[15px] leading-6">{item.costume}</div>
+            </div>
+            <div className="p-4">
+              <div className="text-[13px] font-semibold text-slate-500">
+                道具信息
+              </div>
+              <div className="mt-2 text-[15px] leading-6">{item.props}</div>
+            </div>
+            <div className="p-4">
+              <div className="text-[13px] font-semibold text-slate-500">
+                操作记录
+              </div>
+              <div className="mt-2 text-[15px] leading-6">{item.log}</div>
+            </div>
+          </section>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 h-11 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            >
+              退回补充
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 h-11 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+            >
+              确认通过
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+function CostumeToolPanel({
+  type,
+  onClose,
+}: {
+  type: "export" | "batch";
+  onClose: () => void;
+}) {
+  const [done, setDone] = useState(false);
+  const exportMode = type === "export";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button onClick={onClose} className="absolute inset-0 bg-black/30" />
+      <section className="relative w-full max-w-[460px] bg-white rounded-lg shadow-2xl p-6">
+        <div className="w-11 h-11 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center">
+          {exportMode ? (
+            <Download className="w-5 h-5" />
+          ) : (
+            <ClipboardCheck className="w-5 h-5" />
+          )}
+        </div>
+        <h2 className="mt-4 text-[21px] font-semibold">
+          {done
+            ? exportMode
+              ? "清单已生成"
+              : "批量处理已提交"
+            : exportMode
+              ? "导出角色服装道具清单"
+              : "批量处理角色道具申报"}
+        </h2>
+        <p className="mt-2 text-[14px] leading-6 text-slate-600">
+          {done
+            ? exportMode
+              ? "已按当前筛选范围生成清单。"
+              : "已将 6 条待审核申报加入统一处理队列。"
+            : exportMode
+              ? "导出参与人、角色、服装、道具、申报状态与操作记录。"
+              : "可统一分配审核人员、发送补充提醒或更新申报状态。"}
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+          >
+            {done ? "关闭" : "取消"}
+          </button>
+          {!done && (
+            <button
+              onClick={() => setDone(true)}
+              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+            >
+              {exportMode ? "生成清单" : "确认处理"}
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
 
-function OnsitePage({ checkins, setCheckins, issueOpen, setIssueOpen, compact = false }: { checkins: number; setCheckins: (count: number) => void; issueOpen: boolean; setIssueOpen: (open: boolean) => void; compact?: boolean }) { const totalIn = 3218 + checkins; return <div className="space-y-5">{!compact && <ModuleTitle eyebrow="现场管理" title="现场核验与入场运行" description="统一处理电子票二维码、实名信息、角色服装和异常核验。" actions={<button onClick={() => setIssueOpen(true)} className="h-11 px-4 rounded-lg bg-rose-600 text-white text-[15px] font-semibold flex items-center gap-1.5"><CircleAlert className="w-5 h-5" />登记异常</button>} />}<section className="bg-slate-900 rounded-lg p-5 sm:p-6 text-white"><div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5"><div><div className="text-[13px] text-slate-300">当前场次 · 2026 魔都动漫嘉年华</div><h2 className="mt-2 text-[26px] font-semibold">现场核验工作台</h2><p className="mt-2 text-[15px] text-slate-300">请扫描电子票二维码，系统将核对订单、实名状态与活动规则。</p></div><button onClick={() => setCheckins(checkins + 1)} className="h-16 px-7 rounded-lg bg-[#2563eb] hover:bg-blue-500 text-[18px] font-semibold flex items-center justify-center gap-3"><ScanLine className="w-7 h-7" />扫码核验</button></div><div className="onsite-stat-grid mt-6 grid grid-cols-1 min-[460px]:grid-cols-2 lg:grid-cols-5 gap-3"><OnsiteStat label="已售票" value="4,662" /><OnsiteStat label="已实名" value="4,484" /><OnsiteStat label="已入场" value={totalIn.toLocaleString()} /><OnsiteStat label="当前场内" value={(2945 + checkins).toLocaleString()} /><OnsiteStat label="异常核验" value="02" danger /></div></section><section className="grid xl:grid-cols-[1.1fr_0.9fr] gap-5"><div className="bg-white border border-slate-200 rounded-lg overflow-hidden"><div className="p-5 border-b border-slate-200 flex items-center justify-between"><div><h3 className="text-[18px] font-semibold">实时入场记录</h3><p className="mt-1 text-[14px] text-slate-600">扫码后即时写入活动档案和现场统计。</p></div><Pill tone="green">核验服务正常</Pill></div><div className="divide-y divide-slate-200"><CheckinRow name="张三" ticket="Coser 专属票" detail="实名通过 · 甘雨 · 无异常道具" time="刚刚" status="通过" /><CheckinRow name="王小东" ticket="普通观众票" detail="实名通过 · 电子票有效" time="2 分钟前" status="通过" /><CheckinRow name="李思远" ticket="Coser 专属票" detail="机甲重装佣兵 · 已转安保复验" time="5 分钟前" status="复验" /></div></div><div className="space-y-5"><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">进场速度</h3><div className="mt-4 flex items-end gap-2 h-28">{[35, 48, 42, 72, 78, 63, 82, 66, 90, 76, 70, 84].map((v, i) => <div key={i} className="flex-1 rounded-t bg-[#255ec8]" style={{ height: `${v}%` }} />)}</div><div className="mt-3 flex justify-between text-[13px] text-slate-500"><span>08:30</span><span>10:00</span><span>11:30</span></div><div className="mt-3 text-[15px] font-semibold">当前 118 人 / 10 分钟</div></div><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">现场操作</h3><div className="mt-4 grid grid-cols-2 gap-3"><ActionButton label="手动核验电子票" className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center" icon={<QrCode className="mb-2 w-5 h-5 text-[#255ec8]" />} description="可输入订单号或电子票编号进行人工核验。" /><ActionButton label="实名信息核对" className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center" icon={<UserCheck className="mb-2 w-5 h-5 text-[#255ec8]" />} description="按授权范围核对订单关联的实名状态与核验结果。" /><button onClick={() => setIssueOpen(true)} className="min-h-[84px] rounded-lg border border-amber-200 bg-amber-50 text-[14px] font-semibold text-amber-800"><CircleAlert className="mx-auto mb-2 w-5 h-5" />异常核验登记</button><ActionButton label="导出现场交接表" className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center" icon={<Download className="mb-2 w-5 h-5 text-[#255ec8]" />} description="导出入场、异常核验和现场处置的交接汇总。" /></div></div></div></section>{issueOpen && <IssueModal onClose={() => setIssueOpen(false)} />}</div>; }
-function OnsiteStat({ label, value, danger }: { label: string; value: string; danger?: boolean }) { return <div className="bg-white/10 border border-white/10 rounded-lg p-3"><div className="text-[12px] text-slate-300">{label}</div><div className={`mt-1 text-[24px] leading-7 font-semibold ${danger ? 'text-rose-300' : ''}`}>{value}</div></div>; }
-function CheckinRow({ name, ticket, detail, time, status }: { name: string; ticket: string; detail: string; time: string; status: string }) { return <div className="p-4 flex items-center gap-3"><div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center"><UserRound className="w-4 h-4" /></div><div className="min-w-0 flex-1"><div className="text-[15px] font-semibold">{name}<span className="ml-2 text-[13px] font-normal text-slate-600">{ticket}</span></div><div className="mt-1 text-[13px] text-slate-600">{detail}</div></div><div className="text-right"><Pill tone={status === '通过' ? 'green' : 'amber'}>{status}</Pill><div className="mt-1 text-[12px] text-slate-500">{time}</div></div></div>; }
-function IssueModal({ onClose }: { onClose: () => void }) { return <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4"><div className="w-full max-w-[520px] bg-white rounded-lg shadow-2xl p-6"><div className="flex items-center justify-between"><div><h2 className="text-[21px] font-semibold">登记现场异常</h2><p className="mt-1 text-[14px] text-slate-600">异常记录将自动写入本场活动数字档案。</p></div><button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button></div><div className="mt-5 grid gap-4"><Field label="异常类型" value="请选择：电子票异常 / 实名不一致 / 道具复验" /><Field label="关联订单或参与人" value="请输入订单号、姓名或扫码凭证" /><Field label="现场处置记录" value="请记录核验结果与处置方式" /></div><div className="mt-6 flex justify-end gap-2"><button onClick={onClose} className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold">取消</button><button onClick={onClose} className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold">保存异常记录</button></div></div></div>; }
+function OnsitePage({
+  checkins,
+  setCheckins,
+  issueOpen,
+  setIssueOpen,
+  compact = false,
+}: {
+  checkins: number;
+  setCheckins: (count: number) => void;
+  issueOpen: boolean;
+  setIssueOpen: (open: boolean) => void;
+  compact?: boolean;
+}) {
+  const totalIn = 3218 + checkins;
+  return (
+    <div className="space-y-5">
+      {!compact && (
+        <ModuleTitle
+          eyebrow="现场管理"
+          title="现场核验与入场运行"
+          description="统一处理电子票二维码、实名信息、角色服装和异常核验。"
+          actions={
+            <button
+              onClick={() => setIssueOpen(true)}
+              className="h-11 px-4 rounded-lg bg-rose-600 text-white text-[15px] font-semibold flex items-center gap-1.5"
+            >
+              <CircleAlert className="w-5 h-5" />
+              登记异常
+            </button>
+          }
+        />
+      )}
+      <section className="bg-slate-900 rounded-lg p-5 sm:p-6 text-white">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div>
+            <div className="text-[13px] text-slate-300">
+              当前场次 · 2026 魔都动漫嘉年华
+            </div>
+            <h2 className="mt-2 text-[26px] font-semibold">现场核验工作台</h2>
+            <p className="mt-2 text-[15px] text-slate-300">
+              请扫描电子票二维码，系统将核对订单、实名状态与活动规则。
+            </p>
+          </div>
+          <button
+            onClick={() => setCheckins(checkins + 1)}
+            className="h-16 px-7 rounded-lg bg-[#2563eb] hover:bg-blue-500 text-[18px] font-semibold flex items-center justify-center gap-3"
+          >
+            <ScanLine className="w-7 h-7" />
+            扫码核验
+          </button>
+        </div>
+        <div className="onsite-stat-grid mt-6 grid grid-cols-1 min-[460px]:grid-cols-2 lg:grid-cols-5 gap-3">
+          <OnsiteStat label="已售票" value="4,662" />
+          <OnsiteStat label="已实名" value="4,484" />
+          <OnsiteStat label="已入场" value={totalIn.toLocaleString()} />
+          <OnsiteStat
+            label="当前场内"
+            value={(2945 + checkins).toLocaleString()}
+          />
+          <OnsiteStat label="异常核验" value="02" danger />
+        </div>
+      </section>
+      <section className="grid xl:grid-cols-[1.1fr_0.9fr] gap-5">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-[18px] font-semibold">实时入场记录</h3>
+              <p className="mt-1 text-[14px] text-slate-600">
+                扫码后即时写入活动档案和现场统计。
+              </p>
+            </div>
+            <Pill tone="green">核验服务正常</Pill>
+          </div>
+          <div className="divide-y divide-slate-200">
+            <CheckinRow
+              name="张三"
+              ticket="Coser 专属票"
+              detail="实名通过 · 甘雨 · 无异常道具"
+              time="刚刚"
+              status="通过"
+            />
+            <CheckinRow
+              name="王小东"
+              ticket="普通观众票"
+              detail="实名通过 · 电子票有效"
+              time="2 分钟前"
+              status="通过"
+            />
+            <CheckinRow
+              name="李思远"
+              ticket="Coser 专属票"
+              detail="机甲重装佣兵 · 已转安保复验"
+              time="5 分钟前"
+              status="复验"
+            />
+          </div>
+        </div>
+        <div className="space-y-5">
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <h3 className="text-[18px] font-semibold">进场速度</h3>
+            <div className="mt-4 flex items-end gap-2 h-28">
+              {[35, 48, 42, 72, 78, 63, 82, 66, 90, 76, 70, 84].map((v, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-t bg-[#255ec8]"
+                  style={{ height: `${v}%` }}
+                />
+              ))}
+            </div>
+            <div className="mt-3 flex justify-between text-[13px] text-slate-500">
+              <span>08:30</span>
+              <span>10:00</span>
+              <span>11:30</span>
+            </div>
+            <div className="mt-3 text-[15px] font-semibold">
+              当前 118 人 / 10 分钟
+            </div>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <h3 className="text-[18px] font-semibold">现场操作</h3>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <ActionButton
+                label="手动核验电子票"
+                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
+                icon={<QrCode className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                description="可输入订单号或电子票编号进行人工核验。"
+              />
+              <ActionButton
+                label="实名信息核对"
+                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
+                icon={<UserCheck className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                description="按授权范围核对订单关联的实名状态与核验结果。"
+              />
+              <button
+                onClick={() => setIssueOpen(true)}
+                className="min-h-[84px] rounded-lg border border-amber-200 bg-amber-50 text-[14px] font-semibold text-amber-800"
+              >
+                <CircleAlert className="mx-auto mb-2 w-5 h-5" />
+                异常核验登记
+              </button>
+              <ActionButton
+                label="导出现场交接表"
+                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
+                icon={<Download className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                description="导出入场、异常核验和现场处置的交接汇总。"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      {issueOpen && <IssueModal onClose={() => setIssueOpen(false)} />}
+    </div>
+  );
+}
+function OnsiteStat({
+  label,
+  value,
+  danger,
+}: {
+  label: string;
+  value: string;
+  danger?: boolean;
+}) {
+  return (
+    <div className="bg-white/10 border border-white/10 rounded-lg p-3">
+      <div className="text-[12px] text-slate-300">{label}</div>
+      <div
+        className={`mt-1 text-[24px] leading-7 font-semibold ${danger ? "text-rose-300" : ""}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+function CheckinRow({
+  name,
+  ticket,
+  detail,
+  time,
+  status,
+}: {
+  name: string;
+  ticket: string;
+  detail: string;
+  time: string;
+  status: string;
+}) {
+  return (
+    <div className="p-4 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+        <UserRound className="w-4 h-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] font-semibold">
+          {name}
+          <span className="ml-2 text-[13px] font-normal text-slate-600">
+            {ticket}
+          </span>
+        </div>
+        <div className="mt-1 text-[13px] text-slate-600">{detail}</div>
+      </div>
+      <div className="text-right">
+        <Pill tone={status === "通过" ? "green" : "amber"}>{status}</Pill>
+        <div className="mt-1 text-[12px] text-slate-500">{time}</div>
+      </div>
+    </div>
+  );
+}
+function IssueModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4">
+      <div className="w-full max-w-[520px] bg-white rounded-lg shadow-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[21px] font-semibold">登记现场异常</h2>
+            <p className="mt-1 text-[14px] text-slate-600">
+              异常记录将自动写入本场活动数字档案。
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-4">
+          <Field
+            label="异常类型"
+            value="请选择：电子票异常 / 实名不一致 / 道具复验"
+          />
+          <Field
+            label="关联订单或参与人"
+            value="请输入订单号、姓名或扫码凭证"
+          />
+          <Field label="现场处置记录" value="请记录核验结果与处置方式" />
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+          >
+            取消
+          </button>
+          <button
+            onClick={onClose}
+            className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold"
+          >
+            保存异常记录
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-function EventData() { return <div className="space-y-5"><ModuleTitle title="活动数据" description="围绕售票、入场、退款、人员、客流、核验和异常数据提供活动运行分析。" actions={<ActionButton label="导出活动数据" className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5" icon={<Download className="w-4 h-4" />} description="导出售票、入场、退款、人员、客流、核验和异常统计。" />} /><div className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4"><TodayStat label="售票金额" value="¥380,096" sub="较昨日增长 12.4%" icon={<WalletCards className="w-5 h-5" />} /><TodayStat label="退款率" value="0.39%" sub="18 笔退款申请" icon={<RefreshCcw className="w-5 h-5" />} tone="amber" /><TodayStat label="入场率" value="96.8%" sub="电子票核验通过率" icon={<TicketCheck className="w-5 h-5" />} /><TodayStat label="异常率" value="0.04%" sub="2 项异常核验" icon={<CircleAlert className="w-5 h-5" />} tone="rose" /></div><div className="grid grid-cols-1 min-[1080px]:grid-cols-[1.35fr_0.65fr] gap-5"><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">售票与入场趋势</h3><p className="mt-1 text-[14px] text-slate-600">按活动日与时段汇总的票务、客流与核验数据。</p><div className="mt-7 h-56 flex items-end gap-4 border-b border-slate-200 pb-6">{[44, 62, 55, 74, 68, 88, 94, 82, 72, 64].map((v, i) => <div key={i} className="flex-1 flex flex-col items-center gap-2"><div className="w-full max-w-[42px] bg-[#255ec8] rounded-t" style={{ height: `${v}%` }} /><span className="text-[12px] text-slate-500">{i + 8}:00</span></div>)}</div></div><div className="bg-white border border-slate-200 rounded-lg p-5"><h3 className="text-[18px] font-semibold">数据口径</h3><div className="mt-4 space-y-4"><MiniMetric label="售票" value="订单支付成功" sub="普通票、Coser票、学生票、现场票" /><MiniMetric label="入场" value="二维码核验通过" sub="与订单、实名和现场记录关联" /><MiniMetric label="异常" value="已登记并处置" sub="支持按活动形成问题与操作记录" /></div></div></div></div>; }
-function Issues() { return <div className="space-y-5"><ModuleTitle title="问题记录" description="记录活动准备、售票、现场服务与核验过程中发现的问题及处置过程。" actions={<ActionButton label="登记问题" className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold flex items-center gap-1.5" icon={<Plus className="w-4 h-4" />} description="问题将关联活动阶段、处理责任人、时限和处置记录。" />} /><div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-200"><IssueRow level="高" title="仿真道具尺寸待复验" detail="机甲重装佣兵 · 现场安保须在入场前核验重弩模型尺寸与材质" status="处理中" time="今天 11:50" /><IssueRow level="中" title="夜间值守联系人尚未补充" detail="现场服务与应急联络表缺少 20:00 后场馆协调联系人" status="待主办方处理" time="今天 10:05" /><IssueRow level="低" title="学生早鸟票库存接近售罄" detail="已售 788 / 800，建议在停售后同步更新活动首页说明" status="已完成" time="昨天 16:20" /></div></div>; }
-function IssueRow({ level, title, detail, status, time }: { level: string; title: string; detail: string; status: string; time: string }) { return <div className="p-5 flex flex-col md:flex-row gap-4 md:items-center"><div className={`w-10 h-10 rounded-lg flex items-center justify-center ${level === '高' ? 'bg-rose-50 text-rose-600' : level === '中' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}><CircleAlert className="w-5 h-5" /></div><div className="flex-1"><div className="text-[16px] font-semibold">{title}</div><div className="mt-1 text-[14px] leading-6 text-slate-600">{detail}</div></div><div className="flex items-center gap-4"><Pill tone={status === '已完成' ? 'green' : level === '高' ? 'rose' : 'amber'}>{status}</Pill><div className="text-[13px] text-slate-500 whitespace-nowrap">{time}</div><ActionButton label="处理记录" className="text-[14px] font-semibold text-[#255ec8]" description="查看问题的登记、分派、处理与结项记录。" /></div></div>; }
+function EventData() {
+  return (
+    <div className="space-y-5">
+      <ModuleTitle
+        title="活动数据"
+        description="围绕售票、入场、退款、人员、客流、核验和异常数据提供活动运行分析。"
+        actions={
+          <ActionButton
+            label="导出活动数据"
+            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            icon={<Download className="w-4 h-4" />}
+            description="导出售票、入场、退款、人员、客流、核验和异常统计。"
+          />
+        }
+      />
+      <div className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
+        <TodayStat
+          label="售票金额"
+          value="¥380,096"
+          sub="较昨日增长 12.4%"
+          icon={<WalletCards className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="退款率"
+          value="0.39%"
+          sub="18 笔退款申请"
+          icon={<RefreshCcw className="w-5 h-5" />}
+          tone="amber"
+        />
+        <TodayStat
+          label="入场率"
+          value="96.8%"
+          sub="电子票核验通过率"
+          icon={<TicketCheck className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="异常率"
+          value="0.04%"
+          sub="2 项异常核验"
+          icon={<CircleAlert className="w-5 h-5" />}
+          tone="rose"
+        />
+      </div>
+      <div className="grid grid-cols-1 min-[1080px]:grid-cols-[1.35fr_0.65fr] gap-5">
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <h3 className="text-[18px] font-semibold">售票与入场趋势</h3>
+          <p className="mt-1 text-[14px] text-slate-600">
+            按活动日与时段汇总的票务、客流与核验数据。
+          </p>
+          <div className="mt-7 h-56 flex items-end gap-4 border-b border-slate-200 pb-6">
+            {[44, 62, 55, 74, 68, 88, 94, 82, 72, 64].map((v, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                <div
+                  className="w-full max-w-[42px] bg-[#255ec8] rounded-t"
+                  style={{ height: `${v}%` }}
+                />
+                <span className="text-[12px] text-slate-500">{i + 8}:00</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <h3 className="text-[18px] font-semibold">数据口径</h3>
+          <div className="mt-4 space-y-4">
+            <MiniMetric
+              label="售票"
+              value="订单支付成功"
+              sub="普通票、Coser票、学生票、现场票"
+            />
+            <MiniMetric
+              label="入场"
+              value="二维码核验通过"
+              sub="与订单、实名和现场记录关联"
+            />
+            <MiniMetric
+              label="异常"
+              value="已登记并处置"
+              sub="支持按活动形成问题与操作记录"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Issues() {
+  return (
+    <div className="space-y-5">
+      <ModuleTitle
+        title="问题记录"
+        description="记录活动准备、售票、现场服务与核验过程中发现的问题及处置过程。"
+        actions={
+          <ActionButton
+            label="登记问题"
+            className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold flex items-center gap-1.5"
+            icon={<Plus className="w-4 h-4" />}
+            description="问题将关联活动阶段、处理责任人、时限和处置记录。"
+          />
+        }
+      />
+      <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-200">
+        <IssueRow
+          level="高"
+          title="仿真道具尺寸待复验"
+          detail="机甲重装佣兵 · 现场安保须在入场前核验重弩模型尺寸与材质"
+          status="处理中"
+          time="今天 11:50"
+        />
+        <IssueRow
+          level="中"
+          title="夜间值守联系人尚未补充"
+          detail="现场服务与应急联络表缺少 20:00 后场馆协调联系人"
+          status="待主办方处理"
+          time="今天 10:05"
+        />
+        <IssueRow
+          level="低"
+          title="学生早鸟票库存接近售罄"
+          detail="已售 788 / 800，建议在停售后同步更新活动首页说明"
+          status="已完成"
+          time="昨天 16:20"
+        />
+      </div>
+    </div>
+  );
+}
+function IssueRow({
+  level,
+  title,
+  detail,
+  status,
+  time,
+}: {
+  level: string;
+  title: string;
+  detail: string;
+  status: string;
+  time: string;
+}) {
+  return (
+    <div className="p-5 flex flex-col md:flex-row gap-4 md:items-center">
+      <div
+        className={`w-10 h-10 rounded-lg flex items-center justify-center ${level === "高" ? "bg-rose-50 text-rose-600" : level === "中" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"}`}
+      >
+        <CircleAlert className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <div className="text-[16px] font-semibold">{title}</div>
+        <div className="mt-1 text-[14px] leading-6 text-slate-600">
+          {detail}
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <Pill
+          tone={
+            status === "已完成" ? "green" : level === "高" ? "rose" : "amber"
+          }
+        >
+          {status}
+        </Pill>
+        <div className="text-[13px] text-slate-500 whitespace-nowrap">
+          {time}
+        </div>
+        <ActionButton
+          label="处理记录"
+          className="text-[14px] font-semibold text-[#255ec8]"
+          description="查看问题的登记、分派、处理与结项记录。"
+        />
+      </div>
+    </div>
+  );
+}
 
-function ArchivePage({ compact = false }: { compact?: boolean }) { return <div className="space-y-5">{!compact && <ModuleTitle eyebrow="数字档案" title="活动结束与归档管理" description="活动结束后汇集活动资料、票务、参与人员、现场核验、问题记录、数据汇总与操作日志，形成完整数字档案。" actions={<ActionButton label="生成归档摘要" className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5" icon={<FileArchive className="w-4 h-4" />} description="将汇集资料、票务、现场、问题、数据和操作日志形成归档摘要。" />} />}<section className="grid md:grid-cols-3 gap-4"><ArchiveCard title="资料归集" value="5 / 5" text="活动基础资料、规则和现场保障材料" state="已完成" /><ArchiveCard title="运行数据" value="8 / 8" text="售票、退款、入场、客流、核验与异常数据" state="已完成" /><ArchiveCard title="结项归档" value="待活动结束" text="活动结束后自动生成归档清单与复盘摘要" state="待进行" /></section><section className="bg-white border border-slate-200 rounded-lg overflow-hidden"><div className="p-5 border-b border-slate-200"><h3 className="text-[18px] font-semibold">本场活动归档清单</h3><p className="mt-1 text-[14px] text-slate-600">归档动作全程留痕，适用于活动运营复盘与服务资料整理。</p></div><div className="divide-y divide-slate-200"><ArchiveLine icon={<FileText className="w-5 h-5" />} title="活动资料与材料版本" status="已归集" /><ArchiveLine icon={<Ticket className="w-5 h-5" />} title="票务、订单、退款与电子票核验汇总" status="已归集" /><ArchiveLine icon={<Users className="w-5 h-5" />} title="参与人员脱敏汇总与现场入场记录" status="已归集" /><ArchiveLine icon={<CircleAlert className="w-5 h-5" />} title="问题记录、异常核验与处置过程" status="持续更新" /><ArchiveLine icon={<ScrollText className="w-5 h-5" />} title="活动复盘摘要与操作日志" status="待生成" /></div></section></div>; }
-function ArchiveCard({ title, value, text, state }: { title: string; value: string; text: string; state: string }) { return <div className="metric-card min-w-0 bg-white border border-slate-200 rounded-lg p-5"><div className="text-[14px] text-slate-600 [word-break:keep-all]">{title}</div><div className="metric-value mt-2 text-[28px] leading-8 font-semibold">{value}</div><div className="metric-sub mt-2 text-[14px] leading-6 text-slate-600">{text}</div><div className="mt-4"><Pill tone={state === '已完成' ? 'green' : 'amber'}>{state}</Pill></div></div>; }
-function ArchiveLine({ icon, title, status }: { icon: ReactNode; title: string; status: string }) { return <div className="p-4 flex items-center gap-3"><div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">{icon}</div><div className="flex-1 text-[15px] font-semibold">{title}</div><Pill tone={status === '已归集' ? 'green' : status === '持续更新' ? 'blue' : 'amber'}>{status}</Pill><ActionButton label="查看" className="text-[14px] font-semibold text-[#255ec8]" description="查看该归档事项关联的活动材料和操作记录。" /></div>; }
+function ArchivePage({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="space-y-5">
+      {!compact && (
+        <ModuleTitle
+          eyebrow="数字档案"
+          title="活动结束与归档管理"
+          description="活动结束后汇集活动资料、票务、参与人员、现场核验、问题记录、数据汇总与操作日志，形成完整数字档案。"
+          actions={
+            <ActionButton
+              label="生成归档摘要"
+              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              icon={<FileArchive className="w-4 h-4" />}
+              description="将汇集资料、票务、现场、问题、数据和操作日志形成归档摘要。"
+            />
+          }
+        />
+      )}
+      <section className="grid md:grid-cols-3 gap-4">
+        <ArchiveCard
+          title="资料归集"
+          value="5 / 5"
+          text="活动基础资料、规则和现场保障材料"
+          state="已完成"
+        />
+        <ArchiveCard
+          title="运行数据"
+          value="8 / 8"
+          text="售票、退款、入场、客流、核验与异常数据"
+          state="已完成"
+        />
+        <ArchiveCard
+          title="结项归档"
+          value="待活动结束"
+          text="活动结束后自动生成归档清单与复盘摘要"
+          state="待进行"
+        />
+      </section>
+      <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="p-5 border-b border-slate-200">
+          <h3 className="text-[18px] font-semibold">本场活动归档清单</h3>
+          <p className="mt-1 text-[14px] text-slate-600">
+            归档动作全程留痕，适用于活动运营复盘与服务资料整理。
+          </p>
+        </div>
+        <div className="divide-y divide-slate-200">
+          <ArchiveLine
+            icon={<FileText className="w-5 h-5" />}
+            title="活动资料与材料版本"
+            status="已归集"
+          />
+          <ArchiveLine
+            icon={<Ticket className="w-5 h-5" />}
+            title="票务、订单、退款与电子票核验汇总"
+            status="已归集"
+          />
+          <ArchiveLine
+            icon={<Users className="w-5 h-5" />}
+            title="参与人员脱敏汇总与现场入场记录"
+            status="已归集"
+          />
+          <ArchiveLine
+            icon={<CircleAlert className="w-5 h-5" />}
+            title="问题记录、异常核验与处置过程"
+            status="持续更新"
+          />
+          <ArchiveLine
+            icon={<ScrollText className="w-5 h-5" />}
+            title="活动复盘摘要与操作日志"
+            status="待生成"
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+function ArchiveCard({
+  title,
+  value,
+  text,
+  state,
+}: {
+  title: string;
+  value: string;
+  text: string;
+  state: string;
+}) {
+  return (
+    <div className="metric-card min-w-0 bg-white border border-slate-200 rounded-lg p-5">
+      <div className="text-[14px] text-slate-600 [word-break:keep-all]">
+        {title}
+      </div>
+      <div className="metric-value mt-2 text-[28px] leading-8 font-semibold">
+        {value}
+      </div>
+      <div className="metric-sub mt-2 text-[14px] leading-6 text-slate-600">
+        {text}
+      </div>
+      <div className="mt-4">
+        <Pill tone={state === "已完成" ? "green" : "amber"}>{state}</Pill>
+      </div>
+    </div>
+  );
+}
+function ArchiveLine({
+  icon,
+  title,
+  status,
+}: {
+  icon: ReactNode;
+  title: string;
+  status: string;
+}) {
+  return (
+    <div className="p-4 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+        {icon}
+      </div>
+      <div className="flex-1 text-[15px] font-semibold">{title}</div>
+      <Pill
+        tone={
+          status === "已归集"
+            ? "green"
+            : status === "持续更新"
+              ? "blue"
+              : "amber"
+        }
+      >
+        {status}
+      </Pill>
+      <ActionButton
+        label="查看"
+        className="text-[14px] font-semibold text-[#255ec8]"
+        description="查看该归档事项关联的活动材料和操作记录。"
+      />
+    </div>
+  );
+}
 
-function DataCenter() { return <div className="space-y-5"><ModuleTitle eyebrow="数据中心" title="活动真实业务数据" description="围绕售票、入场、退款、人员、客流、核验和异常数据形成运营复盘，不使用装饰性数据卡片替代业务内容。" actions={<ActionButton label="导出活动复盘数据" className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5" icon={<Download className="w-4 h-4" />} description="导出各活动的售票、入场、退款、人员、核验与异常数据。" />} /><section className="bg-white border border-slate-200 rounded-lg overflow-x-auto"><table className="min-w-[940px] w-full text-left"><thead><tr className="bg-slate-50 text-[13px] text-slate-600"><th className="p-4 font-semibold">业务主题</th><th className="p-4 font-semibold">当前值</th><th className="p-4 font-semibold">统计口径</th><th className="p-4 font-semibold">关联模块</th><th className="p-4 font-semibold">更新频率</th></tr></thead><tbody className="divide-y divide-slate-200"><DataRow title="票务销售" value="4,662 张 / ¥380,096" definition="支付成功订单，按票种、渠道与时段统计" module="票务管理" update="实时" /><DataRow title="人员与实名" value="4,484 人完成实名认证" definition="活动参与人员的实名状态汇总，不展示原始敏感身份影像" module="参与人员" update="实时" /><DataRow title="入场与客流" value="3,218 人已入场" definition="电子票二维码核验通过与现场手工核验记录" module="现场管理" update="实时" /><DataRow title="退款情况" value="18 笔 / 0.38%" definition="退款申请、处理状态与金额汇总" module="票务管理" update="每 10 分钟" /><DataRow title="角色服装道具" value="326 份申报 / 2 项协同核验" definition="Coser 提交的角色、服装、道具信息和操作记录" module="角色服装道具" update="实时" /><DataRow title="异常与问题" value="2 项异常核验" definition="活动准备与现场过程中登记的问题、处置过程和结果" module="问题记录" update="实时" /></tbody></table></section><section className="space-y-5"><EventData /><ArchivePage compact /></section></div>; }
-function DataRow({ title, value, definition, module, update }: { title: string; value: string; definition: string; module: string; update: string }) { return <tr><td className="p-4 text-[15px] font-semibold">{title}</td><td className="p-4 text-[15px] font-semibold text-[#255ec8]">{value}</td><td className="p-4 text-[14px] leading-6 text-slate-600">{definition}</td><td className="p-4"><Pill tone="blue">{module}</Pill></td><td className="p-4 text-[14px] text-slate-600">{update}</td></tr>; }
+function DataCenter() {
+  return (
+    <div className="space-y-5">
+      <ModuleTitle
+        eyebrow="数据中心"
+        title="活动真实业务数据"
+        description="围绕售票、入场、退款、人员、客流、核验和异常数据形成运营复盘，不使用装饰性数据卡片替代业务内容。"
+        actions={
+          <ActionButton
+            label="导出活动复盘数据"
+            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            icon={<Download className="w-4 h-4" />}
+            description="导出各活动的售票、入场、退款、人员、核验与异常数据。"
+          />
+        }
+      />
+      <section className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <table className="min-w-[940px] w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-[13px] text-slate-600">
+              <th className="p-4 font-semibold">业务主题</th>
+              <th className="p-4 font-semibold">当前值</th>
+              <th className="p-4 font-semibold">统计口径</th>
+              <th className="p-4 font-semibold">关联模块</th>
+              <th className="p-4 font-semibold">更新频率</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            <DataRow
+              title="票务销售"
+              value="4,662 张 / ¥380,096"
+              definition="支付成功订单，按票种、渠道与时段统计"
+              module="票务管理"
+              update="实时"
+            />
+            <DataRow
+              title="人员与实名"
+              value="4,484 人完成实名认证"
+              definition="活动参与人员的实名状态汇总，不展示原始敏感身份影像"
+              module="参与人员"
+              update="实时"
+            />
+            <DataRow
+              title="入场与客流"
+              value="3,218 人已入场"
+              definition="电子票二维码核验通过与现场手工核验记录"
+              module="现场管理"
+              update="实时"
+            />
+            <DataRow
+              title="退款情况"
+              value="18 笔 / 0.38%"
+              definition="退款申请、处理状态与金额汇总"
+              module="票务管理"
+              update="每 10 分钟"
+            />
+            <DataRow
+              title="角色服装道具"
+              value="326 份申报 / 2 项协同核验"
+              definition="Coser 提交的角色、服装、道具信息和操作记录"
+              module="角色服装道具"
+              update="实时"
+            />
+            <DataRow
+              title="异常与问题"
+              value="2 项异常核验"
+              definition="活动准备与现场过程中登记的问题、处置过程和结果"
+              module="问题记录"
+              update="实时"
+            />
+          </tbody>
+        </table>
+      </section>
+      <section className="space-y-5">
+        <EventData />
+        <ArchivePage compact />
+      </section>
+    </div>
+  );
+}
+function DataRow({
+  title,
+  value,
+  definition,
+  module,
+  update,
+}: {
+  title: string;
+  value: string;
+  definition: string;
+  module: string;
+  update: string;
+}) {
+  return (
+    <tr>
+      <td className="p-4 text-[15px] font-semibold">{title}</td>
+      <td className="p-4 text-[15px] font-semibold text-[#255ec8]">{value}</td>
+      <td className="p-4 text-[14px] leading-6 text-slate-600">{definition}</td>
+      <td className="p-4">
+        <Pill tone="blue">{module}</Pill>
+      </td>
+      <td className="p-4 text-[14px] text-slate-600">{update}</td>
+    </tr>
+  );
+}
 
-function NotificationPanel({ onClose, onOpenCostume }: { onClose: () => void; onOpenCostume: () => void }) { const [read, setRead] = useState(false); return <div className="fixed inset-0 z-50 flex justify-end"><button onClick={onClose} className="absolute inset-0 bg-black/25" /><aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto"><div className="p-5 border-b border-slate-200 flex items-center justify-between"><div><h2 className="text-[20px] font-semibold">通知中心</h2><p className="mt-1 text-[14px] text-slate-600">活动待办、异常提醒与协同动态</p></div><button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button></div><div className="p-5"><button onClick={() => setRead(true)} className="w-full h-10 rounded-lg border border-slate-300 text-[14px] font-semibold">{read ? '已全部标记为已读' : '全部标记为已读'}</button><div className="mt-4 space-y-3"><Notice icon={<ShieldCheck className="w-5 h-5" />} tone="rose" title="高关注道具需现场复验" text="机甲重装佣兵 · 仿真重弩模型待核对尺寸与材质" time="12 分钟前" unread={!read} action="进入角色管理" onClick={onOpenCostume} /><Notice icon={<FileText className="w-5 h-5" />} tone="amber" title="活动资料待补充" text="现场服务与应急联络表缺少夜间值守联系人" time="1 小时前" unread={!read} action="查看活动资料" /><Notice icon={<TicketCheck className="w-5 h-5" />} tone="blue" title="票务库存提示" text="学生早鸟票剩余 12 张，建议准备停售说明" time="今天 09:20" unread={false} action="进入票务管理" /></div></div></aside></div>; }
-function Notice({ icon, tone, title, text, time, unread, action, onClick }: { icon: ReactNode; tone: 'rose' | 'amber' | 'blue'; title: string; text: string; time: string; unread: boolean; action: string; onClick?: () => void }) { const c = { rose: 'bg-rose-50 text-rose-600', amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-[#245fc4]' }[tone]; return <div className="p-4 border border-slate-200 rounded-lg"><div className="flex gap-3"><div className={`w-9 h-9 rounded-md shrink-0 flex items-center justify-center ${c}`}>{icon}</div><div className="min-w-0 flex-1"><div className="flex gap-2"><div className="text-[15px] font-semibold flex-1">{title}</div>{unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-[#245fc4]" />}</div><p className="semantic-copy mt-1 text-[14px] leading-6 text-slate-600">{text}</p><div className="mt-3 flex items-center justify-between"><span className="text-[12px] text-slate-500">{time}</span>{onClick ? <button onClick={onClick} className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]">{action}</button> : <ActionButton label={action} title={title} description={text} className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]" />}</div></div></div></div>; }
-function SettingsPanel({ role, onRoleChange, onClose, onLogout }: { role: Role; onRoleChange: (role: Role) => void; onClose: () => void; onLogout: () => void }) { return <div className="fixed inset-0 z-50 flex justify-end"><button onClick={onClose} className="absolute inset-0 bg-black/25" /><aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto"><div className="p-5 border-b border-slate-200 flex items-center justify-between"><div><h2 className="text-[20px] font-semibold">系统设置</h2><p className="mt-1 text-[14px] text-slate-600">当前工作身份与显示偏好</p></div><button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button></div><div className="p-5 space-y-5"><section className="border border-slate-200 rounded-lg p-4"><div className="text-[13px] font-semibold text-slate-500">当前工作身份</div><div className="mt-3 text-[17px] font-semibold">{ROLE_INFO[role].name}</div><div className="mt-1 text-[14px] text-slate-600">{ROLE_INFO[role].note}</div><div className="mt-4 grid grid-cols-1 gap-2">{(Object.keys(ROLE_INFO) as Role[]).map(item => <button key={item} onClick={() => onRoleChange(item)} className={`h-10 px-3 text-left rounded-md border text-[13px] font-semibold whitespace-nowrap ${item === role ? 'border-[#245fc4] bg-blue-50 text-[#1c4c9e]' : 'border-slate-300 hover:bg-slate-50'}`}>{ROLE_INFO[item].name}</button>)}</div></section><section className="border border-slate-200 rounded-lg divide-y divide-slate-200"><SettingRow title="审核待办提醒" text="有新的角色服装道具申报时显示待办角标" active /><SettingRow title="现场异常提醒" text="发生实名、电子票或道具异常时显示高优先级提醒" active /><SettingRow title="多语言界面" text="中文、English、ئۇيغۇرچە可在顶部随时切换" active /></section><section className="p-4 rounded-lg bg-blue-50 border border-blue-100 text-[14px] leading-6 text-blue-900">账号权限和可见数据范围由平台管理员统一配置。系统用于活动服务协同与资料归集，不替代相关行政审批、监管执法或其他已有业务系统。</section><button onClick={onLogout} className="w-full h-11 rounded-lg border border-rose-200 text-rose-700 bg-rose-50 text-[14px] font-semibold">退出登录</button></div></aside></div>; }
-function SettingRow({ title, text, active }: { title: string; text: string; active?: boolean }) { const [on, setOn] = useState(active); return <div className="p-4 flex items-center gap-3"><div className="flex-1"><div className="text-[15px] font-semibold">{title}</div><div className="mt-1 text-[13px] leading-5 text-slate-600">{text}</div></div><button onClick={() => setOn(!on)} className={`w-11 h-6 rounded-full p-0.5 ${on ? 'bg-[#255ec8]' : 'bg-slate-300'}`}><span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`} /></button></div>; }
+function NotificationPanel({
+  onClose,
+  onOpenCostume,
+}: {
+  onClose: () => void;
+  onOpenCostume: () => void;
+}) {
+  const [read, setRead] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
+      <aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-[20px] font-semibold">通知中心</h2>
+            <p className="mt-1 text-[14px] text-slate-600">
+              活动待办、异常提醒与协同动态
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5">
+          <button
+            onClick={() => setRead(true)}
+            className="w-full h-10 rounded-lg border border-slate-300 text-[14px] font-semibold"
+          >
+            {read ? "已全部标记为已读" : "全部标记为已读"}
+          </button>
+          <div className="mt-4 space-y-3">
+            <Notice
+              icon={<ShieldCheck className="w-5 h-5" />}
+              tone="rose"
+              title="高关注道具需现场复验"
+              text="机甲重装佣兵 · 仿真重弩模型待核对尺寸与材质"
+              time="12 分钟前"
+              unread={!read}
+              action="进入角色管理"
+              onClick={onOpenCostume}
+            />
+            <Notice
+              icon={<FileText className="w-5 h-5" />}
+              tone="amber"
+              title="活动资料待补充"
+              text="现场服务与应急联络表缺少夜间值守联系人"
+              time="1 小时前"
+              unread={!read}
+              action="查看活动资料"
+            />
+            <Notice
+              icon={<TicketCheck className="w-5 h-5" />}
+              tone="blue"
+              title="票务库存提示"
+              text="学生早鸟票剩余 12 张，建议准备停售说明"
+              time="今天 09:20"
+              unread={false}
+              action="进入票务管理"
+            />
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+function Notice({
+  icon,
+  tone,
+  title,
+  text,
+  time,
+  unread,
+  action,
+  onClick,
+}: {
+  icon: ReactNode;
+  tone: "rose" | "amber" | "blue";
+  title: string;
+  text: string;
+  time: string;
+  unread: boolean;
+  action: string;
+  onClick?: () => void;
+}) {
+  const c = {
+    rose: "bg-rose-50 text-rose-600",
+    amber: "bg-amber-50 text-amber-600",
+    blue: "bg-blue-50 text-[#245fc4]",
+  }[tone];
+  return (
+    <div className="p-4 border border-slate-200 rounded-lg">
+      <div className="flex gap-3">
+        <div
+          className={`w-9 h-9 rounded-md shrink-0 flex items-center justify-center ${c}`}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex gap-2">
+            <div className="text-[15px] font-semibold flex-1">{title}</div>
+            {unread && (
+              <span className="mt-1.5 w-2 h-2 rounded-full bg-[#245fc4]" />
+            )}
+          </div>
+          <p className="semantic-copy mt-1 text-[14px] leading-6 text-slate-600">
+            {text}
+          </p>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[12px] text-slate-500">{time}</span>
+            {onClick ? (
+              <button
+                onClick={onClick}
+                className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]"
+              >
+                {action}
+              </button>
+            ) : (
+              <ActionButton
+                label={action}
+                title={title}
+                description={text}
+                className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function SettingsPanel({
+  role,
+  onRoleChange,
+  onClose,
+  onLogout,
+}: {
+  role: Role;
+  onRoleChange: (role: Role) => void;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
+      <aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-[20px] font-semibold">系统设置</h2>
+            <p className="mt-1 text-[14px] text-slate-600">
+              当前工作身份与显示偏好
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5 space-y-5">
+          <section className="border border-slate-200 rounded-lg p-4">
+            <div className="text-[13px] font-semibold text-slate-500">
+              当前工作身份
+            </div>
+            <div className="mt-3 text-[17px] font-semibold">
+              {ROLE_INFO[role].name}
+            </div>
+            <div className="mt-1 text-[14px] text-slate-600">
+              {ROLE_INFO[role].note}
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              {(Object.keys(ROLE_INFO) as Role[]).map(item => (
+                <button
+                  key={item}
+                  onClick={() => onRoleChange(item)}
+                  className={`h-10 px-3 text-left rounded-md border text-[13px] font-semibold whitespace-nowrap ${item === role ? "border-[#245fc4] bg-blue-50 text-[#1c4c9e]" : "border-slate-300 hover:bg-slate-50"}`}
+                >
+                  {ROLE_INFO[item].name}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+            <SettingRow
+              title="审核待办提醒"
+              text="有新的角色服装道具申报时显示待办角标"
+              active
+            />
+            <SettingRow
+              title="现场异常提醒"
+              text="发生实名、电子票或道具异常时显示高优先级提醒"
+              active
+            />
+            <SettingRow
+              title="多语言界面"
+              text="中文、English、ئۇيغۇرچە可在顶部随时切换"
+              active
+            />
+          </section>
+          <section className="p-4 rounded-lg bg-blue-50 border border-blue-100 text-[14px] leading-6 text-blue-900">
+            账号权限和可见数据范围由平台管理员统一配置。系统用于活动服务协同与资料归集，不替代相关行政审批、监管执法或其他已有业务系统。
+          </section>
+          <button
+            onClick={onLogout}
+            className="w-full h-11 rounded-lg border border-rose-200 text-rose-700 bg-rose-50 text-[14px] font-semibold"
+          >
+            退出登录
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+function SettingRow({
+  title,
+  text,
+  active,
+}: {
+  title: string;
+  text: string;
+  active?: boolean;
+}) {
+  const [on, setOn] = useState(active);
+  return (
+    <div className="p-4 flex items-center gap-3">
+      <div className="flex-1">
+        <div className="text-[15px] font-semibold">{title}</div>
+        <div className="mt-1 text-[13px] leading-5 text-slate-600">{text}</div>
+      </div>
+      <button
+        onClick={() => setOn(!on)}
+        className={`w-11 h-6 rounded-full p-0.5 ${on ? "bg-[#255ec8]" : "bg-slate-300"}`}
+      >
+        <span
+          className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`}
+        />
+      </button>
+    </div>
+  );
+}

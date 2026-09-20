@@ -229,7 +229,7 @@ export const MobileClient: React.FC<MobileClientProps> = ({ onNewSubmission }) =
                 <span className="text-xs text-gray-600 font-medium">请将二代身份证正面置于框内</span>
                 <span className="text-[10px] text-gray-400 mt-1">自动识别姓名与公民身份证号</span>
               </div>
-              <p className="text-gray-500 text-[11px]">模拟检测完毕：已识别居民身份证信息</p>
+              <p className="text-gray-500 text-[11px]">检测完毕：已识别居民身份证信息</p>
               <div className="bg-white p-3 rounded-xl border border-gray-100 text-left text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-500">姓名</span>
@@ -272,7 +272,7 @@ export const MobileClient: React.FC<MobileClientProps> = ({ onNewSubmission }) =
                 }}
                 className="w-full py-3 bg-[#795290] hover:bg-[#6c4882] text-white rounded-xl font-medium text-xs shadow-md"
               >
-                模拟通过活体核验
+                通过活体核验
               </button>
             </div>
           )}
