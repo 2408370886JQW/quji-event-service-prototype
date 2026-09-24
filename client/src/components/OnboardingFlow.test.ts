@@ -13,6 +13,7 @@ function readyState(): AdmissionState {
   return {
     ...state,
     status: "materials_draft",
+    agentIdentity: "authorized_agent",
     organizationName: "新疆星河文化传媒有限公司",
     socialCreditCode: "91650100XXXXXXXXXX",
     materials: state.materials.map(item =>
@@ -39,6 +40,15 @@ describe("organizer admission state machine", () => {
 
   it("does not allow activity creation before approval", () => {
     expect(canCreateActivity(submitAdmission(readyState()))).toBe(false);
+  });
+
+  it("does not require an authorization letter when the legal representative applies personally", () => {
+    const state = readyState();
+    state.agentIdentity = "legal_representative";
+    state.materials = state.materials.map(item =>
+      item.key === "authorization" ? { ...item, fileName: "" } : item
+    );
+    expect(canSubmitAdmission(state)).toBe(true);
   });
 
   it("shares approval result with organizer activity gate", () => {

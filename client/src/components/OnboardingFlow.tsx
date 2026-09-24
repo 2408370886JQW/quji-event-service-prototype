@@ -30,7 +30,14 @@ export type AdmissionStatus =
   | "submitted"
   | "changes_required"
   | "approved";
-export type MaterialKey = "license" | "authorization" | "safety" | "permit";
+export type ApplicantIdentity = "legal_representative" | "authorized_agent";
+export type MaterialKey =
+  | "license"
+  | "id_front"
+  | "id_back"
+  | "authorization"
+  | "safety"
+  | "permit";
 export interface AdmissionMaterial {
   key: MaterialKey;
   name: string;
@@ -46,6 +53,7 @@ export interface AdmissionState {
   phone: string;
   realName: string;
   idNumber: string;
+  agentIdentity: ApplicantIdentity | "";
   organizationName: string;
   socialCreditCode: string;
   safetyOfficer: string;
@@ -58,7 +66,10 @@ export interface AdmissionState {
 
 const SAMPLE_VISUALS: Record<Exclude<MaterialKey, "safety">, string> = {
   license: "/manus-storage/quji-public-license-sample_4ac90af5.webp",
-  authorization: "/manus-storage/quji-public-identity-sample_e55cbf71.webp",
+  id_front: "/manus-storage/quji-public-identity-sample_e55cbf71.webp",
+  id_back: "/manus-storage/quji-public-identity-back-sample_4fe11174.webp",
+  authorization:
+    "/manus-storage/quji-public-authorization-sample_1d330ce1.webp",
   permit: "/manus-storage/quji-public-permit-sample_dfdc1faf.webp",
 };
 const STEPS = ["账号注册", "实名核验", "主体材料", "平台审核", "入驻完成"];
@@ -68,6 +79,7 @@ export const createEmptyAdmission = (): AdmissionState => ({
   phone: "",
   realName: "",
   idNumber: "",
+  agentIdentity: "",
   organizationName: "",
   socialCreditCode: "",
   safetyOfficer: "",
@@ -87,14 +99,34 @@ export const createEmptyAdmission = (): AdmissionState => ({
       note: "请上传清晰完整的证照页面",
     },
     {
-      key: "authorization",
-      name: "法定代表人身份证明或经办授权材料",
+      key: "id_front",
+      name: "法定代表人身份证正面",
       required: true,
       fileName: "",
       preview: "",
       updatedAt: "",
       status: "待上传",
-      note: "身份证明与授权关系应相互对应",
+      note: "上传法定代表人身份证人像面",
+    },
+    {
+      key: "id_back",
+      name: "法定代表人身份证反面",
+      required: true,
+      fileName: "",
+      preview: "",
+      updatedAt: "",
+      status: "待上传",
+      note: "上传同一张身份证国徽面",
+    },
+    {
+      key: "authorization",
+      name: "经办授权书",
+      required: true,
+      fileName: "",
+      preview: "",
+      updatedAt: "",
+      status: "待上传",
+      note: "仅被授权经办人办理时上传",
     },
     {
       key: "safety",
@@ -127,6 +159,7 @@ export const createApprovedAdmission = (): AdmissionState => {
     phone: "13800008821",
     realName: "林洁",
     idNumber: "650102199001018821",
+    agentIdentity: "authorized_agent",
     organizationName: "新疆星河文化传媒有限公司",
     socialCreditCode: "91650100XXXXXXXXXX",
     safetyOfficer: "林洁",
@@ -134,25 +167,25 @@ export const createApprovedAdmission = (): AdmissionState => {
     submittedAt: "2026-06-10 14:15",
     reviewedAt: "2026-06-11 10:20",
     reviewNote: "主体材料核验通过",
-    materials: state.materials.map(item => ({
-      ...item,
-      fileName:
-        item.key === "license"
-          ? "营业执照.pdf"
-          : item.key === "authorization"
-            ? "经办授权材料.pdf"
-            : item.key === "safety"
-              ? "主体安全责任人信息表.pdf"
-              : "",
-      preview:
-        item.key === "license"
-          ? SAMPLE_VISUALS.license
-          : item.key === "authorization"
-            ? SAMPLE_VISUALS.authorization
-            : "",
-      updatedAt: item.key === "permit" ? "" : "2026-06-10 14:15",
-      status: item.key === "permit" ? "待上传" : "已核验",
-    })),
+    materials: state.materials.map(item => {
+      const fileNames: Partial<Record<MaterialKey, string>> = {
+        license: "营业执照.pdf",
+        id_front: "法定代表人身份证正面.webp",
+        id_back: "法定代表人身份证反面.webp",
+        authorization: "经办授权书.webp",
+        safety: "主体安全责任人信息表.pdf",
+      };
+      return {
+        ...item,
+        fileName: fileNames[item.key] || "",
+        preview:
+          item.key === "safety" || item.key === "permit"
+            ? ""
+            : SAMPLE_VISUALS[item.key],
+        updatedAt: item.key === "permit" ? "" : "2026-06-10 14:15",
+        status: item.key === "permit" ? "待上传" : "已核验",
+      };
+    }),
   };
 };
 
@@ -176,9 +209,17 @@ function activeStep(status: AdmissionStatus) {
 }
 export function canSubmitAdmission(state: AdmissionState) {
   return Boolean(
-    state.organizationName &&
+    state.agentIdentity &&
+      state.organizationName &&
       state.socialCreditCode &&
-      state.materials.filter(item => item.required).every(item => item.fileName)
+      state.materials
+        .filter(
+          item =>
+            item.required &&
+            (item.key !== "authorization" ||
+              state.agentIdentity === "authorized_agent")
+        )
+        .every(item => item.fileName)
   );
 }
 export function canCreateActivity(state: AdmissionState) {
@@ -212,7 +253,7 @@ function statusCopy(status: AdmissionStatus) {
     not_started: ["尚未开始", "请先完成手机号注册与实名核验"],
     identity_completed: [
       "待上传主体材料",
-      "实名信息已完成 继续上传主体证明与授权材料",
+      "身份与实名信息已完成 继续上传身份证和主体材料",
     ],
     materials_draft: ["主体材料准备中", "完成全部必填材料后提交平台审核"],
     submitted: ["平台审核中", "材料已提交 平台运营人员可查看同一份资料"],
@@ -223,10 +264,14 @@ function statusCopy(status: AdmissionStatus) {
 function guideLines(key: MaterialKey) {
   if (key === "license")
     return ["上传清晰完整的证照页面", "确保证照名称", "主体名称和有效期可辨认"];
+  if (key === "id_front")
+    return ["上传法定代表人身份证人像面", "证件边缘 姓名和身份证号清晰可辨"];
+  if (key === "id_back")
+    return ["上传同一张身份证国徽面", "签发机关和有效期限清晰可辨"];
   if (key === "authorization")
     return [
-      "上传法定代表人身份证明或经办授权文件",
-      "确保证件与授权关系相互对应",
+      "仅被授权经办人办理时上传",
+      "确保委托主体 经办人和授权事项清晰可辨",
     ];
   if (key === "safety")
     return ["填写主体安全责任人姓名和联系电话", "保存后自动形成责任人信息材料"];
@@ -329,6 +374,9 @@ export function OrganizerRegistration({
   const [step, setStep] = useState(0);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [agentIdentity, setAgentIdentity] = useState<ApplicantIdentity | "">(
+    ""
+  );
   const [realName, setRealName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [organizationName, setOrganizationName] = useState("");
@@ -342,22 +390,40 @@ export function OrganizerRegistration({
       setStep(1);
       return;
     }
+    if (step === 1) {
+      if (!agentIdentity)
+        return setError("请先选择您是法定代表人还是被授权经办人");
+      setError("");
+      setStep(2);
+      return;
+    }
     if (
       !realName.trim() ||
       idNumber.trim().length < 8 ||
       !organizationName.trim()
     )
       return setError("请完整填写实名与主办方信息");
-    if (!agreement) return setError("请确认经办授权与信息真实性承诺");
+    if (!agreement) return setError("请确认办理身份与信息真实性承诺");
     onComplete({
       ...createEmptyAdmission(),
       status: "identity_completed",
       phone,
       realName,
       idNumber,
+      agentIdentity,
       organizationName,
     });
   };
+  const registrationTitle = [
+    "注册主办方账号",
+    "先确认您的办理身份",
+    "填写本人及主体信息",
+  ][step];
+  const registrationLines = [
+    ["填写手机号并完成验证码校验", "验证后由您本人选择办理身份"],
+    ["请选择您与本次入驻主办方的关系", "系统不会默认把首次使用人认定为经办人"],
+    ["填写本人实名信息与主办方主体名称", "保存后直接进入身份证与主体材料上传"],
+  ][step];
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
       <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
@@ -371,9 +437,31 @@ export function OrganizerRegistration({
         <div className="text-[14px] text-slate-500">已有账号可直接登录</div>
       </header>
       <main className="mx-auto max-w-[980px] px-5 py-8 sm:py-12">
-        <AdmissionProgress
-          status={step === 0 ? "not_started" : "identity_completed"}
-        />
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+          <div className="grid min-w-[540px] grid-cols-3">
+            {["手机验证", "身份选择", "实名与主体"].map((label, index) => (
+              <div key={label} className="relative flex items-center">
+                {index > 0 && (
+                  <div
+                    className={`absolute right-1/2 left-[-50%] top-4 h-px ${index <= step ? "bg-[#245fc4]" : "bg-slate-200"}`}
+                  />
+                )}
+                <div className="relative z-10 flex flex-1 flex-col items-center">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold ${index < step ? "border-[#245fc4] bg-[#245fc4] text-white" : index === step ? "border-[#245fc4] bg-blue-50 text-[#1c4c9e]" : "border-slate-300 bg-white text-slate-500"}`}
+                  >
+                    {index < step ? <Check className="h-4 w-4" /> : index + 1}
+                  </div>
+                  <div
+                    className={`mt-2 text-[13px] font-semibold whitespace-nowrap ${index <= step ? "text-slate-900" : "text-slate-500"}`}
+                  >
+                    {label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="rounded-lg border border-slate-200 bg-white p-5">
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
@@ -384,12 +472,18 @@ export function OrganizerRegistration({
               )}
             </div>
             <h2 className="mt-4 text-[18px] font-semibold">
-              {step === 0 ? "手机号注册" : "主办方经办人实名"}
+              {step === 0
+                ? "手机号注册"
+                : step === 1
+                  ? "选择办理身份"
+                  : "本人实名与主体信息"}
             </h2>
             <p className="mt-2 text-[14px] leading-6 text-slate-600">
               {step === 0
                 ? "手机号作为账号与审核通知联系方式"
-                : "实名信息用于确认主办方经办人身份与授权关系"}
+                : step === 1
+                  ? "由首次使用人主动确认自己与主办方的关系"
+                  : "本人实名信息用于核验当前申请人 主体名称对应营业执照"}
             </p>
             <div className="mt-5 rounded-md bg-slate-50 p-4 text-[13px] leading-6 text-slate-600">
               <span className="block font-semibold text-slate-800">
@@ -401,13 +495,9 @@ export function OrganizerRegistration({
           </aside>
           <section className="rounded-lg border border-slate-200 bg-white p-5 sm:p-7">
             <Heading
-              eyebrow={`首次入驻 · 第 ${step + 1} 步`}
-              title={step === 0 ? "注册主办方账号" : "完成实名与主体信息"}
-              lines={
-                step === 0
-                  ? ["填写手机号并完成验证码校验", "验证后继续填写实名信息"]
-                  : ["填写经办人实名信息与主办方名称", "下一步进入主体材料上传"]
-              }
+              eyebrow={`首次入驻 · 第 ${step + 1} 步 共 3 步`}
+              title={registrationTitle}
+              lines={registrationLines}
             />
             <div className="mt-7 grid gap-5 sm:grid-cols-2">
               {step === 0 ? (
@@ -425,16 +515,86 @@ export function OrganizerRegistration({
                     placeholder="验证码 246810"
                   />
                 </>
+              ) : step === 1 ? (
+                <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    data-cy="identity-legal-representative"
+                    onClick={() => {
+                      setAgentIdentity("legal_representative");
+                      setAgreement(false);
+                      setError("");
+                    }}
+                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "legal_representative" ? "border-[#245fc4] bg-blue-50 ring-1 ring-[#245fc4]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
+                      <ShieldCheck className="h-5 w-5" />
+                    </span>
+                    <strong className="mt-4 block text-[16px]">
+                      我是法定代表人
+                    </strong>
+                    <span className="mt-2 block text-[13px] leading-6 text-slate-600">
+                      由本人直接办理 后续上传法定代表人身份证正反面
+                      无需经办授权书
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-cy="identity-authorized-agent"
+                    onClick={() => {
+                      setAgentIdentity("authorized_agent");
+                      setAgreement(false);
+                      setError("");
+                    }}
+                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "authorized_agent" ? "border-[#245fc4] bg-blue-50 ring-1 ring-[#245fc4]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
+                      <UserCheck className="h-5 w-5" />
+                    </span>
+                    <strong className="mt-4 block text-[16px]">
+                      我是被授权经办人
+                    </strong>
+                    <span className="mt-2 block text-[13px] leading-6 text-slate-600">
+                      受主办方授权办理
+                      后续需上传法定代表人身份证正反面和经办授权书
+                    </span>
+                  </button>
+                </div>
               ) : (
                 <>
+                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 p-4">
+                    <div>
+                      <div className="text-[14px] font-semibold text-slate-900">
+                        {agentIdentity === "legal_representative"
+                          ? "我是法定代表人"
+                          : "我是被授权经办人"}
+                      </div>
+                      <div className="mt-1 text-[13px] leading-5 text-slate-600">
+                        {agentIdentity === "legal_representative"
+                          ? "本人直接办理 不需要经办授权书"
+                          : "受主办方授权办理 需要上传经办授权书"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="h-9 rounded-md bg-white px-3 text-[13px] font-semibold text-[#1c4c9e]"
+                    >
+                      重新选择
+                    </button>
+                  </div>
                   <TextInput
-                    label="经办人姓名"
+                    label={
+                      agentIdentity === "legal_representative"
+                        ? "法定代表人姓名"
+                        : "被授权经办人姓名"
+                    }
                     value={realName}
                     onChange={setRealName}
-                    placeholder="请输入真实姓名"
+                    placeholder="请输入本人真实姓名"
                   />
                   <TextInput
-                    label="身份证号"
+                    label="本人身份证号"
                     value={idNumber}
                     onChange={setIdNumber}
                     placeholder="请输入证件号码"
@@ -455,7 +615,9 @@ export function OrganizerRegistration({
                       className="mt-1 h-4 w-4 accent-[#245fc4]"
                     />
                     <span>
-                      我确认已获得主办方授权并对所提交信息的真实性负责
+                      {agentIdentity === "legal_representative"
+                        ? "我确认本人为该主办方的法定代表人 并对所提交信息的真实性负责"
+                        : "我确认已获得该主办方授权 并对所提交信息的真实性负责"}
                     </span>
                   </label>
                 </>
@@ -468,7 +630,9 @@ export function OrganizerRegistration({
             )}
             <div className="mt-7 flex justify-between gap-3">
               <button
-                onClick={() => (step === 0 ? onBack() : setStep(0))}
+                onClick={() =>
+                  step === 0 ? onBack() : setStep(current => current - 1)
+                }
                 className="h-11 rounded-md border border-slate-300 px-5 text-[14px] font-semibold"
               >
                 {step === 0 ? "返回登录" : "上一步"}
@@ -478,7 +642,11 @@ export function OrganizerRegistration({
                 data-cy="registration-next"
                 className="flex h-11 items-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
               >
-                {step === 0 ? "下一步 实名核验" : "完成并上传材料"}
+                {step === 0
+                  ? "下一步 选择身份"
+                  : step === 1
+                    ? "确认身份并继续"
+                    : "保存并上传材料"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -641,6 +809,11 @@ export function OrganizerOnboarding({
     state.materials.find(item => item.key === selectedKey) || null;
   const editable = state.status !== "submitted" && state.status !== "approved";
   const [statusTitle, statusText] = statusCopy(state.status);
+  const visibleMaterials = state.materials.filter(
+    item =>
+      item.key !== "authorization" || state.agentIdentity === "authorized_agent"
+  );
+  const requiredMaterials = visibleMaterials.filter(item => item.required);
 
   const updateMaterial = (
     key: MaterialKey,
@@ -774,7 +947,11 @@ export function OrganizerOnboarding({
             placeholder="请输入统一社会信用代码"
           />
           <div>
-            <div className="text-[14px] font-semibold">实名经办人</div>
+            <div className="text-[14px] font-semibold">
+              {state.agentIdentity === "legal_representative"
+                ? "法定代表人"
+                : "被授权经办人"}
+            </div>
             <div className="mt-2 flex h-11 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-[14px]">
               {state.realName || "待实名"} ·{" "}
               {state.idNumber
@@ -784,7 +961,10 @@ export function OrganizerOnboarding({
           </div>
         </div>
       </section>
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section
+        className="rounded-lg border border-slate-200 bg-white"
+        data-cy="material-list"
+      >
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 p-5">
           <div>
             <h2 className="text-[18px] font-semibold">主体材料</h2>
@@ -794,16 +974,12 @@ export function OrganizerOnboarding({
             </p>
           </div>
           <div className="text-[14px] font-semibold text-slate-600">
-            必填完成{" "}
-            {
-              state.materials.filter(item => item.required && item.fileName)
-                .length
-            }{" "}
-            / 3
+            必填完成 {requiredMaterials.filter(item => item.fileName).length} /{" "}
+            {requiredMaterials.length}
           </div>
         </div>
         <div className="grid gap-4 p-5 lg:grid-cols-2">
-          {state.materials.map(item => (
+          {visibleMaterials.map(item => (
             <article
               key={item.key}
               data-cy={`admission-material-${item.key}`}
@@ -816,6 +992,11 @@ export function OrganizerOnboarding({
                     {!item.required && (
                       <span className="whitespace-nowrap rounded bg-slate-100 px-2 py-1 text-[12px] font-semibold text-slate-600">
                         如适用
+                      </span>
+                    )}
+                    {item.key === "authorization" && (
+                      <span className="whitespace-nowrap rounded bg-blue-50 px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+                        经办人必填
                       </span>
                     )}
                   </div>
@@ -965,6 +1146,10 @@ export function AdmissionReview({
   const [note, setNote] = useState(state.reviewNote);
   const canReview = state.status === "submitted";
   const [title, text] = statusCopy(state.status);
+  const reviewMaterials = state.materials.filter(
+    item =>
+      item.key !== "authorization" || state.agentIdentity === "authorized_agent"
+  );
   return (
     <section className="space-y-6" data-cy="admission-review">
       <Heading
@@ -1011,8 +1196,20 @@ export function AdmissionReview({
                   </div>
                   <div className="mt-3 space-y-2 text-[14px]">
                     <div>
-                      <span className="text-slate-500">经办人</span>
+                      <span className="text-slate-500">
+                        {state.agentIdentity === "legal_representative"
+                          ? "法定代表人"
+                          : "被授权经办人"}
+                      </span>
                       <strong className="ml-3">{state.realName || "—"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">办理身份</span>
+                      <strong className="ml-3">
+                        {state.agentIdentity === "legal_representative"
+                          ? "本人办理"
+                          : "授权办理"}
+                      </strong>
                     </div>
                     <div>
                       <span className="text-slate-500">证件号</span>
@@ -1043,10 +1240,10 @@ export function AdmissionReview({
               <div>
                 <h3 className="text-[16px] font-semibold">
                   主体材料{" "}
-                  {state.materials.filter(item => item.fileName).length} 项
+                  {reviewMaterials.filter(item => item.fileName).length} 项
                 </h3>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {state.materials.map(item => (
+                  {reviewMaterials.map(item => (
                     <ReviewMaterial key={item.key} material={item} />
                   ))}
                 </div>

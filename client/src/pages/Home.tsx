@@ -1155,6 +1155,14 @@ export default function Home() {
     }
   };
   const roleLabel = ROLE_INFO[role].name;
+  const displayName =
+    role === "organizer"
+      ? admission.realName || "林洁"
+      : role === "culture"
+        ? "王处长"
+        : role === "collaborator"
+          ? "艾警官"
+          : "周可";
   if (registrationOpen)
     return (
       <OrganizerRegistration
@@ -1165,6 +1173,21 @@ export default function Home() {
           setRole("organizer");
           setSignedIn(true);
           setPage("onboarding");
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const target = document.querySelector<HTMLElement>(
+                '[data-cy="material-list"]'
+              );
+              if (!target) return;
+              window.scrollTo({
+                top: Math.max(
+                  0,
+                  target.getBoundingClientRect().top + window.scrollY - 88
+                ),
+                behavior: "smooth",
+              });
+            });
+          });
         }}
       />
     );
@@ -1291,25 +1314,13 @@ export default function Home() {
                 title={sidebarCollapsed ? roleLabel : undefined}
                 className={`w-8 h-8 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold`}
               >
-                {role === "organizer"
-                  ? "林"
-                  : role === "culture"
-                    ? "王"
-                    : role === "collaborator"
-                      ? "艾"
-                      : "周"}
+                {displayName.slice(0, 1)}
               </div>
               {!sidebarCollapsed && (
                 <>
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-semibold truncate">
-                      {role === "organizer"
-                        ? "林洁"
-                        : role === "culture"
-                          ? "王处长"
-                          : role === "collaborator"
-                            ? "艾警官"
-                            : "周可"}
+                      {displayName}
                     </div>
                     <div className="text-[12px] text-slate-500 truncate">
                       {roleLabel}
