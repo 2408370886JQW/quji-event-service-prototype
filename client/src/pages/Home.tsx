@@ -1201,8 +1201,7 @@ export default function Home() {
           setRegistrationOpen(true);
         }}
         onEnter={() => {
-          if (role === "organizer" && admission.status === "not_started")
-            updateAdmission(createApprovedAdmission());
+          if (role === "organizer") updateAdmission(createApprovedAdmission());
           setSignedIn(true);
         }}
         locale={locale}
