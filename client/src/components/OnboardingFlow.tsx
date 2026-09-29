@@ -362,16 +362,38 @@ function TextInput({
   placeholder: string;
   type?: string;
 }) {
+  const isDate = type === "date";
+  const baseClass =
+    "block h-11 w-full min-w-0 max-w-full rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-[#245fc4] focus:ring-2 focus:ring-blue-100";
   return (
-    <label className="block">
+    // min-w-0：网格子项默认 min-width:auto，iPad Safari 原生日期控件会借此撑宽并压到相邻格子
+    <label className="block min-w-0">
       <span className="text-[14px] font-semibold text-slate-800">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-[#245fc4] focus:ring-2 focus:ring-blue-100"
-      />
+      {isDate ? (
+        <span className="relative mt-2 block min-w-0">
+          <input
+            type="date"
+            value={value}
+            onChange={event => onChange(event.target.value)}
+            aria-label={label}
+            data-cy="activity-date-input"
+            className={`peer ${baseClass} appearance-none text-left leading-[42px] [&::-webkit-date-and-time-value]:text-left ${value ? "text-slate-900" : "text-transparent focus:text-slate-900"}`}
+          />
+          {!value && (
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-slate-400 peer-focus:hidden">
+              {placeholder}
+            </span>
+          )}
+        </span>
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={event => onChange(event.target.value)}
+          placeholder={placeholder}
+          className={`mt-2 ${baseClass}`}
+        />
+      )}
     </label>
   );
 }
@@ -1633,7 +1655,7 @@ export function ActivityCreationWizard({
                 label="活动日期"
                 value={date}
                 onChange={setDate}
-                placeholder="请选择日期"
+                placeholder="请选择活动日期"
                 type="date"
               />
               <TextInput
