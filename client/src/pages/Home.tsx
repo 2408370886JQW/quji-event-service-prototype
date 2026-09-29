@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -1057,23 +1057,192 @@ function LocaleSwitch({
   );
 }
 
+const WORKSPACE_SESSION_KEY = "quji_workspace_session_v1";
+const SCROLL_KEY_PREFIX = "quji_scroll_";
+const PAGE_VALUES: Page[] = [
+  "workspace",
+  "events",
+  "activity",
+  "tickets",
+  "costumes",
+  "onsite",
+  "archive",
+  "organizer",
+  "data",
+  "onboarding",
+  "admissions",
+  "activity-create",
+  "activity-published",
+];
+const TAB_VALUES: ActivityTab[] = [
+  "overview",
+  "materials",
+  "participants",
+  "tickets",
+  "costumes",
+  "onsite",
+  "data",
+  "issues",
+  "archive",
+];
+type WorkspaceSession = {
+  signedIn: boolean;
+  role: Role;
+  locale: Locale;
+  page: Page;
+  eventId: string;
+  activityTab: ActivityTab;
+  ticketMode: "all" | "orders" | "refunds";
+  sidebarCollapsed: boolean;
+  registrationOpen: boolean;
+};
+function loadWorkspaceSession(): WorkspaceSession {
+  const fallback: WorkspaceSession = {
+    signedIn: false,
+    role: "organizer",
+    locale: "zh",
+    page: "workspace",
+    eventId: EVENTS[0].id,
+    activityTab: "overview",
+    ticketMode: "all",
+    sidebarCollapsed: false,
+    registrationOpen: false,
+  };
+  try {
+    const raw = localStorage.getItem(WORKSPACE_SESSION_KEY);
+    if (!raw) return fallback;
+    const saved = JSON.parse(raw) as Partial<WorkspaceSession>;
+    const role =
+      saved.role && saved.role in ROLE_INFO ? saved.role : fallback.role;
+    const page =
+      saved.page &&
+      PAGE_VALUES.includes(saved.page) &&
+      (saved.page === "activity" ||
+        ROLE_INFO[role].permissions.includes(saved.page))
+        ? saved.page
+        : fallback.page;
+    return {
+      signedIn: saved.signedIn === true,
+      role,
+      locale:
+        saved.locale === "en" || saved.locale === "ug" ? saved.locale : "zh",
+      page,
+      eventId: EVENTS.some(item => item.id === saved.eventId)
+        ? (saved.eventId as string)
+        : fallback.eventId,
+      activityTab:
+        saved.activityTab && TAB_VALUES.includes(saved.activityTab)
+          ? saved.activityTab
+          : fallback.activityTab,
+      ticketMode:
+        saved.ticketMode === "orders" || saved.ticketMode === "refunds"
+          ? saved.ticketMode
+          : "all",
+      sidebarCollapsed: saved.sidebarCollapsed === true,
+      registrationOpen: saved.registrationOpen === true,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export default function Home() {
-  const [signedIn, setSignedIn] = useState(false);
-  const [role, setRole] = useState<Role>("organizer");
-  const [locale, setLocale] = useState<Locale>("zh");
-  const [page, setPage] = useState<Page>("workspace");
-  const [selectedEvent, setSelectedEvent] = useState<EventItem>(EVENTS[0]);
-  const [activityTab, setActivityTab] = useState<ActivityTab>("overview");
+  const [restored] = useState(loadWorkspaceSession);
+  const [signedIn, setSignedIn] = useState(restored.signedIn);
+  const [role, setRole] = useState<Role>(restored.role);
+  const [locale, setLocale] = useState<Locale>(restored.locale);
+  const [page, setPage] = useState<Page>(restored.page);
+  const [selectedEvent, setSelectedEvent] = useState<EventItem>(
+    () => EVENTS.find(item => item.id === restored.eventId) || EVENTS[0]
+  );
+  const [activityTab, setActivityTab] = useState<ActivityTab>(
+    restored.activityTab
+  );
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    restored.sidebarCollapsed
+  );
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [settingOpen, setSettingOpen] = useState(false);
   const [checkins, setCheckins] = useState(0);
   const [issueOpen, setIssueOpen] = useState(false);
   const [ticketMode, setTicketMode] = useState<"all" | "orders" | "refunds">(
-    "all"
+    restored.ticketMode
   );
-  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(
+    restored.registrationOpen
+  );
+  useEffect(() => {
+    const snapshot: WorkspaceSession = {
+      signedIn,
+      role,
+      locale,
+      page,
+      eventId: selectedEvent.id,
+      activityTab,
+      ticketMode,
+      sidebarCollapsed,
+      registrationOpen,
+    };
+    try {
+      localStorage.setItem(WORKSPACE_SESSION_KEY, JSON.stringify(snapshot));
+    } catch {
+      /* 浏览器禁止本地存储时仅保持当前会话 */
+    }
+  }, [
+    signedIn,
+    role,
+    locale,
+    page,
+    selectedEvent.id,
+    activityTab,
+    ticketMode,
+    sidebarCollapsed,
+    registrationOpen,
+  ]);
+  useEffect(() => {
+    if (!restored.signedIn) return;
+    const saved = Number(
+      sessionStorage.getItem(`${SCROLL_KEY_PREFIX}${restored.page}`) || 0
+    );
+    if (saved <= 0) return;
+    let attempts = 0;
+    const restore = () => {
+      window.scrollTo({ top: saved });
+      attempts += 1;
+      if (Math.abs(window.scrollY - saved) > 4 && attempts < 20)
+        window.setTimeout(restore, 100);
+    };
+    requestAnimationFrame(restore);
+  }, [restored]);
+  useEffect(() => {
+    if (!signedIn) return;
+    const scrollKey = `${SCROLL_KEY_PREFIX}${page}`;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() =>
+        sessionStorage.setItem(scrollKey, String(Math.round(window.scrollY)))
+      );
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [signedIn, page]);
+  const signOut = () => {
+    setSignedIn(false);
+    setPage("workspace");
+    setActivityTab("overview");
+    try {
+      Object.keys(sessionStorage)
+        .filter(key => key.startsWith("quji_"))
+        .forEach(key => sessionStorage.removeItem(key));
+    } catch {
+      /* 忽略存储清理失败 */
+    }
+  };
   const [admission, setAdmission] = useState<AdmissionState>(() => {
     try {
       const saved = localStorage.getItem("quji_admission_state");
@@ -1326,7 +1495,7 @@ export default function Home() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setSignedIn(false)}
+                    onClick={signOut}
                     title={t.logout}
                     aria-label={t.logout}
                     className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-500"
@@ -1504,7 +1673,7 @@ export default function Home() {
           onClose={() => setSettingOpen(false)}
           onLogout={() => {
             setSettingOpen(false);
-            setSignedIn(false);
+            signOut();
           }}
         />
       )}

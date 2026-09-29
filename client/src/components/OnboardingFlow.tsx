@@ -803,7 +803,29 @@ export function OrganizerOnboarding({
   onChange: (next: AdmissionState) => void;
   onCreateActivity: () => void;
 }) {
-  const [selectedKey, setSelectedKey] = useState<MaterialKey | null>(null);
+  const [selectedKey, setSelectedKeyState] = useState<MaterialKey | null>(
+    () => {
+      try {
+        const saved = sessionStorage.getItem(
+          "quji_onboarding_preview"
+        ) as MaterialKey | null;
+        return saved && state.materials.some(item => item.key === saved)
+          ? saved
+          : null;
+      } catch {
+        return null;
+      }
+    }
+  );
+  const setSelectedKey = (key: MaterialKey | null) => {
+    setSelectedKeyState(key);
+    try {
+      if (key) sessionStorage.setItem("quji_onboarding_preview", key);
+      else sessionStorage.removeItem("quji_onboarding_preview");
+    } catch {
+      /* 浏览器禁止本地存储时仅保持当前会话 */
+    }
+  };
   const [error, setError] = useState("");
   const [organizationName, setOrganizationName] = useState(
     state.organizationName
