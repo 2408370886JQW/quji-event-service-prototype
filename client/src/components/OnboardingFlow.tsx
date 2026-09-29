@@ -947,148 +947,192 @@ export function OrganizerOnboarding({
   const renderMaterialCard = (
     item: AdmissionMaterial,
     options?: { embedded?: boolean; license?: boolean }
-  ) => (
-    <article
-      key={item.key}
-      data-cy={`admission-material-${item.key}`}
-      className={`${options?.embedded ? "min-w-0 p-4" : "rounded-lg border border-slate-200 p-4"} ${options?.license ? "h-fit" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[16px] font-semibold">{item.name}</h3>
-            {!item.required && (
-              <span className="whitespace-nowrap rounded bg-slate-100 px-2 py-1 text-[12px] font-semibold text-slate-600">
-                如适用
+  ) => {
+    const identitySide = options?.embedded
+      ? item.key === "id_front"
+        ? { label: "人像面", title: "身份证正面", note: "姓名和号码清晰" }
+        : item.key === "id_back"
+          ? { label: "国徽面", title: "身份证反面", note: "有效期限清晰" }
+          : undefined
+      : undefined;
+    const statusClass = `shrink-0 whitespace-nowrap rounded px-2 py-1 text-[12px] font-semibold ${item.status === "已上传" || item.status === "已核验" ? "bg-emerald-50 text-emerald-700" : item.status === "需补充" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`;
+    return (
+      <article
+        key={item.key}
+        data-cy={`admission-material-${item.key}`}
+        className={`${options?.embedded ? "flex h-full min-w-0 flex-col p-4" : "rounded-lg border border-slate-200 p-4"} ${options?.license ? "h-fit" : ""}`}
+      >
+        {identitySide ? (
+          <div data-cy={`identity-heading-${item.key}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="whitespace-nowrap text-[13px] font-semibold text-[#245fc4]">
+                {identitySide.label}
               </span>
-            )}
-            {item.key === "authorization" && (
-              <span className="whitespace-nowrap rounded bg-blue-50 px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
-                经办人必填
-              </span>
-            )}
-          </div>
-          <p className="mt-2 text-[14px] leading-6 text-slate-600">
-            {item.note}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded px-2 py-1 text-[12px] font-semibold ${item.status === "已上传" || item.status === "已核验" ? "bg-emerald-50 text-emerald-700" : item.status === "需补充" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}
-        >
-          {item.status}
-        </span>
-      </div>
-      {item.key === "safety" && editable && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <TextInput
-            label="安全责任人"
-            value={safetyOfficer}
-            onChange={setSafetyOfficer}
-            placeholder="请输入姓名"
-          />
-          <TextInput
-            label="联系电话"
-            value={safetyPhone}
-            onChange={setSafetyPhone}
-            placeholder="请输入手机号"
-          />
-        </div>
-      )}
-      {item.fileName && (
-        <div className="mt-4 flex items-center gap-3 rounded-md bg-slate-50 p-3">
-          <FileCheck2 className="h-5 w-5 shrink-0 text-emerald-700" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[14px] font-semibold">
-              {item.fileName}
+              <span className={statusClass}>{item.status}</span>
             </div>
-            <div className="mt-0.5 text-[12px] text-slate-500">
-              {item.updatedAt}
-            </div>
+            <h3 className="mt-3 whitespace-nowrap text-[16px] font-semibold">
+              {identitySide.title}
+            </h3>
+            <p className="mt-1 whitespace-nowrap text-[14px] leading-6 text-slate-600">
+              {identitySide.note}
+            </p>
           </div>
-        </div>
-      )}
-      {options?.license && item.fileName && (
-        <section
-          data-cy="license-recognition"
-          className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1c4c9e]">
-                <BadgeCheck className="h-4 w-4" />
-                营业执照信息已自动关联
+        ) : (
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-[16px] font-semibold">{item.name}</h3>
+                {!item.required && (
+                  <span className="whitespace-nowrap rounded bg-slate-100 px-2 py-1 text-[12px] font-semibold text-slate-600">
+                    如适用
+                  </span>
+                )}
+                {item.key === "authorization" && (
+                  <span className="whitespace-nowrap rounded bg-blue-50 px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+                    经办人必填
+                  </span>
+                )}
               </div>
-              <div className="mt-1 text-[14px] font-semibold text-slate-900">
-                无需再次逐项录入 请核对后直接继续
+              <p className="mt-2 text-[14px] leading-6 text-slate-600">
+                {item.note}
+              </p>
+            </div>
+            <span className={statusClass}>{item.status}</span>
+          </div>
+        )}
+        {item.key === "safety" && editable && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <TextInput
+              label="安全责任人"
+              value={safetyOfficer}
+              onChange={setSafetyOfficer}
+              placeholder="请输入姓名"
+            />
+            <TextInput
+              label="联系电话"
+              value={safetyPhone}
+              onChange={setSafetyPhone}
+              placeholder="请输入手机号"
+            />
+          </div>
+        )}
+        {item.fileName && (
+          <div className="mt-4 flex items-center gap-3 rounded-md bg-slate-50 p-3">
+            <FileCheck2 className="h-5 w-5 shrink-0 text-emerald-700" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px] font-semibold">
+                {item.fileName}
+              </div>
+              <div className="mt-0.5 text-[12px] text-slate-500">
+                {item.updatedAt}
               </div>
             </div>
-            <span className="rounded bg-white px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
-              识别度 98%
-            </span>
           </div>
-          <dl className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
-            {[
-              ["主体名称", state.organizationName],
-              ["统一社会信用代码", state.socialCreditCode],
-              ["法定代表人", state.legalRepresentativeName],
-              ["成立日期", state.establishedAt],
-              ["营业期限", state.businessTerm],
-              ["登记住所", state.registeredAddress],
-            ].map(([label, value]) => (
-              <div key={label} className="min-w-0">
-                <dt className="text-[12px] font-semibold text-slate-500">
-                  {label}
-                </dt>
-                <dd className="mt-1 break-words text-[13px] font-semibold leading-5 text-slate-800">
-                  {value || "待识别"}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedKey(item.key)}
-          className="flex h-10 items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold"
-        >
-          <Eye className="h-4 w-4" />
-          {item.fileName ? "查看已上传文件" : "查看要求"}
-        </button>
-        {editable && item.key === "safety" && (
-          <button
-            onClick={saveSafety}
-            className="h-10 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white"
+        )}
+        {options?.license && item.fileName && (
+          <section
+            data-cy="license-recognition"
+            className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4"
           >
-            保存责任人信息
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1c4c9e]">
+                  <BadgeCheck className="h-4 w-4" />
+                  营业执照信息已自动关联
+                </div>
+                <div className="mt-1 text-[14px] font-semibold text-slate-900">
+                  无需再次逐项录入 请核对后直接继续
+                </div>
+              </div>
+              <span className="rounded bg-white px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+                识别度 98%
+              </span>
+            </div>
+            <dl className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+              {[
+                ["主体名称", state.organizationName],
+                ["统一社会信用代码", state.socialCreditCode],
+                ["法定代表人", state.legalRepresentativeName],
+                ["成立日期", state.establishedAt],
+                ["营业期限", state.businessTerm],
+                ["登记住所", state.registeredAddress],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="text-[12px] font-semibold text-slate-500">
+                    {label}
+                  </dt>
+                  <dd className="mt-1 break-words text-[13px] font-semibold leading-5 text-slate-800">
+                    {value || "待识别"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+        <div
+          data-cy={identitySide ? `identity-actions-${item.key}` : undefined}
+          className={
+            identitySide
+              ? "mt-auto grid grid-cols-1 gap-2 pt-4"
+              : "mt-4 flex flex-wrap gap-2"
+          }
+        >
+          <button
+            onClick={() => setSelectedKey(item.key)}
+            className={`flex h-10 items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold ${identitySide ? "order-2 w-full justify-center whitespace-nowrap" : ""}`}
+          >
+            <Eye className="h-4 w-4" />
+            {item.fileName
+              ? identitySide
+                ? "查看文件"
+                : "查看已上传文件"
+              : "查看要求"}
           </button>
-        )}
-        {editable && item.key !== "safety" && (
-          <>
-            <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white">
-              <Upload className="h-4 w-4" />
-              {item.key === "license" ? "一键上传并识别" : "选择本地文件"}
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={event => {
-                  const file = event.target.files?.[0];
-                  if (file) uploadFile(item.key, file);
-                }}
-              />
-            </label>
+          {editable && item.key === "safety" && (
             <button
-              onClick={() => useSample(item.key)}
-              className="h-10 rounded-md border border-blue-200 bg-blue-50 px-3 text-[14px] font-semibold text-[#1c4c9e]"
+              onClick={saveSafety}
+              className="h-10 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white"
             >
-              使用公开样例
+              保存责任人信息
             </button>
-          </>
-        )}
-      </div>
-    </article>
-  );
+          )}
+          {editable && item.key !== "safety" && (
+            <>
+              <label
+                className={`flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white ${identitySide ? "order-1 w-full justify-center whitespace-nowrap" : ""}`}
+              >
+                <Upload className="h-4 w-4" />
+                {item.key === "license"
+                  ? "一键上传并识别"
+                  : identitySide
+                    ? item.fileName
+                      ? "重新上传"
+                      : item.key === "id_front"
+                        ? "上传正面"
+                        : "上传反面"
+                    : "选择本地文件"}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={event => {
+                    const file = event.target.files?.[0];
+                    if (file) uploadFile(item.key, file);
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => useSample(item.key)}
+                className={`h-10 rounded-md border border-blue-200 bg-blue-50 px-3 text-[14px] font-semibold text-[#1c4c9e] ${identitySide ? "order-3 w-full whitespace-nowrap" : ""}`}
+              >
+                {identitySide ? "使用样例" : "使用公开样例"}
+              </button>
+            </>
+          )}
+        </div>
+      </article>
+    );
+  };
 
   return (
     <section className="space-y-6" data-cy="organizer-onboarding">
