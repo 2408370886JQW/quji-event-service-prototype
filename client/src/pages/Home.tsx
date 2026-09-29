@@ -1431,11 +1431,16 @@ export default function Home() {
                 tab={activityTab}
                 setTab={setActivityTab}
                 onNavigate={changePage}
+                role={role}
                 canEdit={role === "organizer" || role === "platform"}
               />
             )}
             {page === "tickets" && (
-              <TicketPage mode={ticketMode} setMode={setTicketMode} />
+              <TicketPage
+                role={role}
+                mode={ticketMode}
+                setMode={setTicketMode}
+              />
             )}
             {page === "costumes" && <CostumePage />}
             {page === "onsite" && (
@@ -1978,12 +1983,14 @@ function ActivityRecord({
   tab,
   setTab,
   onNavigate,
+  role,
   canEdit,
 }: {
   event: EventItem;
   tab: ActivityTab;
   setTab: (tab: ActivityTab) => void;
   onNavigate: (page: Page, tab?: ActivityTab) => void;
+  role: Role;
   canEdit: boolean;
 }) {
   const [tabCheckins, setTabCheckins] = useState(0);
@@ -2079,7 +2086,7 @@ function ActivityRecord({
       {tab === "overview" && <ActivityOverview event={event} onTab={setTab} />}
       {tab === "materials" && <ActivityMaterials canEdit={canEdit} />}
       {tab === "participants" && <Participants />}
-      {tab === "tickets" && <TicketPage compact />}
+      {tab === "tickets" && <TicketPage compact role={role} />}
       {tab === "costumes" && <CostumePage compact />}
       {tab === "onsite" && (
         <OnsitePage
@@ -2628,60 +2635,247 @@ function Participants() {
   );
 }
 
+type RefundStatus = "pending_review" | "refunded" | "rejected";
+type RefundRecord = {
+  id: string;
+  requestNo: string;
+  orderNo: string;
+  buyerName: string;
+  buyerPhone: string;
+  ticketName: string;
+  ticketCode: string;
+  amount: number;
+  reason: string;
+  detail: string;
+  requestedAt: string;
+  status: RefundStatus;
+  processedBy?: string;
+  processedAt?: string;
+  comment?: string;
+  logs: { action: string; actor: string; time: string; comment?: string }[];
+};
+
+const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v1";
+const DEFAULT_REFUNDS: RefundRecord[] = [
+  {
+    id: "refund-20260929-001",
+    requestNo: "TK202609290001",
+    orderNo: "ORD1789301120316",
+    buyerName: "马晓彤",
+    buyerPhone: "138****9036",
+    ticketName: "普通观众票",
+    ticketCode: "QT-20260628-10316",
+    amount: 88,
+    reason: "重复购票",
+    detail:
+      "家人已经帮我购买同场次门票，本人购买的这张电子票尚未使用，申请原路退款。",
+    requestedAt: "2026-09-29 16:42",
+    status: "pending_review",
+    logs: [
+      {
+        action: "用户提交退款申请",
+        actor: "马晓彤 · 漫圈 App 用户",
+        time: "2026-09-29 16:42",
+        comment: "重复购票",
+      },
+    ],
+  },
+  {
+    id: "refund-20260928-002",
+    requestNo: "TK202609280002",
+    orderNo: "ORD1789301120762",
+    buyerName: "艾力江·买买提",
+    buyerPhone: "186****5218",
+    ticketName: "Coser 专属票",
+    ticketCode: "QT-20260628-20762",
+    amount: 68,
+    reason: "活动时间冲突",
+    detail: "临时有课程安排，无法按时参加活动。",
+    requestedAt: "2026-09-28 13:20",
+    status: "refunded",
+    processedBy: "周可",
+    processedAt: "2026-09-28 13:38",
+    comment: "符合活动退票规则，同意原路退回",
+    logs: [
+      {
+        action: "用户提交退款申请",
+        actor: "艾力江·买买提 · 漫圈 App 用户",
+        time: "2026-09-28 13:20",
+      },
+      {
+        action: "平台同意退款",
+        actor: "周可 · 平台运营人员",
+        time: "2026-09-28 13:38",
+        comment: "符合活动退票规则，同意原路退回",
+      },
+      {
+        action: "退款已提交原支付渠道",
+        actor: "系统 · 票务系统",
+        time: "2026-09-28 13:38",
+        comment: "预计 1—3 个工作日到账",
+      },
+    ],
+  },
+  {
+    id: "refund-20260927-003",
+    requestNo: "TK202609270003",
+    orderNo: "ORD1789301098175",
+    buyerName: "赵宁",
+    buyerPhone: "177****1182",
+    ticketName: "学生早鸟票",
+    ticketCode: "QT-20260628-98175",
+    amount: 58,
+    reason: "个人原因",
+    detail: "临时无法到场。",
+    requestedAt: "2026-09-27 19:05",
+    status: "rejected",
+    processedBy: "周可",
+    processedAt: "2026-09-27 19:18",
+    comment: "电子票已核验入场，当前订单不符合退款条件",
+    logs: [
+      {
+        action: "用户提交退款申请",
+        actor: "赵宁 · 漫圈 App 用户",
+        time: "2026-09-27 19:05",
+      },
+      {
+        action: "平台驳回退款申请",
+        actor: "周可 · 平台运营人员",
+        time: "2026-09-27 19:18",
+        comment: "电子票已核验入场，当前订单不符合退款条件",
+      },
+    ],
+  },
+];
+
+function loadRefundRecords() {
+  if (typeof window === "undefined") return DEFAULT_REFUNDS;
+  try {
+    const saved = window.localStorage.getItem(REFUND_STORAGE_KEY);
+    return saved ? (JSON.parse(saved) as RefundRecord[]) : DEFAULT_REFUNDS;
+  } catch {
+    return DEFAULT_REFUNDS;
+  }
+}
+
 function TicketPage({
   compact = false,
+  role,
   mode,
   setMode,
 }: {
   compact?: boolean;
+  role: Role;
   mode?: "all" | "orders" | "refunds";
   setMode?: (mode: "all" | "orders" | "refunds") => void;
 }) {
   const selected = mode || "all";
   const set = setMode || (() => {});
+  const [refunds, setRefunds] = useState<RefundRecord[]>(loadRefundRecords);
+  const pending = refunds.filter(item => item.status === "pending_review");
+  const completed = refunds.filter(item => item.status === "refunded");
+  const updateRefund = (next: RefundRecord[]) => {
+    setRefunds(next);
+    window.localStorage.setItem(REFUND_STORAGE_KEY, JSON.stringify(next));
+  };
+  const refundSteps: {
+    icon: typeof Smartphone;
+    title: string;
+    text: string;
+    tone: string;
+  }[] = [
+    {
+      icon: Smartphone,
+      title: "用户在 App 申请",
+      text: "选择订单并填写退款原因",
+      tone: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      icon: ListChecks,
+      title: "平台运营处理",
+      text: "核对订单规则并作出决定",
+      tone: "text-[#255ec8] bg-blue-50",
+    },
+    {
+      icon: WalletCards,
+      title: "原支付渠道退款",
+      text: "结果同步用户端与操作记录",
+      tone: "text-slate-600 bg-slate-100",
+    },
+  ];
   return (
     <div className="space-y-5">
       {!compact && (
         <ModuleTitle
           eyebrow="票务管理"
-          title="票种、订单与现场售票"
-          description="统一管理票种、票价、库存、开售停售、订单、退款、实名信息、电子票和二维码核验。"
+          title="订单、退款与电子票"
+          description="用户在漫圈 App 提交退款申请后自动进入这里，平台运营人员核对订单与退款原因后完成同意或驳回。"
           actions={
-            <ActionButton
-              label="新增票种"
+            <button
+              onClick={() => set("refunds")}
               className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
-              icon={<Plus className="w-4 h-4" />}
-              description="可配置票种名称、票价、库存、开售时间、停售时间和实名规则。"
-            />
+            >
+              <RefreshCcw className="w-4 h-4" />
+              {role === "platform" ? "处理退款申请" : "查看退款申请"}
+              {pending.length > 0 && (
+                <span className="min-w-5 h-5 px-1 rounded-full bg-white/20 text-[12px] flex items-center justify-center">
+                  {pending.length}
+                </span>
+              )}
+            </button>
           }
         />
       )}
+      <section className="bg-white border border-slate-200 rounded-lg px-4 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center">
+        {refundSteps.map(({ icon: Icon, title, text, tone }, index) => (
+          <div key={title} className="contents">
+            <div className="flex items-center gap-3 min-w-0">
+              <span
+                className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${tone}`}
+              >
+                <Icon className="w-4.5 h-4.5" />
+              </span>
+              <div className="min-w-0">
+                <strong className="block text-[14px] text-slate-900">
+                  {title}
+                </strong>
+                <small className="block mt-1 text-[12px] leading-5 text-slate-500">
+                  {text}
+                </small>
+              </div>
+            </div>
+            {index < 2 && (
+              <ArrowRight className="hidden md:block w-4 h-4 text-slate-300" />
+            )}
+          </div>
+        ))}
+      </section>
       <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
         <TodayStat
-          label="票务库存"
-          value="8,300"
-          sub="已配置票种 4 类"
-          icon={<PackageCheck className="w-5 h-5" />}
+          label="待平台处理"
+          value={String(pending.length)}
+          sub={`待退金额 ¥${pending.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}`}
+          icon={<Clock3 className="w-5 h-5" />}
+          tone="amber"
         />
         <TodayStat
-          label="已售票"
+          label="已完成退款"
+          value={String(completed.length)}
+          sub={`累计 ¥${completed.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}`}
+          icon={<CheckCircle2 className="w-5 h-5" />}
+        />
+        <TodayStat
+          label="当前活动已售票"
           value="4,662"
           sub="电子票均已生成"
           icon={<TicketCheck className="w-5 h-5" />}
           tone="blue"
         />
         <TodayStat
-          label="退款订单"
-          value="18"
-          sub="待处理 3 笔"
-          icon={<RefreshCcw className="w-5 h-5" />}
-          tone="amber"
-        />
-        <TodayStat
-          label="现场当日票"
-          value="1,000"
-          sub="活动日 08:30 开售"
-          icon={<WalletCards className="w-5 h-5" />}
+          label="实名完成"
+          value="4,484"
+          sub="实名完成率 96.2%"
+          icon={<ShieldCheck className="w-5 h-5" />}
         />
       </section>
       <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -2691,7 +2885,10 @@ function TicketPage({
               [
                 ["all", "票种配置"],
                 ["orders", "订单管理"],
-                ["refunds", "退款处理"],
+                [
+                  "refunds",
+                  `退款申请${pending.length ? ` ${pending.length}` : ""}`,
+                ],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -2715,7 +2912,7 @@ function TicketPage({
         ) : selected === "orders" ? (
           <OrderTable />
         ) : (
-          <RefundTable />
+          <RefundTable role={role} requests={refunds} onUpdate={updateRefund} />
         )}
       </section>
     </div>
@@ -2832,31 +3029,415 @@ function OrderTable() {
     />
   );
 }
-function RefundTable() {
-  const rows = [
-    [
-      "ORD1789301120316",
-      "普通观众票",
-      "¥88",
-      "重复购票",
-      "申请退款",
-      "核对订单",
-    ],
-    [
-      "ORD1789301120762",
-      "Coser 专属票",
-      "¥68",
-      "活动时间冲突",
-      "退款处理中",
-      "查看材料",
-    ],
-    ["ORD1789301098175", "学生早鸟票", "¥58", "个人原因", "已退款", "查看记录"],
-  ];
+function RefundTable({
+  role,
+  requests,
+  onUpdate,
+}: {
+  role: Role;
+  requests: RefundRecord[];
+  onUpdate: (requests: RefundRecord[]) => void;
+}) {
+  const [selected, setSelected] = useState<RefundRecord | null>(null);
+  const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
+  const [comment, setComment] = useState("");
+  const labels: Record<RefundStatus, string> = {
+    pending_review: "待平台处理",
+    refunded: "已同意并退款",
+    rejected: "已驳回",
+  };
+  const tones: Record<RefundStatus, string> = {
+    pending_review: "bg-amber-50 text-amber-700",
+    refunded: "bg-emerald-50 text-emerald-700",
+    rejected: "bg-rose-50 text-rose-700",
+  };
+  const decide = () => {
+    if (!selected || !decision || role !== "platform") return;
+    if (decision === "reject" && !comment.trim()) return;
+    const time = new Date().toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const processingComment =
+      comment.trim() || "符合活动退票规则，同意原路退回";
+    const updated: RefundRecord = {
+      ...selected,
+      status: decision === "approve" ? "refunded" : "rejected",
+      processedBy: "周可",
+      processedAt: time,
+      comment: processingComment,
+      logs: [
+        ...selected.logs,
+        {
+          action: decision === "approve" ? "平台同意退款" : "平台驳回退款申请",
+          actor: "周可 · 平台运营人员",
+          time,
+          comment: processingComment,
+        },
+        ...(decision === "approve"
+          ? [
+              {
+                action: "退款已提交原支付渠道",
+                actor: "系统 · 票务系统",
+                time,
+                comment: "预计 1—3 个工作日到账",
+              },
+            ]
+          : []),
+      ],
+    };
+    onUpdate(requests.map(item => (item.id === updated.id ? updated : item)));
+    setSelected(updated);
+    setDecision(null);
+    setComment("");
+  };
+
   return (
-    <SimpleTable
-      headers={["订单号", "票种", "金额", "退款原因", "处理状态", "操作"]}
-      rows={rows}
-    />
+    <>
+      <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[13px]">
+        <span className="flex items-center gap-2 font-semibold text-slate-900">
+          <Smartphone className="w-4 h-4" />
+          来自漫圈 App 的退款申请
+        </span>
+        <span className="text-slate-500">
+          按申请时间排序 待处理记录优先展示
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1040px] w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-[13px] text-slate-600">
+              {[
+                "申请编号 / 时间",
+                "购票人 / 订单",
+                "票种 / 金额",
+                "退款原因",
+                "处理状态",
+                "操作",
+              ].map(header => (
+                <th key={header} className="p-4 font-semibold">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {requests.map(item => (
+              <tr key={item.id} className="hover:bg-slate-50 align-top">
+                <td className="p-4">
+                  <strong className="block text-[14px]">
+                    {item.requestNo}
+                  </strong>
+                  <small className="block mt-1 text-[12px] text-slate-500">
+                    {item.requestedAt}
+                  </small>
+                </td>
+                <td className="p-4">
+                  <strong className="block text-[14px]">
+                    {item.buyerName}
+                  </strong>
+                  <small className="block mt-1 text-[12px] text-slate-500">
+                    {item.orderNo}
+                  </small>
+                </td>
+                <td className="p-4 text-[14px]">
+                  {item.ticketName}
+                  <small className="block mt-1 text-[12px] text-slate-500">
+                    ¥{item.amount.toFixed(2)} · 1 张
+                  </small>
+                </td>
+                <td className="p-4 max-w-[260px]">
+                  <strong className="block text-[14px]">{item.reason}</strong>
+                  <small className="block mt-1 text-[12px] leading-5 text-slate-500">
+                    {item.detail}
+                  </small>
+                </td>
+                <td className="p-4">
+                  <span
+                    className={`inline-flex rounded-md px-2 py-1 text-[12px] font-semibold ${tones[item.status]}`}
+                  >
+                    {labels[item.status]}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <button
+                    onClick={() => setSelected(item)}
+                    className="text-[14px] font-semibold text-[#255ec8]"
+                  >
+                    查看处理
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selected && (
+        <div
+          className="fixed inset-0 z-[60] bg-slate-950/35 flex justify-end"
+          onClick={() => setSelected(null)}
+        >
+          <aside
+            className="w-full max-w-[620px] h-full overflow-y-auto bg-white shadow-2xl"
+            onClick={event => event.stopPropagation()}
+          >
+            <header className="sticky top-0 z-10 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between">
+              <div>
+                <div className="text-[13px] text-slate-500">退款申请详情</div>
+                <h3 className="mt-1 text-[18px] font-semibold">
+                  {selected.requestNo}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+                aria-label="关闭退款申请详情"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </header>
+            <div className="p-5 space-y-4">
+              <div
+                className={`rounded-lg p-4 flex items-center gap-3 ${tones[selected.status]}`}
+              >
+                {selected.status === "refunded" ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : selected.status === "rejected" ? (
+                  <XCircle className="w-5 h-5" />
+                ) : (
+                  <Clock3 className="w-5 h-5" />
+                )}
+                <div>
+                  <strong className="block text-[14px]">
+                    {labels[selected.status]}
+                  </strong>
+                  <small className="block mt-1 text-[12px]">
+                    {selected.processedBy
+                      ? `处理人 ${selected.processedBy} · ${selected.processedAt}`
+                      : "等待平台运营人员处理"}
+                  </small>
+                </div>
+              </div>
+
+              <RefundDetailSection
+                title="用户退款申请"
+                icon={<Smartphone className="w-4 h-4" />}
+              >
+                <RefundDetailGrid
+                  items={[
+                    ["来源", "漫圈 App"],
+                    ["申请时间", selected.requestedAt],
+                    ["购票人", selected.buyerName],
+                    ["联系电话", selected.buyerPhone],
+                    ["退款原因", `${selected.reason} · ${selected.detail}`],
+                  ]}
+                />
+              </RefundDetailSection>
+
+              <RefundDetailSection
+                title="关联订单与退款金额"
+                icon={<TicketCheck className="w-4 h-4" />}
+              >
+                <RefundDetailGrid
+                  items={[
+                    ["订单号", selected.orderNo],
+                    ["电子票号", selected.ticketCode],
+                    ["票种", selected.ticketName],
+                    ["退款金额", `¥${selected.amount.toFixed(2)}`],
+                    ["支付方式", "微信支付"],
+                    ["退款去向", "原支付账户"],
+                  ]}
+                />
+              </RefundDetailSection>
+
+              <RefundDetailSection
+                title="退款规则校验"
+                icon={<ListChecks className="w-4 h-4" />}
+              >
+                <div className="grid gap-2">
+                  {[
+                    "订单已支付 · 支付金额已核对",
+                    "电子票未使用 · 无入场核验记录",
+                    "在可退时间内 · 距离活动开始超过 24 小时",
+                    "票种允许退款 · 支持活动前退款",
+                  ].map(text => (
+                    <div
+                      key={text}
+                      className="rounded-lg bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-700 flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </RefundDetailSection>
+
+              <RefundDetailSection
+                title="处理记录"
+                icon={<FileText className="w-4 h-4" />}
+              >
+                <div className="space-y-3">
+                  {selected.logs.map((log, index) => (
+                    <div
+                      key={`${log.action}-${index}`}
+                      className="border-l-2 border-blue-200 pl-3"
+                    >
+                      <strong className="block text-[14px]">
+                        {log.action}
+                      </strong>
+                      <span className="block mt-1 text-[12px] text-slate-500">
+                        {log.actor} · {log.time}
+                      </span>
+                      {log.comment && (
+                        <small className="block mt-1 text-[12px] leading-5 text-slate-600">
+                          {log.comment}
+                        </small>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </RefundDetailSection>
+
+              {selected.status === "pending_review" &&
+                (role === "platform" ? (
+                  <div className="sticky bottom-0 bg-white border-t border-slate-200 pt-4 flex justify-end gap-2">
+                    <button
+                      onClick={() => {
+                        setDecision("reject");
+                        setComment("");
+                      }}
+                      className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+                    >
+                      驳回申请
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDecision("approve");
+                        setComment("符合活动退票规则，同意原路退回");
+                      }}
+                      className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+                    >
+                      同意退款 ¥{selected.amount.toFixed(2)}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-slate-100 p-3 text-[13px] leading-6 text-slate-600 flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 mt-1 shrink-0" />
+                    主办方可查看申请与订单信息 退款决定由平台运营人员完成
+                  </div>
+                ))}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {selected && decision && (
+        <div
+          className="fixed inset-0 z-[70] bg-slate-950/45 flex items-center justify-center p-4"
+          onClick={() => setDecision(null)}
+        >
+          <div
+            className="w-full max-w-[500px] rounded-xl bg-white shadow-2xl"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="p-5 border-b border-slate-200">
+              <h3 className="text-[18px] font-semibold">
+                {decision === "approve" ? "确认同意退款" : "驳回退款申请"}
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <span className="block text-[14px] text-slate-600">
+                  {selected.buyerName} · {selected.ticketName}
+                </span>
+                <strong className="block mt-1 text-[24px]">
+                  ¥{selected.amount.toFixed(2)}
+                </strong>
+                <small className="block mt-2 text-[13px] leading-5 text-slate-500">
+                  {decision === "approve"
+                    ? "确认后将退款提交原支付渠道并同步用户端状态"
+                    : "驳回原因将同步给用户 请填写清楚具体原因"}
+                </small>
+              </div>
+              <label className="block">
+                <span className="block mb-2 text-[14px] font-semibold">
+                  {decision === "approve" ? "处理说明" : "驳回原因"}
+                </span>
+                <textarea
+                  value={comment}
+                  onChange={event => setComment(event.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg border border-slate-300 p-3 text-[14px] outline-none focus:border-[#255ec8]"
+                  placeholder={
+                    decision === "approve"
+                      ? "可填写退款处理说明"
+                      : "请填写不符合退款条件的具体原因"
+                  }
+                />
+              </label>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-2">
+              <button
+                onClick={() => setDecision(null)}
+                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+              >
+                取消
+              </button>
+              <button
+                disabled={decision === "reject" && !comment.trim()}
+                onClick={decide}
+                className="h-10 px-4 rounded-lg bg-[#255ec8] disabled:bg-slate-300 text-white text-[14px] font-semibold"
+              >
+                {decision === "approve" ? "确认同意退款" : "确认驳回"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function RefundDetailSection({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 p-4">
+      <h4 className="mb-4 flex items-center gap-2 text-[15px] font-semibold">
+        {icon}
+        {title}
+      </h4>
+      {children}
+    </section>
+  );
+}
+
+function RefundDetailGrid({ items }: { items: string[][] }) {
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {items.map(([label, value], index) => (
+        <div
+          key={`${label}-${index}`}
+          className={label === "退款原因" ? "sm:col-span-2" : ""}
+        >
+          <dt className="text-[12px] font-semibold text-slate-500">{label}</dt>
+          <dd className="mt-1 text-[14px] leading-6 font-semibold text-slate-800 break-words">
+            {value}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 function SimpleTable({
