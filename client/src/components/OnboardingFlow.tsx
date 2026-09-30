@@ -25,6 +25,23 @@ import {
 import { DateRangeField } from "./TicketTypesEditor";
 import { TicketSessionsEditor } from "./TicketSessionsEditor";
 import {
+  MOCK_SMS_CODE,
+  SMS_MESSAGES,
+  clearRegistrationDraft,
+  createSmsTicket,
+  isValidPhone,
+  loadRegistrationDraft,
+  maskPhone,
+  recordFailedAttempt,
+  resendSeconds,
+  sanitizeCode,
+  sanitizePhone,
+  saveRegistrationDraft,
+  sendButtonLabel,
+  smsPrecheck,
+  type SmsTicket,
+} from "./smsCode";
+import {
   MAX_ACTIVITY_DAYS,
   TICKET_CATEGORY_LABEL,
   countActivityDays,
@@ -426,51 +443,92 @@ export function OrganizerRegistration({
   onBack: () => void;
   onComplete: (state: AdmissionState) => void;
 }) {
-  const [step, setStep] = useState(0);
-  const [phone, setPhone] = useState("");
+  const [draft] = useState(loadRegistrationDraft);
+  const [step, setStep] = useState<0 | 1 | 2>(draft?.step ?? 0);
+  const [phone, setPhone] = useState(draft?.phone ?? "");
   const [code, setCode] = useState("");
-  const [codeSentTo, setCodeSentTo] = useState("");
-  const [countdown, setCountdown] = useState(0);
+  const [ticket, setTicket] = useState<SmsTicket | null>(draft?.ticket ?? null);
+  const [sending, setSending] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const codeRef = useRef<HTMLInputElement>(null);
+  const sendSeq = useRef(0);
   const [agentIdentity, setAgentIdentity] = useState<ApplicantIdentity | "">(
-    ""
+    draft?.agentIdentity ?? ""
   );
-  const [realName, setRealName] = useState("");
+  const [realName, setRealName] = useState(draft?.realName ?? "");
   const [idNumber, setIdNumber] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
+  const [organizationName, setOrganizationName] = useState(
+    draft?.organizationName ?? ""
+  );
   const [agreement, setAgreement] = useState(false);
   const [error, setError] = useState("");
+  const countdown = resendSeconds(ticket, now);
   useEffect(() => {
     if (countdown <= 0) return;
-    const timer = window.setTimeout(
-      () => setCountdown(value => value - 1),
-      1000
-    );
+    const timer = window.setTimeout(() => setNow(Date.now()), 1000);
     return () => window.clearTimeout(timer);
-  }, [countdown]);
-  const maskedPhone = (value: string) =>
-    `${value.slice(0, 3)}****${value.slice(7)}`;
+  }, [countdown, now]);
+  useEffect(() => {
+    saveRegistrationDraft({
+      step,
+      phone,
+      ticket,
+      agentIdentity,
+      realName,
+      organizationName,
+    });
+  }, [step, phone, ticket, agentIdentity, realName, organizationName]);
+  const leave = () => {
+    clearRegistrationDraft();
+    onBack();
+  };
   const sendCode = () => {
-    if (!/^1\d{10}$/.test(phone)) return setError("请输入正确的 11 位手机号");
+    if (sending || countdown > 0) return;
+    if (!isValidPhone(phone)) return setError(SMS_MESSAGES.invalidPhone);
     setError("");
     setCode("");
-    setCodeSentTo(phone);
-    setCountdown(60);
+    setSending(true);
+    const seq = ++sendSeq.current;
+    // 本地样例模式模拟短信网关耗时 接入后端时替换为 POST /auth/sms-code
+    window.setTimeout(() => {
+      // 发送过程中更换了手机号 旧请求结果作废
+      if (seq !== sendSeq.current) return;
+      const sentAt = Date.now();
+      setTicket(createSmsTicket(phone, sentAt, { mockCode: MOCK_SMS_CODE }));
+      setNow(sentAt);
+      setSending(false);
+      requestAnimationFrame(() => codeRef.current?.focus());
+    }, 400);
   };
   const changePhone = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 11);
+    const digits = sanitizePhone(value);
+    if (digits !== phone && sending) {
+      sendSeq.current += 1;
+      setSending(false);
+    }
     setPhone(digits);
-    if (codeSentTo && digits !== codeSentTo) {
-      setCodeSentTo("");
-      setCountdown(0);
+    setError("");
+    if (ticket && digits !== ticket.phone) {
+      setTicket(null);
       setCode("");
     }
   };
+  const changeCode = (value: string) => {
+    setCode(sanitizeCode(value));
+    setError("");
+  };
   const next = () => {
     if (step === 0) {
-      if (!/^1\d{10}$/.test(phone)) return setError("请输入正确的 11 位手机号");
-      if (codeSentTo !== phone) return setError("请先点击获取验证码");
-      if (!/^\d{6}$/.test(code)) return setError("请输入 6 位短信验证码");
-      if (code !== "246810") return setError("验证码不正确 请重新输入");
+      const checkedAt = Date.now();
+      setNow(checkedAt);
+      const blocked = smsPrecheck(ticket, phone, code, checkedAt);
+      if (blocked) return setError(blocked);
+      // 本地样例模式比对固定验证码 接入后端时替换为 POST /auth/organizer-register
+      if (ticket && code !== MOCK_SMS_CODE) {
+        const result = recordFailedAttempt(ticket);
+        setTicket(result.ticket);
+        return setError(result.error);
+      }
       setError("");
       setStep(1);
       return;
@@ -485,6 +543,7 @@ export function OrganizerRegistration({
     if (!realName.trim() || idNumber.trim().length < 8)
       return setError("请完整填写本人实名信息");
     if (!agreement) return setError("请确认办理身份与信息真实性承诺");
+    clearRegistrationDraft();
     onComplete({
       ...createEmptyAdmission(),
       status: "identity_completed",
@@ -509,7 +568,8 @@ export function OrganizerRegistration({
     <div className="min-h-screen bg-[#f7f6fb] text-slate-900">
       <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
         <button
-          onClick={onBack}
+          type="button"
+          onClick={leave}
           className="flex h-10 items-center gap-2 rounded-md px-3 text-[14px] font-semibold hover:bg-slate-100"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -574,7 +634,15 @@ export function OrganizerRegistration({
               <span className="block">查看与操作均保留记录</span>
             </div>
           </aside>
-          <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
+          <form
+            noValidate
+            data-cy="registration-form"
+            onSubmit={event => {
+              event.preventDefault();
+              if (!sending) next();
+            }}
+            className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7"
+          >
             <Heading
               eyebrow={`首次入驻 · 第 ${step + 1} 步 共 3 步`}
               title={registrationTitle}
@@ -591,9 +659,9 @@ export function OrganizerRegistration({
                       <input
                         value={phone}
                         onChange={event => changePhone(event.target.value)}
+                        type="tel"
                         inputMode="numeric"
-                        autoComplete="tel"
-                        maxLength={11}
+                        autoComplete="tel-national"
                         placeholder="请输入 11 位手机号"
                         data-cy="registration-phone"
                         className="block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
@@ -601,15 +669,12 @@ export function OrganizerRegistration({
                       <button
                         type="button"
                         onClick={sendCode}
-                        disabled={countdown > 0}
+                        disabled={sending || countdown > 0}
+                        aria-busy={sending}
                         data-cy="registration-send-code"
                         className="h-11 min-w-[112px] whitespace-nowrap rounded-md border border-brand-400 bg-white px-3 text-[14px] font-semibold text-brand-700 tabular-nums transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500"
                       >
-                        {countdown > 0
-                          ? `${countdown}s 后重发`
-                          : codeSentTo
-                            ? "重新获取"
-                            : "获取验证码"}
+                        {sendButtonLabel(ticket, now, sending)}
                       </button>
                     </span>
                   </label>
@@ -618,12 +683,9 @@ export function OrganizerRegistration({
                       验证码
                     </span>
                     <input
+                      ref={codeRef}
                       value={code}
-                      onChange={event =>
-                        setCode(
-                          event.target.value.replace(/\D/g, "").slice(0, 6)
-                        )
-                      }
+                      onChange={event => changeCode(event.target.value)}
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       maxLength={6}
@@ -632,22 +694,32 @@ export function OrganizerRegistration({
                       className="mt-2 block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                     />
                   </label>
-                  {codeSentTo && (
+                  {ticket && (
                     <div
                       data-cy="registration-code-sent"
+                      aria-live="polite"
                       className="sm:col-span-2 flex items-start gap-2 rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-[14px] leading-6 text-brand-900"
                     >
                       <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-600" />
                       <span>
                         <span className="inline-block whitespace-nowrap">
-                          验证码已发送至 {maskedPhone(codeSentTo)}
+                          验证码已发送至 {maskPhone(ticket.phone)}
                         </span>{" "}
                         <span className="inline-block whitespace-nowrap">
-                          有效期 5 分钟
-                        </span>{" "}
-                        <span className="inline-block whitespace-nowrap">
-                          本次验证码 246810
+                          有效期{" "}
+                          {Math.round(
+                            (ticket.expiresAt - ticket.sentAt) / 60000
+                          )}{" "}
+                          分钟
                         </span>
+                        {ticket.mockCode && (
+                          <>
+                            {" "}
+                            <span className="inline-block whitespace-nowrap">
+                              本次验证码 {ticket.mockCode}
+                            </span>
+                          </>
+                        )}
                       </span>
                     </div>
                   )}
@@ -761,21 +833,28 @@ export function OrganizerRegistration({
               )}
             </div>
             {error && (
-              <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-[14px] text-rose-700">
+              <div
+                role="alert"
+                data-cy="registration-error"
+                className="mt-5 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-[14px] text-rose-700"
+              >
                 {error}
               </div>
             )}
             <div className="mt-7 flex justify-between gap-3">
               <button
-                onClick={() =>
-                  step === 0 ? onBack() : setStep(current => current - 1)
-                }
+                type="button"
+                onClick={() => {
+                  setError("");
+                  if (step === 0) leave();
+                  else setStep(step === 2 ? 1 : 0);
+                }}
                 className="h-11 rounded-full border border-brand-200 px-5 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
               >
                 {step === 0 ? "返回登录" : "上一步"}
               </button>
               <button
-                onClick={next}
+                type="submit"
                 data-cy="registration-next"
                 className="flex h-11 items-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
               >
@@ -787,7 +866,7 @@ export function OrganizerRegistration({
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-          </section>
+          </form>
         </div>
       </main>
     </div>
