@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -429,6 +429,8 @@ export function OrganizerRegistration({
   const [step, setStep] = useState(0);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [codeSentTo, setCodeSentTo] = useState("");
+  const [countdown, setCountdown] = useState(0);
   const [agentIdentity, setAgentIdentity] = useState<ApplicantIdentity | "">(
     ""
   );
@@ -437,10 +439,38 @@ export function OrganizerRegistration({
   const [organizationName, setOrganizationName] = useState("");
   const [agreement, setAgreement] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = window.setTimeout(
+      () => setCountdown(value => value - 1),
+      1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
+  const maskedPhone = (value: string) =>
+    `${value.slice(0, 3)}****${value.slice(7)}`;
+  const sendCode = () => {
+    if (!/^1\d{10}$/.test(phone)) return setError("请输入正确的 11 位手机号");
+    setError("");
+    setCode("");
+    setCodeSentTo(phone);
+    setCountdown(60);
+  };
+  const changePhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    setPhone(digits);
+    if (codeSentTo && digits !== codeSentTo) {
+      setCodeSentTo("");
+      setCountdown(0);
+      setCode("");
+    }
+  };
   const next = () => {
     if (step === 0) {
       if (!/^1\d{10}$/.test(phone)) return setError("请输入正确的 11 位手机号");
-      if (code !== "246810") return setError("请输入验证码 246810");
+      if (codeSentTo !== phone) return setError("请先点击获取验证码");
+      if (!/^\d{6}$/.test(code)) return setError("请输入 6 位短信验证码");
+      if (code !== "246810") return setError("验证码不正确 请重新输入");
       setError("");
       setStep(1);
       return;
@@ -553,18 +583,74 @@ export function OrganizerRegistration({
             <div className="mt-7 grid gap-5 sm:grid-cols-2">
               {step === 0 ? (
                 <>
-                  <TextInput
-                    label="手机号"
-                    value={phone}
-                    onChange={setPhone}
-                    placeholder="请输入手机号"
-                  />
-                  <TextInput
-                    label="验证码"
-                    value={code}
-                    onChange={setCode}
-                    placeholder="验证码 246810"
-                  />
+                  <label className="block min-w-0 sm:col-span-2">
+                    <span className="text-[14px] font-semibold text-slate-800">
+                      手机号
+                    </span>
+                    <span className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                      <input
+                        value={phone}
+                        onChange={event => changePhone(event.target.value)}
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        maxLength={11}
+                        placeholder="请输入 11 位手机号"
+                        data-cy="registration-phone"
+                        className="block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={sendCode}
+                        disabled={countdown > 0}
+                        data-cy="registration-send-code"
+                        className="h-11 min-w-[112px] whitespace-nowrap rounded-md border border-brand-400 bg-white px-3 text-[14px] font-semibold text-brand-700 tabular-nums transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500"
+                      >
+                        {countdown > 0
+                          ? `${countdown}s 后重发`
+                          : codeSentTo
+                            ? "重新获取"
+                            : "获取验证码"}
+                      </button>
+                    </span>
+                  </label>
+                  <label className="block min-w-0 sm:col-span-2">
+                    <span className="text-[14px] font-semibold text-slate-800">
+                      验证码
+                    </span>
+                    <input
+                      value={code}
+                      onChange={event =>
+                        setCode(
+                          event.target.value.replace(/\D/g, "").slice(0, 6)
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="请输入 6 位验证码"
+                      data-cy="registration-code"
+                      className="mt-2 block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </label>
+                  {codeSentTo && (
+                    <div
+                      data-cy="registration-code-sent"
+                      className="sm:col-span-2 flex items-start gap-2 rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-[14px] leading-6 text-brand-900"
+                    >
+                      <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-600" />
+                      <span>
+                        <span className="inline-block whitespace-nowrap">
+                          验证码已发送至 {maskedPhone(codeSentTo)}
+                        </span>{" "}
+                        <span className="inline-block whitespace-nowrap">
+                          有效期 5 分钟
+                        </span>{" "}
+                        <span className="inline-block whitespace-nowrap">
+                          本次验证码 246810
+                        </span>
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : step === 1 ? (
                 <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">

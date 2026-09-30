@@ -227,9 +227,6 @@ button.bg-brand-grad:not(:disabled) {
 }
 
 @media (max-width: 639px) {
-  .role-login-card {
-    min-height: 116px;
-  }
   .metric-card {
     min-height: 136px;
   }

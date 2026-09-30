@@ -62,6 +62,7 @@ import {
   Building,
   ChartNoAxesCombined,
   Eye,
+  EyeOff,
   UserRound,
   UserPlus,
   Image,
@@ -98,7 +99,7 @@ import {
   saveTicketSession,
 } from "@/components/TicketLimitViews";
 import { formatSessionDate } from "@/components/ticketTypes";
-type Role = "platform" | "organizer" | "culture" | "collaborator";
+type Role = "platform" | "organizer" | "culture";
 type TicketMode = "all" | "orders" | "refunds" | "limits";
 type Page =
   | "workspace"
@@ -392,13 +393,6 @@ const ROLE_INFO: Record<
       "organizer",
       "data",
     ],
-  },
-  collaborator: {
-    name: "现场协同人员",
-    note: "处理现场核验、异常记录与处置反馈",
-    icon: ShieldCheck,
-    color: "bg-teal-600",
-    permissions: ["workspace", "activity", "costumes", "onsite"],
   },
 };
 
@@ -752,7 +746,7 @@ function ActionButton({
                         time="今天 10:36"
                       />
                       <TimelineRow
-                        text="协同人员完成资料核验"
+                        text="平台运营人员完成资料核验"
                         time="昨天 16:30"
                       />
                     </div>
@@ -853,6 +847,40 @@ function TimelineRow({ text, time }: { text: string; time: string }) {
     </div>
   );
 }
+const LOGIN_ROLE_LINES: Record<Role, [string, string]> = {
+  platform: ["入驻审核", "流程配置与服务运营"],
+  organizer: ["活动资料 票务", "参与人员与现场管理"],
+  culture: ["活动电子档案", "服务进度与汇总数据"],
+};
+const LOGIN_CAPABILITIES = [
+  {
+    icon: FileCheck2,
+    title: "主办方入驻",
+    text: ["手机号注册", "实名与主体材料审核"],
+  },
+  {
+    icon: TicketCheck,
+    title: "票务与现场",
+    text: ["多日场次 身份证限购", "扫码入场核验"],
+  },
+  {
+    icon: FileArchive,
+    title: "活动归档",
+    text: ["活动结束", "形成完整数字档案"],
+  },
+] as const;
+function PhraseLine({ parts }: { parts: readonly string[] }) {
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={part}>
+          {index > 0 && " "}
+          <span className="inline-block whitespace-nowrap">{part}</span>
+        </span>
+      ))}
+    </>
+  );
+}
 function Login({
   role,
   setRole,
@@ -871,14 +899,9 @@ function Login({
   const t = TEXT[locale];
   const [account, setAccount] = useState("linjie@quji.cn");
   const [password, setPassword] = useState("123456");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const roles = Object.entries(ROLE_INFO) as [Role, (typeof ROLE_INFO)[Role]][];
-  const noteLines: Record<Role, [string, string]> = {
-    platform: ["配置活动流程", "账号权限 服务运营"],
-    organizer: ["维护活动资料 票务", "现场与参与人员"],
-    culture: ["查看活动电子档案", "服务进度与汇总数据"],
-    collaborator: ["处理现场核验", "异常记录与处置反馈"],
-  };
   const submit = () => {
     if (!account.trim() || !password.trim()) {
       setError("请输入账号和密码");
@@ -891,6 +914,8 @@ function Login({
     setError("");
     onEnter();
   };
+  const inputClass =
+    "h-11 w-full rounded-full border border-slate-200 bg-slate-50 ps-11 text-[14px] text-slate-800 outline-none transition-colors focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100";
   return (
     <div
       className="relative min-h-screen overflow-hidden bg-[#f4effb]"
@@ -905,8 +930,11 @@ function Login({
         <Brand />
         <LocaleSwitch locale={locale} setLocale={setLocale} />
       </header>
-      <main className="relative z-10 max-w-[1220px] w-full mx-auto px-5 py-8 lg:py-12 grid lg:grid-cols-[0.9fr_1.05fr] gap-8 lg:gap-14 items-center">
-        <section className="relative max-w-[510px] rounded-2xl bg-white/65 backdrop-blur-md border border-white/70 p-6 sm:p-8 shadow-[0_16px_50px_rgba(76,35,133,0.12)]">
+      <main className="relative z-10 mx-auto grid w-full max-w-[1180px] items-center gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-16 lg:py-12">
+        <section
+          data-cy="login-intro"
+          className="relative order-2 w-full max-w-[520px] rounded-2xl border border-white/70 bg-white/65 p-6 shadow-[0_16px_50px_rgba(76,35,133,0.12)] backdrop-blur-md sm:p-8 lg:order-1"
+        >
           <img
             src={MASCOT.login}
             alt=""
@@ -914,148 +942,210 @@ function Login({
             width={132}
             height={236}
             data-cy="login-mascot"
-            className="pointer-events-none absolute -top-[150px] right-4 hidden w-[132px] h-auto select-none sm:block"
+            className="pointer-events-none absolute -top-[150px] end-4 hidden h-auto w-[132px] select-none lg:block"
           />
           <Pill tone="blue">新疆 · 多元文化活动协同</Pill>
-          <h1 className="mt-5 text-[38px] sm:text-[48px] leading-[1.12] font-semibold tracking-[-0.06em]">
+          <h1 className="mt-5 text-[38px] sm:text-[46px] leading-[1.12] font-semibold tracking-[-0.06em]">
             一场活动
             <br />
             一套完整数字档案
           </h1>
-          <p className="mt-5 text-[17px] leading-7 text-slate-700">
+          <p className="mt-4 text-[16px] leading-7 text-slate-700">
             <span className="block">
-              <span className="inline-block whitespace-nowrap">
-                以活动为核心对象
-              </span>{" "}
-              <span className="inline-block whitespace-nowrap">
-                连接主办方资料 参与人员
-              </span>
+              <PhraseLine parts={["以活动为核心对象", "连接主办方资料"]} />
             </span>
             <span className="block">
-              <span className="inline-block whitespace-nowrap">
-                票务 角色服装道具
-              </span>{" "}
-              <span className="inline-block whitespace-nowrap">
-                现场核验与活动归档
-              </span>
+              <PhraseLine parts={["参与人员 票务", "角色服装道具与归档"]} />
             </span>
           </p>
-          <div className="mt-8 grid grid-cols-3 gap-3">
-            <LoginMetric value="01" label="统一工作台" />
-            <LoginMetric value="09" label="活动档案模块" />
-            <LoginMetric value="全程" label="操作留痕" />
-          </div>
+          <ul className="mt-7 grid gap-3" data-cy="login-capabilities">
+            {LOGIN_CAPABILITIES.map(({ icon: Icon, title, text }) => (
+              <li
+                key={title}
+                className="flex items-center gap-3 rounded-xl border border-white bg-white/85 px-4 py-3"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-grad text-white shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]">
+                  <Icon className="h-5 w-5" strokeWidth={1.9} />
+                </span>
+                <span className="min-w-0 text-start">
+                  <span className="block whitespace-nowrap text-[15px] font-semibold leading-5 text-slate-900">
+                    {title}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] leading-5 text-slate-600">
+                    <PhraseLine parts={text} />
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
         <form
+          data-cy="login-form"
           onSubmit={event => {
             event.preventDefault();
             submit();
           }}
-          className="bg-white/94 border border-white rounded-2xl p-6 lg:p-8 shadow-[0_22px_70px_rgba(76,35,133,0.16)] backdrop-blur-xl"
+          className="order-1 w-full rounded-2xl border border-white bg-white/95 p-6 shadow-[0_22px_70px_rgba(76,35,133,0.16)] backdrop-blur-xl sm:p-8 lg:order-2"
         >
-          <ModuleTitle
-            eyebrow="角色登录"
-            title={t.roleLogin}
-            description="同一套后台按角色展示可用菜单与业务数据"
-          />
-          <div className="mt-6 grid sm:grid-cols-2 gap-3">
-            {roles.map(([key, item]) => {
-              const Icon = item.icon;
-              const selected = role === key;
-              const [note1, note2] = noteLines[key];
-              return (
+          <div className="text-start">
+            <div className="text-[13px] font-semibold text-brand-600">
+              账号登录
+            </div>
+            <h2 className="mt-1 text-[26px] leading-9 font-semibold tracking-[-0.03em] text-slate-900">
+              登录趣集
+            </h2>
+            <p className="mt-1 text-[14px] leading-6 text-slate-600">
+              <PhraseLine parts={["选择工作身份", "进入对应的菜单与数据"]} />
+            </p>
+          </div>
+          <fieldset className="mt-6">
+            <legend className="text-[14px] font-semibold text-slate-800">
+              {t.roleLogin}
+            </legend>
+            <div role="radiogroup" className="mt-2 grid gap-2">
+              {roles.map(([key, item]) => {
+                const Icon = item.icon;
+                const selected = role === key;
+                return (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    key={key}
+                    data-cy={`login-role-${key}`}
+                    onClick={() => {
+                      setRole(key);
+                      setError("");
+                    }}
+                    className={`role-login-card flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-start transition-colors ${selected ? "border-brand-400 bg-gradient-to-br from-brand-100 to-brand-50 ring-1 ring-brand-400" : "border-slate-200 bg-white hover:border-brand-300"}`}
+                  >
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${item.color} text-white shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]`}
+                    >
+                      <Icon className="h-5 w-5" strokeWidth={1.9} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block whitespace-nowrap text-[15px] font-semibold leading-5 text-slate-900">
+                        {item.name}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] leading-5 text-slate-600">
+                        <PhraseLine parts={LOGIN_ROLE_LINES[key]} />
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-transparent bg-brand-grad text-white" : "border-slate-300 bg-white"}`}
+                    >
+                      {selected && (
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="text-[14px] font-semibold text-slate-800">
+                账号
+              </span>
+              <span className="relative mt-2 block">
+                <UserRound className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={account}
+                  onChange={e => setAccount(e.target.value)}
+                  autoComplete="username"
+                  data-cy="login-account"
+                  className={`${inputClass} pe-4`}
+                />
+              </span>
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[14px] font-semibold text-slate-800">
+                密码
+              </span>
+              <span className="relative mt-2 block">
+                <LockKeyhole className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  data-cy="login-password"
+                  className={`${inputClass} pe-11`}
+                />
                 <button
                   type="button"
-                  key={key}
-                  onClick={() => {
-                    setRole(key);
-                    setError("");
-                  }}
-                  className={`role-login-card text-left rounded-xl border p-4 min-h-[138px] transition-colors ${selected ? "border-brand-400 bg-gradient-to-br from-brand-100 to-brand-50 ring-1 ring-brand-400" : "border-slate-200 bg-white/80 hover:border-brand-300"}`}
+                  onClick={() => setShowPassword(value => !value)}
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                  data-cy="login-password-toggle"
+                  className="absolute end-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-brand-50 hover:text-brand-700"
                 >
-                  <div
-                    className={`w-10 h-10 rounded-full ${item.color} text-white flex items-center justify-center shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]`}
-                  >
-                    <Icon className="w-5 h-5" strokeWidth={1.9} />
-                  </div>
-                  <div className="mt-3 text-[16px] leading-5 font-semibold whitespace-nowrap">
-                    {item.name}
-                  </div>
-                  <div className="mt-2 text-[13px] leading-5 text-slate-600">
-                    <span className="block whitespace-nowrap">{note1}</span>
-                    <span className="block whitespace-nowrap">{note2}</span>
-                  </div>
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
-              );
-            })}
-          </div>
-          <div className="mt-6 grid sm:grid-cols-2 gap-4">
-            <label>
-              <span className="text-[14px] font-semibold">账号</span>
-              <input
-                value={account}
-                onChange={e => setAccount(e.target.value)}
-                autoComplete="username"
-                className="mt-2 h-11 w-full px-4 rounded-full bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-brand-400 focus:bg-white"
-              />
-            </label>
-            <label>
-              <span className="text-[14px] font-semibold">密码</span>
-              <input
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                type="password"
-                autoComplete="current-password"
-                className="mt-2 h-11 w-full px-4 rounded-full bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-brand-400 focus:bg-white"
-              />
+              </span>
             </label>
           </div>
-          <div className="mt-3 text-[13px] leading-5 text-slate-500">
-            预置账号 linjie@quji.cn
-            <br />
-            预置密码 123456
+          <div className="mt-3 text-start text-[13px] leading-5 text-slate-500">
+            <PhraseLine
+              parts={["预置账号 linjie@quji.cn", "预置密码 123456"]}
+            />
           </div>
           {error && (
-            <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+            <div
+              data-cy="login-error"
+              className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700"
+            >
               {error}
             </div>
           )}
           <button
-            type="button"
-            onClick={submit}
-            className="mt-5 w-full h-12 rounded-full bg-brand-grad hover:brightness-95 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
+            type="submit"
+            data-cy="login-submit"
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-grad text-[15px] font-semibold text-white hover:brightness-95"
           >
             {t.enter}
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" />
           </button>
-          {role === "organizer" && (
-            <button
-              type="button"
-              onClick={onRegister}
-              data-cy="organizer-register"
-              className="mt-3 w-full h-11 rounded-lg border border-brand-500 bg-white text-brand-700 text-[14px] font-semibold flex items-center justify-center gap-2"
+          {role === "organizer" ? (
+            <div className="mt-5" data-cy="login-register-block">
+              <div className="flex items-center gap-3 text-[12px] text-slate-500">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span className="whitespace-nowrap">首次使用</span>
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <button
+                type="button"
+                onClick={onRegister}
+                data-cy="organizer-register"
+                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-brand-400 bg-white text-[14px] font-semibold text-brand-700 hover:bg-brand-50"
+              >
+                <UserPlus className="h-4 w-4" />
+                主办方首次入驻注册
+              </button>
+              <p className="mt-2 text-center text-[12px] leading-5 text-slate-500">
+                <PhraseLine
+                  parts={["手机号验证 实名核验", "主体材料审核通过后发布活动"]}
+                />
+              </p>
+            </div>
+          ) : (
+            <p
+              data-cy="login-account-note"
+              className="mt-5 text-center text-[12px] leading-5 text-slate-500"
             >
-              <UserPlus className="w-4 h-4" />
-              首次入驻注册
-            </button>
+              <PhraseLine
+                parts={["账号由平台统一开通", "如需开通请联系平台运营人员"]}
+              />
+            </p>
           )}
-          <p className="mt-3 text-center text-[12px] leading-5 text-slate-500">
-            新主办方先完成手机号注册 实名核验与主体材料审核
-          </p>
         </form>
       </main>
-    </div>
-  );
-}
-function LoginMetric({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="bg-white border border-brand-100 rounded-xl p-3">
-      <div className="text-brand-grad text-[22px] font-bold tracking-[-0.03em]">
-        {value}
-      </div>
-      <div className="mt-1 text-[12px] text-slate-600 whitespace-nowrap">
-        {label}
-      </div>
     </div>
   );
 }
@@ -1372,9 +1462,7 @@ export default function Home() {
       ? admission.realName || "林洁"
       : role === "culture"
         ? "王处长"
-        : role === "collaborator"
-          ? "艾警官"
-          : "周可";
+        : "周可";
   if (registrationOpen)
     return (
       <OrganizerRegistration
