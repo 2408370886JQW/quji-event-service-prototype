@@ -83,6 +83,11 @@ import {
   createEmptyAdmission,
   type AdmissionState,
 } from "@/components/OnboardingFlow";
+import {
+  buildTicketStock,
+  formatCount,
+  totalTicketStock,
+} from "@/components/ticketStats";
 type Role = "platform" | "organizer" | "culture" | "collaborator";
 type Page =
   | "workspace"
@@ -363,7 +368,9 @@ const ROLE_INFO: Record<
 const TICKETS = [
   {
     type: "普通观众票",
-    price: "¥88",
+    price: 88,
+    purchaseLimit: 4,
+    realName: true,
     stock: 6000,
     sold: 3548,
     status: "售票中",
@@ -372,7 +379,9 @@ const TICKETS = [
   },
   {
     type: "Coser 专属票",
-    price: "¥68",
+    price: 68,
+    purchaseLimit: 1,
+    realName: true,
     stock: 500,
     sold: 326,
     status: "售票中",
@@ -381,7 +390,9 @@ const TICKETS = [
   },
   {
     type: "学生早鸟票",
-    price: "¥58",
+    price: 58,
+    purchaseLimit: 2,
+    realName: true,
     stock: 800,
     sold: 788,
     status: "已停售",
@@ -390,7 +401,9 @@ const TICKETS = [
   },
   {
     type: "现场当日票",
-    price: "¥98",
+    price: 98,
+    purchaseLimit: 2,
+    realName: true,
     stock: 1000,
     sold: 0,
     status: "待开售",
@@ -3077,7 +3090,7 @@ function TicketPage({
           />
         </div>
         {selected === "all" ? (
-          <TicketTypes />
+          <TicketTypes refunds={refunds} onRefunds={() => set("refunds")} />
         ) : selected === "orders" ? (
           <OrderTable />
         ) : (
@@ -3087,69 +3100,221 @@ function TicketPage({
     </div>
   );
 }
-function TicketTypes() {
+function TicketTypes({
+  refunds,
+  onRefunds,
+}: {
+  refunds: RefundRecord[];
+  onRefunds: () => void;
+}) {
+  const rows = buildTicketStock(
+    TICKETS.map(ticket => ({
+      ...ticket,
+      name: ticket.type,
+      inventory: ticket.stock,
+    })),
+    refunds
+  );
+  const total = totalTicketStock(rows);
+  const statusTone = (status: string) =>
+    status === "售票中" ? "green" : status === "待开售" ? "blue" : "slate";
+  const rule = (ticket: (typeof TICKETS)[number]) =>
+    `限购 ${ticket.purchaseLimit} 张 · ${ticket.realName ? "需要实名" : "无需实名"}`;
+  const Pending = ({ count }: { count: number }) =>
+    count ? (
+      <button
+        onClick={onRefunds}
+        className="mt-1 block text-[12px] font-semibold whitespace-nowrap text-amber-700 hover:underline"
+      >
+        待处理 {count}
+      </button>
+    ) : null;
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-[960px] w-full text-left">
-        <thead>
-          <tr className="bg-slate-50 text-[13px] text-slate-600">
-            <th className="p-4 font-semibold">票种</th>
-            <th className="p-4 font-semibold">票价</th>
-            <th className="p-4 font-semibold">库存</th>
-            <th className="p-4 font-semibold">开售 / 停售</th>
-            <th className="p-4 font-semibold">渠道</th>
-            <th className="p-4 font-semibold">状态</th>
-            <th className="p-4 text-right font-semibold">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200">
-          {TICKETS.map(ticket => (
-            <tr key={ticket.type}>
-              <td className="p-4 text-[15px] font-semibold">{ticket.type}</td>
-              <td className="p-4 text-[15px] font-semibold">{ticket.price}</td>
-              <td className="p-4">
-                <div className="text-[14px] font-semibold">
-                  {ticket.sold} / {ticket.stock}
-                </div>
-                <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#255ec8]"
-                    style={{
-                      width: `${Math.min((ticket.sold / ticket.stock) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-              </td>
-              <td className="p-4 text-[14px] leading-5 text-slate-600">
-                {ticket.sales}
-              </td>
-              <td className="p-4 text-[14px] text-slate-600">
-                {ticket.channel}
-              </td>
-              <td className="p-4">
-                <Pill
-                  tone={
-                    ticket.status === "售票中"
-                      ? "green"
-                      : ticket.status === "待开售"
-                        ? "blue"
-                        : "slate"
-                  }
+    <div data-cy="ticket-stock-table">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 text-[13px] leading-5 text-slate-500">
+        <span>
+          <span className="block sm:inline">按票种统计已售 已退款和剩余</span>
+          <span className="block sm:ml-2 sm:inline">
+            退款完成后票回到剩余库存
+          </span>
+        </span>
+        <span className="whitespace-nowrap">剩余 = 库存 - 已售 + 已退款</span>
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[980px] text-left">
+          <thead>
+            <tr className="bg-slate-50 text-[13px] text-slate-600">
+              <th className="p-4 font-semibold">票种</th>
+              <th className="p-4 text-right font-semibold">库存</th>
+              <th className="p-4 text-right font-semibold">已售</th>
+              <th className="p-4 text-right font-semibold">已退款</th>
+              <th className="p-4 text-right font-semibold">剩余</th>
+              <th className="p-4 font-semibold">销售进度</th>
+              <th className="p-4 font-semibold">状态</th>
+              <th className="p-4 text-right font-semibold">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {rows.map(row => (
+              <tr key={row.ticket.type} data-cy="ticket-stock-row">
+                <td className="p-4">
+                  <div className="text-[15px] font-semibold text-slate-900">
+                    {row.ticket.type}
+                  </div>
+                  <div className="mt-1 text-[13px] whitespace-nowrap text-slate-500">
+                    ¥{row.ticket.price} · {rule(row.ticket)}
+                  </div>
+                </td>
+                <td className="data-token p-4 text-right text-[15px] text-slate-700">
+                  {formatCount(row.ticket.stock)}
+                </td>
+                <td
+                  className="data-token p-4 text-right text-[15px] font-semibold text-slate-900"
+                  data-cy="stock-sold"
                 >
-                  {ticket.status}
-                </Pill>
+                  {formatCount(row.sold)}
+                </td>
+                <td className="p-4 text-right" data-cy="stock-refunded">
+                  <span
+                    className={`data-token text-[15px] font-semibold ${row.refunded ? "text-rose-700" : "text-slate-400"}`}
+                  >
+                    {formatCount(row.refunded)}
+                  </span>
+                  <Pending count={row.pending} />
+                </td>
+                <td
+                  className="data-token p-4 text-right text-[15px] font-semibold text-[#1c4c9e]"
+                  data-cy="stock-remaining"
+                >
+                  {formatCount(row.remaining)}
+                </td>
+                <td className="p-4">
+                  <div className="text-[13px] whitespace-nowrap text-slate-600">
+                    净售出 {row.soldPercent}%
+                  </div>
+                  <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full bg-[#255ec8]"
+                      style={{ width: `${row.soldPercent}%` }}
+                    />
+                  </div>
+                </td>
+                <td className="p-4">
+                  <Pill tone={statusTone(row.ticket.status)}>
+                    {row.ticket.status}
+                  </Pill>
+                  <div className="mt-1.5 text-[12px] leading-5 whitespace-nowrap text-slate-500">
+                    {row.ticket.sales}
+                  </div>
+                </td>
+                <td className="p-4 text-right">
+                  <ActionButton
+                    label="管理"
+                    className="text-[14px] font-semibold text-[#255ec8]"
+                    description="可调整库存、开售停售时间、每人限购和实名规则。"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr
+              className="border-t border-slate-200 bg-slate-50 text-[14px] font-semibold text-slate-900"
+              data-cy="ticket-stock-total"
+            >
+              <td className="p-4">合计 {rows.length} 个票种</td>
+              <td className="data-token p-4 text-right">
+                {formatCount(total.inventory)}
+              </td>
+              <td className="data-token p-4 text-right">
+                {formatCount(total.sold)}
               </td>
               <td className="p-4 text-right">
-                <ActionButton
-                  label="管理"
-                  className="text-[14px] font-semibold text-[#255ec8]"
-                  description="可调整库存、开售停售时间、渠道和实名规则。"
-                />
+                <span className="data-token text-rose-700">
+                  {formatCount(total.refunded)}
+                </span>
+                <span className="block text-[12px] font-normal whitespace-nowrap text-slate-500">
+                  退款 ¥{total.refundedAmount.toFixed(2)}
+                </span>
               </td>
+              <td className="data-token p-4 text-right text-[#1c4c9e]">
+                {formatCount(total.remaining)}
+              </td>
+              <td className="p-4" colSpan={3} />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </tfoot>
+        </table>
+      </div>
+      <div className="divide-y divide-slate-200 md:hidden">
+        {rows.map(row => (
+          <article
+            key={row.ticket.type}
+            className="p-4"
+            data-cy="ticket-stock-card"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[15px] font-semibold text-slate-900">
+                  {row.ticket.type}
+                </div>
+                <div className="mt-1 text-[13px] leading-5 text-slate-500">
+                  <span className="block">¥{row.ticket.price}</span>
+                  <span className="block">{rule(row.ticket)}</span>
+                </div>
+              </div>
+              <Pill tone={statusTone(row.ticket.status)}>
+                {row.ticket.status}
+              </Pill>
+            </div>
+            <dl className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-slate-200 text-center">
+              {(
+                [
+                  ["已售", row.sold, "text-slate-900"],
+                  [
+                    "已退款",
+                    row.refunded,
+                    row.refunded ? "text-rose-700" : "text-slate-400",
+                  ],
+                  ["剩余", row.remaining, "text-[#1c4c9e]"],
+                ] as const
+              ).map(([label, value, tone], index) => (
+                <div
+                  key={label}
+                  className={`px-2 py-2.5 ${index ? "border-l border-slate-200" : ""}`}
+                >
+                  <dt className="text-[12px] text-slate-500">{label}</dt>
+                  <dd
+                    className={`data-token mt-0.5 text-[17px] font-semibold ${tone}`}
+                  >
+                    {formatCount(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-2.5 flex items-center justify-between gap-3 text-[13px] text-slate-500">
+              <span className="whitespace-nowrap">
+                库存 {formatCount(row.ticket.stock)} · 净售出 {row.soldPercent}%
+              </span>
+              <Pending count={row.pending} />
+            </div>
+          </article>
+        ))}
+        <div className="bg-slate-50 p-4 text-[14px]">
+          <div className="font-semibold text-slate-900">
+            合计 {rows.length} 个票种
+          </div>
+          <div className="mt-1 text-[13px] leading-5 text-slate-600">
+            <span className="block">
+              已售 {formatCount(total.sold)} · 已退款{" "}
+              {formatCount(total.refunded)} · 剩余{" "}
+              {formatCount(total.remaining)}
+            </span>
+            <span className="block">
+              退款金额 ¥{total.refundedAmount.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

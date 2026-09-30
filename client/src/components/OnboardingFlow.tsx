@@ -22,17 +22,24 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { TicketTypesEditor } from "./TicketTypesEditor";
+import { DateRangeField } from "./TicketTypesEditor";
+import { TicketSessionsEditor } from "./TicketSessionsEditor";
 import {
+  MAX_ACTIVITY_DAYS,
   TICKET_CATEGORY_LABEL,
-  createTicketType,
+  countActivityDays,
   formatEntryRule,
   formatPrice,
-  suggestSaleRange,
+  formatPurchaseLimit,
+  formatRealName,
+  formatSessionDate,
+  summarizeSessions,
   summarizeTicketTypes,
+  syncSessions,
   todayYMD,
-  validateTicketTypes,
-  type TicketTypeDraft,
+  validateActivityWindow,
+  validateSessions,
+  type TicketSession,
 } from "./ticketTypes";
 
 export type AdmissionStatus =
@@ -1599,51 +1606,55 @@ export function ActivityCreationWizard({
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [venue, setVenue] = useState("");
-  const [date, setDate] = useState("");
-  const [tickets, setTickets] = useState<TicketTypeDraft[]>(() => [
-    { ...createTicketType(), name: "预售票", category: "presale" },
-    { ...createTicketType(), name: "现场票", category: "onsite" },
-  ]);
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [sessions, setSessions] = useState<TicketSession[]>([]);
+  const [activeDate, setActiveDate] = useState("");
   const [showTicketErrors, setShowTicketErrors] = useState(false);
   const [error, setError] = useState("");
   const steps = ["基本信息", "活动资料", "票务设置", "提交发布"];
-  // 活动日期当前为单日 后续多日活动只需把 end 改为结束日期
-  const activityWindow = { start: date, end: date };
-  const ticketErrors = showTicketErrors
-    ? validateTicketTypes(tickets, activityWindow)
-    : {};
-  const ticketSummary = summarizeTicketTypes(tickets);
-  const enterTicketStep = () =>
-    setTickets(list =>
-      list.map(ticket => {
-        if (ticket.saleStart || !ticket.category) return ticket;
-        const suggestion = suggestSaleRange(
-          ticket.category,
-          activityWindow,
-          todayYMD()
-        );
-        return suggestion ? { ...ticket, ...suggestion } : ticket;
-      })
+  const validation = validateSessions(sessions);
+  const ticketErrors = showTicketErrors ? validation.errors : {};
+  const errorCountByDate = showTicketErrors ? validation.countByDate : {};
+  const sessionSummary = summarizeSessions(sessions);
+  const activityDays = countActivityDays(dateRange);
+  const dateText =
+    dateRange.start === dateRange.end
+      ? dateRange.start
+      : `${dateRange.start} 至 ${dateRange.end}`;
+  const changeDateRange = (next: { start: string; end: string }) => {
+    setDateRange(next);
+    setSessions(list => syncSessions(list, next, todayYMD()));
+    setActiveDate(next.start);
+    if (error) setError("");
+  };
+  const enterTicketStep = () => {
+    setSessions(list => syncSessions(list, dateRange, todayYMD()));
+    setActiveDate(current =>
+      current && current >= dateRange.start && current <= dateRange.end
+        ? current
+        : dateRange.start
     );
+  };
   const next = () => {
-    if (step === 0 && (!name.trim() || !venue.trim() || !date))
-      return setError("请完整填写活动名称 时间和场地");
-    if (step === 2) {
-      const found = validateTicketTypes(tickets, activityWindow);
-      const count = Object.values(found).reduce(
-        (sum, fields) => sum + Object.keys(fields).length,
-        0
+    if (step === 0) {
+      const dateError = validateActivityWindow(dateRange, todayYMD());
+      if (!name.trim() || !venue.trim() || !dateRange.start)
+        return setError("请完整填写活动名称 日期和场地");
+      if (dateError) return setError(dateError);
+    }
+    if (step === 2 && validation.total) {
+      setShowTicketErrors(true);
+      setActiveDate(validation.firstDate);
+      const scrollToError = () =>
+        document
+          .querySelector('[data-ticket-error="true"]')
+          ?.closest('[data-cy="ticket-card"]')
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestAnimationFrame(() => requestAnimationFrame(scrollToError));
+      const days = Object.keys(validation.countByDate).length;
+      return setError(
+        `票种信息还有 ${validation.total} 项需要完善${sessions.length > 1 ? ` 涉及 ${days} 个场次` : ""}`
       );
-      if (count) {
-        setShowTicketErrors(true);
-        requestAnimationFrame(() =>
-          document
-            .querySelector('[data-ticket-error="true"]')
-            ?.closest('[data-cy="ticket-card"]')
-            ?.scrollIntoView({ behavior: "smooth", block: "start" })
-        );
-        return setError(`票种信息还有 ${count} 项需要完善`);
-      }
     }
     setError("");
     if (step === 1) enterTicketStep();
@@ -1678,13 +1689,16 @@ export function ActivityCreationWizard({
         title="新建文化活动"
         lines={["主体认证已通过", "按步骤完善活动资料与票务设置后提交发布"]}
       />
-      <div className="grid grid-cols-4 gap-2 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="grid grid-cols-4 gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:p-3">
         {steps.map((label, index) => (
           <div
             key={label}
-            className={`rounded-md px-3 py-3 text-center text-[13px] font-semibold ${index === step ? "bg-blue-50 text-[#1c4c9e]" : index < step ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
+            className={`rounded-md px-1 py-2.5 text-center text-[13px] font-semibold sm:px-3 sm:py-3 ${index === step ? "bg-blue-50 text-[#1c4c9e]" : index < step ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
           >
-            0{index + 1} {label}
+            <span className="block sm:inline">0{index + 1}</span>
+            <span className="block whitespace-nowrap sm:ml-1 sm:inline">
+              {label}
+            </span>
           </div>
         ))}
       </div>
@@ -1701,13 +1715,32 @@ export function ActivityCreationWizard({
                   placeholder="请输入活动名称"
                 />
               </div>
-              <TextInput
-                label="活动日期"
-                value={date}
-                onChange={setDate}
-                placeholder="请选择活动日期"
-                type="date"
-              />
+              <div className="min-w-0">
+                <label
+                  htmlFor="activity-date-range"
+                  className="text-[14px] font-semibold text-slate-800"
+                >
+                  活动日期
+                </label>
+                <div className="mt-2">
+                  <DateRangeField
+                    id="activity-date-range"
+                    dataCy="activity-date-range"
+                    value={dateRange}
+                    onChange={changeDateRange}
+                    disabled={[{ before: new Date(`${todayYMD()}T00:00:00`) }]}
+                    maxDays={MAX_ACTIVITY_DAYS}
+                    invalid={false}
+                    showDays
+                    hint={`可选连续多天 最多 ${MAX_ACTIVITY_DAYS} 天 每天为一个场次`}
+                  />
+                </div>
+                <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
+                  {activityDays > 1
+                    ? `共 ${activityDays} 个场次 下一步按天配置票种`
+                    : "单日活动只需选择同一天"}
+                </p>
+              </div>
               <TextInput
                 label="活动场地"
                 value={venue}
@@ -1747,19 +1780,17 @@ export function ActivityCreationWizard({
           </div>
         )}
         {step === 2 && (
-          <TicketTypesEditor
-            tickets={tickets}
+          <TicketSessionsEditor
+            sessions={sessions}
+            activeDate={activeDate}
+            onActiveDateChange={setActiveDate}
             onChange={next => {
-              setTickets(next);
-              if (showTicketErrors && error) {
-                const left = Object.keys(
-                  validateTicketTypes(next, activityWindow)
-                ).length;
-                if (!left) setError("");
-              }
+              setSessions(next);
+              if (showTicketErrors && error && !validateSessions(next).total)
+                setError("");
             }}
             errors={ticketErrors}
-            window={activityWindow}
+            errorCountByDate={errorCountByDate}
           />
         )}
         {step === 3 && (
@@ -1768,7 +1799,7 @@ export function ActivityCreationWizard({
             <div className="mt-5 rounded-md border border-slate-200 p-5">
               <div className="text-[20px] font-semibold">{name}</div>
               <div className="mt-2 text-[14px] text-slate-600">
-                {date} · {venue}
+                <span className="date-token">{dateText}</span> · {venue}
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <SummaryItem
@@ -1783,55 +1814,79 @@ export function ActivityCreationWizard({
                 />
                 <SummaryItem
                   label="票务"
-                  value={`${ticketSummary.count} 个票种 / ${ticketSummary.totalInventory.toLocaleString("zh-CN")}张`}
+                  value={`${sessionSummary.days} 个场次 / ${sessionSummary.ticketCount} 个票种 / ${sessionSummary.totalInventory.toLocaleString("zh-CN")}张`}
                   icon={<Ticket className="h-5 w-5" />}
                 />
               </div>
             </div>
-            <div
-              className="mt-4 overflow-hidden rounded-md border border-slate-200"
-              data-cy="ticket-publish-summary"
-            >
-              <div className="hidden grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_1.6fr_1fr] gap-3 bg-slate-50 px-4 py-2.5 text-[13px] font-semibold text-slate-600 md:grid">
-                <span>票种名称</span>
-                <span>类别</span>
-                <span>价格</span>
-                <span>库存</span>
-                <span>销售时间</span>
-                <span>入场次数</span>
-              </div>
-              {tickets.map(ticket => (
-                <div
-                  key={ticket.id}
-                  className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-slate-200 px-4 py-3 text-[14px] first:border-t-0 md:grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_1.6fr_1fr] md:items-center md:first:border-t"
-                >
-                  <span className="col-span-2 font-semibold text-slate-900 md:col-span-1">
-                    {ticket.name}
-                  </span>
-                  <span className="status-token text-slate-700">
-                    {ticket.category
-                      ? TICKET_CATEGORY_LABEL[ticket.category]
-                      : "—"}
-                  </span>
-                  <span className="data-token text-slate-700">
-                    {formatPrice(ticket.price)}
-                  </span>
-                  <span className="data-token text-slate-700">
-                    {Number(ticket.inventory).toLocaleString("zh-CN")} 张
-                  </span>
-                  <span className="date-token text-slate-700">
-                    {ticket.saleStart} 至 {ticket.saleEnd}
-                  </span>
-                  <span className="col-span-2 text-slate-700 md:col-span-1">
-                    {formatEntryRule(ticket)}
-                  </span>
-                  {ticket.remark && (
-                    <span className="col-span-2 text-[13px] leading-5 text-slate-500 md:col-span-6">
-                      备注 {ticket.remark}
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="mt-4 space-y-4" data-cy="ticket-publish-summary">
+              {sessions.map(session => {
+                const one = summarizeTicketTypes(session.tickets);
+                return (
+                  <section
+                    key={session.date}
+                    className="overflow-hidden rounded-md border border-slate-200"
+                    data-cy="publish-session"
+                  >
+                    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+                      <strong className="date-token text-[14px] text-slate-900">
+                        {formatSessionDate(session.date)}
+                      </strong>
+                      <span className="text-[13px] whitespace-nowrap text-slate-600">
+                        {one.count} 个票种 · 库存{" "}
+                        {one.totalInventory.toLocaleString("zh-CN")} 张
+                      </span>
+                    </header>
+                    <div className="hidden grid-cols-[1.3fr_0.7fr_0.8fr_1.5fr_1.6fr] gap-3 px-4 py-2 text-[13px] font-semibold text-slate-500 md:grid">
+                      <span>票种名称</span>
+                      <span>价格</span>
+                      <span>库存</span>
+                      <span>销售时间</span>
+                      <span>购票与入场</span>
+                    </div>
+                    {session.tickets.map(ticket => (
+                      <div
+                        key={ticket.id}
+                        className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-slate-200 px-4 py-3 text-[14px] md:grid-cols-[1.3fr_0.7fr_0.8fr_1.5fr_1.6fr] md:items-center"
+                      >
+                        <span className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 md:col-span-1">
+                          <strong className="text-slate-900">
+                            {ticket.name}
+                          </strong>
+                          {ticket.category && (
+                            <span className="status-token rounded bg-blue-50 px-1.5 py-0.5 text-[12px] font-semibold text-[#1c4c9e]">
+                              {TICKET_CATEGORY_LABEL[ticket.category]}
+                            </span>
+                          )}
+                        </span>
+                        <span className="data-token text-slate-700">
+                          {formatPrice(ticket.price)}
+                        </span>
+                        <span className="data-token text-slate-700">
+                          {Number(ticket.inventory).toLocaleString("zh-CN")} 张
+                        </span>
+                        <span className="date-token col-span-2 text-slate-700 md:col-span-1">
+                          {ticket.saleStart} 至 {ticket.saleEnd}
+                        </span>
+                        <span className="col-span-2 text-slate-700 md:col-span-1">
+                          <span className="block">
+                            {formatPurchaseLimit(ticket)} ·{" "}
+                            {formatRealName(ticket)}
+                          </span>
+                          <span className="block text-[13px] text-slate-500">
+                            {formatEntryRule(ticket)}
+                          </span>
+                        </span>
+                        {ticket.remark && (
+                          <span className="col-span-2 text-[13px] leading-5 text-slate-500 md:col-span-5">
+                            备注 {ticket.remark}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </section>
+                );
+              })}
             </div>
           </div>
         )}

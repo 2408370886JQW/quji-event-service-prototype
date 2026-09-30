@@ -12,7 +12,9 @@ import {
   MAX_TICKET_TYPES,
   TICKET_CATEGORY_LABEL,
   TICKET_CATEGORY_OPTIONS,
+  MAX_PURCHASE_LIMIT,
   addDays,
+  countActivityDays,
   createTicketType,
   suggestSaleRange,
   summarizeTicketTypes,
@@ -73,55 +75,57 @@ function Field({
   );
 }
 
-/** 销售时间：开始日期 - 结束日期，同一输入框内选择区间，与 B 站后台交互一致 */
-function SaleDateRange({
+type DateRangeValue = { start: string; end: string };
+type DayMatcher = { before: Date } | { after: Date };
+
+/** 开始日期 - 结束日期 在同一输入框内选择区间 与 B 站后台交互一致 */
+export function DateRangeField({
   id,
+  dataCy,
   value,
   onChange,
-  window,
-  category,
+  disabled = [],
+  defaultMonth,
   invalid,
+  maxDays,
+  hint,
+  showDays = false,
 }: {
   id: string;
-  value: { saleStart: string; saleEnd: string };
-  onChange: (next: { saleStart: string; saleEnd: string }) => void;
-  window: ActivityWindow;
-  category: TicketCategory | "";
+  dataCy: string;
+  value: DateRangeValue;
+  onChange: (next: DateRangeValue) => void;
+  disabled?: DayMatcher[];
+  defaultMonth?: Date;
   invalid: boolean;
+  /** 选定开始日期后 仅允许在该天数范围内选择结束日期 */
+  maxDays?: number;
+  hint: string;
+  showDays?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>();
-  const activityStart = fromYMD(window.start);
-  const activityEnd = fromYMD(window.end);
 
   useEffect(() => {
     if (open)
       setDraft(
-        value.saleStart
-          ? { from: fromYMD(value.saleStart), to: fromYMD(value.saleEnd) }
+        value.start
+          ? { from: fromYMD(value.start), to: fromYMD(value.end) }
           : undefined
       );
-  }, [open, value.saleStart, value.saleEnd]);
+  }, [open, value.start, value.end]);
 
-  // 预售票只能在活动开始前 现场票只能在活动举办期间
-  const disabled = [
-    ...(activityEnd ? [{ after: activityEnd }] : []),
-    ...(category === "presale" && activityStart
-      ? [{ after: fromYMD(addDays(window.start, -1))! }]
-      : []),
-    ...(category === "onsite" && activityStart
-      ? [{ before: activityStart }]
-      : []),
-  ];
-  const presaleMonth = activityStart
-    ? new Date(activityStart.getFullYear(), activityStart.getMonth() - 1, 1)
-    : undefined;
-  const defaultMonth =
-    draft?.from ??
-    (category === "presale" && !isMobile ? presaleMonth : activityStart);
+  const picking = draft?.from && !draft.to ? draft.from : undefined;
+  const rangeLimit =
+    maxDays && picking
+      ? [
+          { before: fromYMD(addDays(todayYMD(picking), -(maxDays - 1)))! },
+          { after: fromYMD(addDays(todayYMD(picking), maxDays - 1))! },
+        ]
+      : [];
   const ready = Boolean(draft?.from);
-  // 与常见后台日期区间一致：第一次点击为开始日期 第二次为结束日期 已选完整区间后再点击则重新开始
+  // 第一次点击为开始日期 第二次为结束日期 已选完整区间后再点击则重新开始
   const pick = (_range: DateRange | undefined, day: Date) => {
     setDraft(current => {
       if (!current?.from || current.to) return { from: day, to: undefined };
@@ -133,11 +137,12 @@ function SaleDateRange({
   const confirm = () => {
     if (!draft?.from) return;
     onChange({
-      saleStart: todayYMD(draft.from),
-      saleEnd: todayYMD(draft.to ?? draft.from),
+      start: todayYMD(draft.from),
+      end: todayYMD(draft.to ?? draft.from),
     });
     setOpen(false);
   };
+  const days = countActivityDays(value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -145,21 +150,29 @@ function SaleDateRange({
         <button
           id={id}
           type="button"
-          data-cy="ticket-sale-range"
+          data-cy={dataCy}
           className={`${inputBase} ${inputTone(invalid)} flex items-center gap-2 text-left`}
         >
           <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
           <span
-            className={`date-token flex-1 text-center ${value.saleStart ? "text-slate-900" : "text-slate-400"}`}
+            className={`date-token flex-1 text-center ${value.start ? "text-slate-900" : "text-slate-400"}`}
           >
-            {value.saleStart || "开始日期"}
+            {value.start || "开始日期"}
           </span>
           <span className="shrink-0 text-slate-400">-</span>
           <span
-            className={`date-token flex-1 text-center ${value.saleEnd ? "text-slate-900" : "text-slate-400"}`}
+            className={`date-token flex-1 text-center ${value.end ? "text-slate-900" : "text-slate-400"}`}
           >
-            {value.saleEnd || "结束日期"}
+            {value.end || "结束日期"}
           </span>
+          {showDays && days > 0 && (
+            <span
+              className="status-token shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[12px] font-semibold text-slate-600"
+              data-cy={`${dataCy}-days`}
+            >
+              共 {days} 天
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -177,44 +190,10 @@ function SaleDateRange({
           numberOfMonths={isMobile ? 1 : 2}
           selected={draft}
           onSelect={pick}
-          defaultMonth={defaultMonth}
-          disabled={disabled}
+          defaultMonth={draft?.from ?? defaultMonth}
+          disabled={[...disabled, ...rangeLimit]}
           showOutsideDays={false}
-          classNames={{
-            root: "relative p-4",
-            months: "relative flex flex-col gap-6 sm:flex-row",
-            month: "space-y-3",
-            month_caption:
-              "flex h-9 items-center justify-center text-[15px] font-semibold text-slate-800",
-            caption_label: "",
-            nav: "absolute inset-x-4 top-4 z-10 flex h-9 items-center justify-between",
-            button_previous:
-              "inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30",
-            button_next:
-              "inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30",
-            chevron: "h-4 w-4 fill-current",
-            month_grid: "border-collapse",
-            weekdays: "flex",
-            weekday: "w-10 text-[12px] font-normal text-slate-500",
-            weeks: "",
-            week: "mt-1 flex",
-            day: "h-10 w-10 p-0 text-center text-[14px]",
-            day_button:
-              "h-10 w-10 rounded-md text-slate-800 outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-200",
-            selected: "",
-            range_start:
-              "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
-            range_end:
-              "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
-            range_middle:
-              "bg-blue-50 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:text-[#1c4c9e]",
-            today: "[&>button]:font-semibold [&>button]:text-[#245fc4]",
-            outside: "[&>button]:text-slate-300",
-            disabled:
-              "[&>button]:cursor-not-allowed [&>button]:text-slate-300 [&>button]:hover:bg-transparent",
-            hidden: "invisible",
-            focused: "",
-          }}
+          classNames={CALENDAR_CLASSES}
         />
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
           <div className="text-[13px] leading-5 text-slate-600">
@@ -223,9 +202,7 @@ function SaleDateRange({
                 ? `${todayYMD(draft.from)} 至 ${todayYMD(draft.to ?? draft.from)}`
                 : "请选择开始日期和结束日期"}
             </span>
-            <span className="block text-slate-500">
-              开始日 00:00 起售 结束日 23:59 停售
-            </span>
+            <span className="block text-slate-500">{hint}</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -239,7 +216,7 @@ function SaleDateRange({
               type="button"
               disabled={!ready}
               onClick={confirm}
-              data-cy="ticket-sale-range-confirm"
+              data-cy={`${dataCy}-confirm`}
               className="h-9 rounded-md bg-[#245fc4] px-4 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
               确定
@@ -248,6 +225,89 @@ function SaleDateRange({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+const CALENDAR_CLASSES = {
+  root: "relative p-4",
+  months: "relative flex flex-col gap-6 sm:flex-row",
+  month: "space-y-3",
+  month_caption:
+    "flex h-9 items-center justify-center text-[15px] font-semibold text-slate-800",
+  caption_label: "",
+  nav: "absolute inset-x-4 top-4 z-10 flex h-9 items-center justify-between",
+  button_previous:
+    "inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30",
+  button_next:
+    "inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30",
+  chevron: "h-4 w-4 fill-current",
+  month_grid: "border-collapse",
+  weekdays: "flex",
+  weekday: "w-10 text-[12px] font-normal text-slate-500",
+  weeks: "",
+  week: "mt-1 flex",
+  day: "h-10 w-10 p-0 text-center text-[14px]",
+  day_button:
+    "h-10 w-10 rounded-md text-slate-800 outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-200",
+  selected: "",
+  range_start:
+    "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
+  range_end:
+    "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
+  range_middle:
+    "bg-blue-50 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:text-[#1c4c9e]",
+  today: "[&>button]:font-semibold [&>button]:text-[#245fc4]",
+  outside: "[&>button]:text-slate-300",
+  disabled:
+    "[&>button]:cursor-not-allowed [&>button]:text-slate-300 [&>button]:hover:bg-transparent",
+  hidden: "invisible",
+  focused: "",
+};
+
+/** 销售时间：预售票只能在场次开始前 现场票只能在场次当天 */
+function SaleDateRange({
+  id,
+  value,
+  onChange,
+  window,
+  category,
+  invalid,
+}: {
+  id: string;
+  value: { saleStart: string; saleEnd: string };
+  onChange: (next: { saleStart: string; saleEnd: string }) => void;
+  window: ActivityWindow;
+  category: TicketCategory | "";
+  invalid: boolean;
+}) {
+  const isMobile = useIsMobile();
+  const activityStart = fromYMD(window.start);
+  const activityEnd = fromYMD(window.end);
+  const disabled: DayMatcher[] = [
+    ...(activityEnd ? [{ after: activityEnd }] : []),
+    ...(category === "presale" && activityStart
+      ? [{ after: fromYMD(addDays(window.start, -1))! }]
+      : []),
+    ...(category === "onsite" && activityStart
+      ? [{ before: activityStart }]
+      : []),
+  ];
+  const presaleMonth = activityStart
+    ? new Date(activityStart.getFullYear(), activityStart.getMonth() - 1, 1)
+    : undefined;
+  return (
+    <DateRangeField
+      id={id}
+      dataCy="ticket-sale-range"
+      value={{ start: value.saleStart, end: value.saleEnd }}
+      onChange={next => onChange({ saleStart: next.start, saleEnd: next.end })}
+      disabled={disabled}
+      defaultMonth={
+        category === "presale" && !isMobile ? presaleMonth : activityStart
+      }
+      invalid={invalid}
+      hint="开始日 00:00 起售 结束日 23:59 停售"
+    />
   );
 }
 
@@ -479,6 +539,65 @@ function TicketCard({
           </div>
         </Field>
         <Field
+          label="每人限购"
+          required
+          htmlFor={fid("purchase")}
+          error={errors?.purchaseLimit}
+        >
+          <div className="relative">
+            <input
+              id={fid("purchase")}
+              data-cy="ticket-purchase-limit"
+              inputMode="numeric"
+              value={String(ticket.purchaseLimit ?? "")}
+              onChange={event =>
+                onChange({
+                  purchaseLimit: event.target.value.replace(/\D/g, ""),
+                })
+              }
+              placeholder={`1 到 ${MAX_PURCHASE_LIMIT} 张`}
+              className={`${inputBase} ${inputTone(Boolean(errors?.purchaseLimit))} pr-24`}
+            />
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[14px] whitespace-nowrap text-slate-500">
+              张 / 每个账号
+            </span>
+          </div>
+        </Field>
+        <Field label="实名购票" required>
+          <div
+            className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-2"
+            role="radiogroup"
+            aria-label="实名购票"
+          >
+            {(
+              [
+                [true, "需要实名", "yes"],
+                [false, "无需实名", "no"],
+              ] as const
+            ).map(([value, label, key]) => (
+              <label
+                key={key}
+                className="inline-flex cursor-pointer items-center gap-2 text-[15px] whitespace-nowrap text-slate-800"
+              >
+                <input
+                  type="radio"
+                  name={fid("realname")}
+                  checked={ticket.realNameRequired === value}
+                  data-cy={`ticket-realname-${key}`}
+                  onChange={() => onChange({ realNameRequired: value })}
+                  className="h-4 w-4 accent-[#245fc4]"
+                />
+                {label}
+              </label>
+            ))}
+            <span className="text-[13px] leading-5 text-slate-500">
+              {ticket.realNameRequired
+                ? "一票一证 入场核验身份"
+                : "购票无需填写证件"}
+            </span>
+          </div>
+        </Field>
+        <Field
           label="其他备注"
           htmlFor={fid("remark")}
           error={errors?.remark}
@@ -510,11 +629,16 @@ export function TicketTypesEditor({
   onChange,
   errors,
   window,
+  sessionLabel,
+  headerAction,
 }: {
   tickets: TicketTypeDraft[];
   onChange: (next: TicketTypeDraft[]) => void;
   errors: TicketErrors;
   window: ActivityWindow;
+  /** 多日活动时显示当前场次日期 */
+  sessionLabel?: string;
+  headerAction?: ReactNode;
 }) {
   const summary = summarizeTicketTypes(tickets);
   const canAdd = tickets.length < MAX_TICKET_TYPES;
@@ -538,20 +662,32 @@ export function TicketTypesEditor({
     <div data-cy="ticket-types-editor">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[19px] font-semibold">票种及库存</h2>
+          <h3
+            className="text-[17px] font-semibold text-slate-900"
+            data-cy="session-title"
+          >
+            {sessionLabel ? `${sessionLabel} 票种及库存` : "票种及库存"}
+          </h3>
           <p className="mt-1 text-[14px] leading-6 text-slate-600">
-            <span className="block">预售票在活动开始前线上销售</span>
-            <span className="block">现场票在活动当天现场销售</span>
+            <span className="block">预售票在场次开始前线上销售</span>
+            <span className="block">现场票在场次当天现场销售</span>
           </p>
         </div>
-        <div className="text-[14px] text-slate-600" data-cy="ticket-summary">
-          共 <strong className="text-slate-900">{summary.count}</strong> 个票种
-          <span className="mx-2 text-slate-300">|</span>
-          总库存{" "}
-          <strong className="text-slate-900">
-            {summary.totalInventory.toLocaleString("zh-CN")}
-          </strong>{" "}
-          张
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            className="text-[14px] whitespace-nowrap text-slate-600"
+            data-cy="ticket-summary"
+          >
+            本场 <strong className="text-slate-900">{summary.count}</strong>{" "}
+            个票种
+            <span className="mx-2 text-slate-300">|</span>
+            库存{" "}
+            <strong className="text-slate-900">
+              {summary.totalInventory.toLocaleString("zh-CN")}
+            </strong>{" "}
+            张
+          </div>
+          {headerAction}
         </div>
       </div>
       <div className="mt-5 space-y-4">

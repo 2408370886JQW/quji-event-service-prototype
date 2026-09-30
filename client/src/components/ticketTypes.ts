@@ -1,6 +1,7 @@
 /**
  * 活动创建 · 票种及库存
  * 与 Vue3 工程 src/utils/ticketTypes.ts 保持同一规则，后端接入时以此为字段与校验口径。
+ * 活动可连续举办多天，每一天为一个场次，每个场次分别配置票种和库存。
  */
 export type TicketCategory = "presale" | "onsite";
 export type EntryLimit = "limited" | "unlimited";
@@ -18,7 +19,17 @@ export interface TicketTypeDraft {
   saleEnd: string;
   entryLimit: EntryLimit;
   entryTimes: NumberLike;
+  /** 同一购票账号最多可购张数 */
+  purchaseLimit: NumberLike;
+  /** 需要实名时一票一证 入场人证核验 */
+  realNameRequired: boolean;
   remark: string;
+}
+
+/** 一个场次即活动中的一天 */
+export interface TicketSession {
+  date: string;
+  tickets: TicketTypeDraft[];
 }
 
 export type TicketField =
@@ -28,22 +39,26 @@ export type TicketField =
   | "inventory"
   | "saleRange"
   | "entryTimes"
+  | "purchaseLimit"
   | "remark";
 
-/** 活动举办日期窗口，单日活动 start 与 end 相同 */
+/** 日期窗口；单个场次时 start 与 end 相同 */
 export interface ActivityWindow {
   start: string;
   end: string;
 }
 
 export const MAX_TICKET_TYPES = 10;
+export const MAX_ACTIVITY_DAYS = 7;
+export const MAX_PURCHASE_LIMIT = 10;
+export const DEFAULT_PURCHASE_LIMIT = 4;
 export const TICKET_CATEGORY_OPTIONS: {
   value: TicketCategory;
   label: string;
   hint: string;
 }[] = [
-  { value: "presale", label: "预售票", hint: "活动开始前线上销售" },
-  { value: "onsite", label: "现场票", hint: "活动当天现场销售" },
+  { value: "presale", label: "预售票", hint: "场次开始前线上销售" },
+  { value: "onsite", label: "现场票", hint: "场次当天现场销售" },
 ];
 export const TICKET_CATEGORY_LABEL: Record<TicketCategory, string> = {
   presale: "预售票",
@@ -56,6 +71,7 @@ export const TICKET_FIELDS: TicketField[] = [
   "inventory",
   "saleRange",
   "entryTimes",
+  "purchaseLimit",
   "remark",
 ];
 
@@ -72,6 +88,8 @@ export function createTicketType(): TicketTypeDraft {
     saleEnd: "",
     entryLimit: "limited",
     entryTimes: 1,
+    purchaseLimit: DEFAULT_PURCHASE_LIMIT,
+    realNameRequired: true,
     remark: "",
   };
 }
@@ -94,6 +112,11 @@ export function addDays(date: string, days: number) {
   return next.toISOString().slice(0, 10);
 }
 
+function dayNumber(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+}
+
 /** 单项字段校验，返回空字符串表示通过 */
 export function validateTicketField(
   ticket: TicketTypeDraft,
@@ -109,7 +132,7 @@ export function validateTicketField(
       const duplicated = all.some(
         other => other.id !== ticket.id && other.name.trim() === name
       );
-      return duplicated ? "票种名称不能重复" : "";
+      return duplicated ? "同一场次票种名称不能重复" : "";
     }
     case "category":
       return ticket.category ? "" : "请选择票种类别";
@@ -143,13 +166,13 @@ export function validateTicketField(
         window.start &&
         saleStart >= window.start
       )
-        return "预售票需在活动开始前开售";
+        return "预售票需在场次开始前开售";
       if (
         ticket.category === "onsite" &&
         window.start &&
         saleStart < window.start
       )
-        return "现场票仅在活动举办期间销售";
+        return "现场票仅在场次当天销售";
       return "";
     }
     case "entryTimes": {
@@ -161,6 +184,21 @@ export function validateTicketField(
         times < 1 ||
         times > 10
         ? "可入场次数为 1 到 10 次"
+        : "";
+    }
+    case "purchaseLimit": {
+      const limit = toNumber(ticket.purchaseLimit);
+      if (limit === null) return "请输入每人限购张数";
+      if (
+        Number.isNaN(limit) ||
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > MAX_PURCHASE_LIMIT
+      )
+        return `每人限购 1 到 ${MAX_PURCHASE_LIMIT} 张`;
+      const inventory = toNumber(ticket.inventory);
+      return inventory && Number.isFinite(inventory) && limit > inventory
+        ? "限购张数不能超过库存"
         : "";
     }
     case "remark":
@@ -186,7 +224,14 @@ export function validateTicketTypes(
   return errors;
 }
 
-/** 切换类别且尚未选择销售时间时，给出与活动日期一致的建议区间 */
+export function countErrors(errors: TicketErrors) {
+  return Object.values(errors).reduce(
+    (sum, fields) => sum + Object.keys(fields).length,
+    0
+  );
+}
+
+/** 切换类别且尚未选择销售时间时，给出与场次日期一致的建议区间 */
 export function suggestSaleRange(
   category: TicketCategory,
   window: ActivityWindow,
@@ -215,6 +260,18 @@ export function formatEntryRule(ticket: TicketTypeDraft) {
     : `每张可入场 ${toNumber(ticket.entryTimes) ?? 1} 次`;
 }
 
+export function formatPurchaseLimit(
+  ticket: Pick<TicketTypeDraft, "purchaseLimit">
+) {
+  return `每人限购 ${toNumber(ticket.purchaseLimit) ?? DEFAULT_PURCHASE_LIMIT} 张`;
+}
+
+export function formatRealName(
+  ticket: Pick<TicketTypeDraft, "realNameRequired">
+) {
+  return ticket.realNameRequired ? "需要实名" : "无需实名";
+}
+
 export function formatPrice(value: NumberLike) {
   const price = toNumber(value);
   if (price === null || Number.isNaN(price)) return "—";
@@ -226,4 +283,154 @@ export function todayYMD(now = new Date()) {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/* ---------- 多日活动与场次 ---------- */
+
+export function sessionWindow(date: string): ActivityWindow {
+  return { start: date, end: date };
+}
+
+/** 活动日期窗口内的每一天，按先后排列 */
+export function listActivityDates(window: ActivityWindow): string[] {
+  if (!window.start) return [];
+  const end = window.end || window.start;
+  if (end < window.start) return [];
+  const dates: string[] = [];
+  for (
+    let date = window.start;
+    date <= end && dates.length < MAX_ACTIVITY_DAYS;
+    date = addDays(date, 1)
+  )
+    dates.push(date);
+  return dates;
+}
+
+export function countActivityDays(window: ActivityWindow) {
+  if (!window.start || !window.end || window.end < window.start) return 0;
+  return dayNumber(window.end) - dayNumber(window.start) + 1;
+}
+
+export function validateActivityWindow(
+  window: ActivityWindow,
+  today: string
+): string {
+  if (!window.start || !window.end) return "请选择活动日期";
+  if (window.end < window.start) return "结束日期不能早于开始日期";
+  if (window.start < today) return "活动日期不能早于今天";
+  return countActivityDays(window) > MAX_ACTIVITY_DAYS
+    ? `活动最多连续 ${MAX_ACTIVITY_DAYS} 天`
+    : "";
+}
+
+/** 为尚未选择销售时间的票种按所在场次日期补上建议区间 */
+export function withSuggestedSales(
+  tickets: TicketTypeDraft[],
+  date: string,
+  today: string
+): TicketTypeDraft[] {
+  return tickets.map(ticket => {
+    if (ticket.saleStart || !ticket.category) return ticket;
+    const suggestion = suggestSaleRange(
+      ticket.category,
+      sessionWindow(date),
+      today
+    );
+    return suggestion ? { ...ticket, ...suggestion } : ticket;
+  });
+}
+
+export function defaultSessionTickets(
+  date: string,
+  today: string
+): TicketTypeDraft[] {
+  return withSuggestedSales(
+    [
+      { ...createTicketType(), name: "预售票", category: "presale" },
+      { ...createTicketType(), name: "现场票", category: "onsite" },
+    ],
+    date,
+    today
+  );
+}
+
+/** 活动日期变化后同步场次：保留仍在范围内的日期配置 新增日期使用默认票种 */
+export function syncSessions(
+  sessions: TicketSession[],
+  window: ActivityWindow,
+  today: string
+): TicketSession[] {
+  return listActivityDates(window).map(date => {
+    const found = sessions.find(session => session.date === date);
+    return {
+      date,
+      tickets: found
+        ? withSuggestedSales(found.tickets, date, today)
+        : defaultSessionTickets(date, today),
+    };
+  });
+}
+
+/** 把一个场次的票种复制到另一天 销售时间按目标日期重新生成 */
+export function copyTicketsToDate(
+  tickets: TicketTypeDraft[],
+  date: string,
+  today: string
+): TicketTypeDraft[] {
+  return withSuggestedSales(
+    tickets.map(ticket => ({
+      ...ticket,
+      id: createTicketType().id,
+      saleStart: "",
+      saleEnd: "",
+    })),
+    date,
+    today
+  );
+}
+
+export function validateSessions(sessions: TicketSession[]) {
+  const errors: TicketErrors = {};
+  const countByDate: Record<string, number> = {};
+  sessions.forEach(session => {
+    const found = validateTicketTypes(
+      session.tickets,
+      sessionWindow(session.date)
+    );
+    Object.assign(errors, found);
+    const count = countErrors(found);
+    if (count) countByDate[session.date] = count;
+  });
+  const dates = sessions
+    .map(session => session.date)
+    .filter(date => countByDate[date]);
+  return {
+    errors,
+    countByDate,
+    total: countErrors(errors),
+    firstDate: dates[0] ?? "",
+  };
+}
+
+export function summarizeSessions(sessions: TicketSession[]) {
+  return sessions.reduce(
+    (sum, session) => {
+      const one = summarizeTicketTypes(session.tickets);
+      return {
+        days: sum.days + 1,
+        ticketCount: sum.ticketCount + one.count,
+        totalInventory: sum.totalInventory + one.totalInventory,
+      };
+    },
+    { days: 0, ticketCount: 0, totalInventory: 0 }
+  );
+}
+
+const WEEKDAY = "日一二三四五六";
+/** 10月18日 周日 */
+export function formatSessionDate(date: string) {
+  if (!date) return "";
+  const [y, m, d] = date.split("-").map(Number);
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${m}月${d}日 周${WEEKDAY[weekday]}`;
 }
