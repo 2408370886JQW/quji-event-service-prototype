@@ -161,6 +161,22 @@ type EventItem = {
   updated: string;
 };
 
+/** 活动日期：日期段与时间段各自不拆行，宽度不足时只在两段之间换行 */
+function EventDate({ date }: { date: string }) {
+  const [day, ...rest] = date.split(" ");
+  return (
+    <span data-cy="event-date">
+      <span className="whitespace-nowrap">{day}</span>
+      {rest.length > 0 && (
+        <>
+          {" "}
+          <span className="whitespace-nowrap">{rest.join(" ")}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
 const EVENTS: EventItem[] = [
   {
     id: "EVT-2026-0628",
@@ -179,7 +195,7 @@ const EVENTS: EventItem[] = [
     id: "EVT-2026-0720",
     name: "2026 丝路数字国风文创新潮博览会",
     subtitle: "国风文创与青年消费专题活动",
-    date: "2026-07-20—07-21",
+    date: "2026-07-20—07-21 09:00—18:00",
     venue: "乌鲁木齐文化中心 A馆",
     organizer: "丝路文创联合会",
     status: "verifying",
@@ -192,7 +208,7 @@ const EVENTS: EventItem[] = [
     id: "EVT-2026-0731",
     name: "天山青年数字潮玩嘉年华",
     subtitle: "数字互动与潮玩体验活动",
-    date: "2026-07-31—08-02",
+    date: "2026-07-31—08-02 10:00—19:00",
     venue: "新疆国际会展中心 5号馆",
     organizer: "天山青年文化发展中心",
     status: "preparing",
@@ -205,7 +221,7 @@ const EVENTS: EventItem[] = [
     id: "EVT-2026-0808",
     name: "城市青年音乐与插画周",
     subtitle: "音乐、插画与原创市集",
-    date: "2026-08-08—08-10",
+    date: "2026-08-08—08-10 10:00—18:00",
     venue: "乌鲁木齐文创园",
     organizer: "新声艺术空间",
     status: "ended",
@@ -1823,7 +1839,7 @@ function Workspace({
                     <div className="mt-3 grid sm:grid-cols-3 gap-y-1 gap-x-4 text-[13px] text-slate-600">
                       <span className="flex items-center gap-1.5">
                         <Clock3 className="w-3.5 h-3.5" />
-                        {event.date}
+                        <EventDate date={event.date} />
                       </span>
                       <span className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5" />
@@ -2143,7 +2159,7 @@ function EventsPage({
                     </td>
                     <td className="p-4">
                       <div className="text-[14px] font-medium">
-                        {event.date}
+                        <EventDate date={event.date} />
                       </div>
                       <div className="mt-2 text-[14px] text-slate-600">
                         {event.venue}
@@ -2246,7 +2262,7 @@ function ActivityRecord({
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-slate-600">
                 <span className="flex items-center gap-1.5">
                   <Clock3 className="w-4 h-4" />
-                  {event.date}
+                  <EventDate date={event.date} />
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4" />
@@ -2378,7 +2394,7 @@ ${event.name} ${event.subtitle}
             <div className="mt-4 grid sm:grid-cols-3 gap-3 text-[14px] text-slate-700">
               <span className="flex items-center gap-1.5">
                 <Clock3 className="w-4 h-4 text-slate-500" />
-                {event.date}
+                <EventDate date={event.date} />
               </span>
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-slate-500" />
@@ -2550,12 +2566,16 @@ function ProgressFlow({ current }: { current: number }) {
         />
         <ProgressInfo
           title="已完成事项"
-          text="活动创建、主体材料、场地信息、参与规则、票种配置"
+          items={["活动创建", "主体材料", "场地信息", "参与规则", "票种配置"]}
           tone="green"
         />
         <ProgressInfo
           title="待处理事项"
-          text={"2 条角色道具初核、现场售票点库存确认\n夜间值守联系人补充"}
+          items={[
+            "2 条角色道具初核",
+            "现场售票点库存确认",
+            "夜间值守联系人补充",
+          ]}
           tone="amber"
         />
       </div>
@@ -2565,10 +2585,13 @@ function ProgressFlow({ current }: { current: number }) {
 function ProgressInfo({
   title,
   text,
+  items,
   tone,
 }: {
   title: string;
-  text: string;
+  text?: string;
+  /** 每一项为不可拆分短语，只在“、”之后换行 */
+  items?: string[];
   tone: "blue" | "green" | "amber";
 }) {
   const styles = {
@@ -2580,7 +2603,14 @@ function ProgressInfo({
     <div className={`rounded-lg border p-3 ${styles}`}>
       <div className="text-[13px] font-semibold">{title}</div>
       <div className="mt-1 text-[13px] leading-5 whitespace-pre-line">
-        {text}
+        {items
+          ? items.map((item, index) => (
+              <span key={item} className="whitespace-nowrap">
+                {item}
+                {index < items.length - 1 ? "、" : ""}
+              </span>
+            ))
+          : text}
       </div>
     </div>
   );
