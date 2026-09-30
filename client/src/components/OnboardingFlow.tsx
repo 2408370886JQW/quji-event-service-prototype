@@ -22,6 +22,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
+import { CaptchaDialog } from "./CaptchaDialog";
 import { DateRangeField } from "./TicketTypesEditor";
 import { TicketSessionsEditor } from "./TicketSessionsEditor";
 import {
@@ -449,6 +450,7 @@ export function OrganizerRegistration({
   const [code, setCode] = useState("");
   const [ticket, setTicket] = useState<SmsTicket | null>(draft?.ticket ?? null);
   const [sending, setSending] = useState(false);
+  const [captchaOpen, setCaptchaOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const codeRef = useRef<HTMLInputElement>(null);
   const sendSeq = useRef(0);
@@ -482,14 +484,22 @@ export function OrganizerRegistration({
     clearRegistrationDraft();
     onBack();
   };
-  const sendCode = () => {
+  // 点击获取验证码 先校验手机号 再弹出图形验证 通过后才发送短信
+  const requestCode = () => {
     if (sending || resendSeconds(ticket, Date.now()) > 0) return;
     if (!isValidPhone(phone)) return setError(SMS_MESSAGES.invalidPhone);
+    setError("");
+    setCaptchaOpen(true);
+  };
+  const sendCode = (_captcha: { captchaId: string; captchaCode: string }) => {
+    setCaptchaOpen(false);
+    if (sending || !isValidPhone(phone)) return;
     setError("");
     setCode("");
     setSending(true);
     const seq = ++sendSeq.current;
-    // 本地样例模式模拟短信网关耗时 接入后端时替换为 POST /auth/sms-code
+    // 本地样例模式模拟短信网关耗时
+    // 接入后端时替换为 POST /auth/sms-code 并携带 captchaId 与 captchaCode
     window.setTimeout(() => {
       // 发送过程中更换了手机号 旧请求结果作废
       if (seq !== sendSeq.current) return;
@@ -668,8 +678,9 @@ export function OrganizerRegistration({
                       />
                       <button
                         type="button"
-                        onClick={sendCode}
+                        onClick={requestCode}
                         disabled={sending || countdown > 0}
+                        aria-haspopup="dialog"
                         aria-busy={sending}
                         data-cy="registration-send-code"
                         className="h-11 min-w-[112px] whitespace-nowrap rounded-md border border-brand-400 bg-white px-3 text-[14px] font-semibold text-brand-700 tabular-nums transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500"
@@ -867,6 +878,12 @@ export function OrganizerRegistration({
               </button>
             </div>
           </form>
+          <CaptchaDialog
+            open={captchaOpen}
+            phone={phone}
+            onCancel={() => setCaptchaOpen(false)}
+            onPassed={sendCode}
+          />
         </div>
       </main>
     </div>
