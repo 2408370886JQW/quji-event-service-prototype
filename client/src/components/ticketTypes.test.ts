@@ -112,19 +112,21 @@ describe("活动创建票种规则", () => {
     ).toBe("可入场次数为 1 到 10 次");
   });
 
-  it("每人限购 1 到 10 张且不超过库存", () => {
+  it("每个身份证限购 1 到 10 张且不超过库存", () => {
     const check = (purchaseLimit: string, inventory = "1500") =>
       validateTicketField(
         presale({ purchaseLimit, inventory }),
         "purchaseLimit",
         window
       );
-    expect(check("")).toBe("请输入每人限购张数");
-    expect(check("0")).toBe("每人限购 1 到 10 张");
-    expect(check("11")).toBe("每人限购 1 到 10 张");
+    expect(check("")).toBe("请输入身份证限购张数");
+    expect(check("0")).toBe("每个身份证限购 1 到 10 张");
+    expect(check("11")).toBe("每个身份证限购 1 到 10 张");
     expect(check("6", "5")).toBe("限购张数不能超过库存");
     expect(check("2")).toBe("");
-    expect(formatPurchaseLimit({ purchaseLimit: "2" })).toBe("每人限购 2 张");
+    expect(formatPurchaseLimit({ purchaseLimit: "2" })).toBe(
+      "每个身份证限购 2 张"
+    );
     expect(formatRealName({ realNameRequired: false })).toBe("无需实名");
   });
 

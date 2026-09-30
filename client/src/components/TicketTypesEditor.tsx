@@ -539,7 +539,7 @@ function TicketCard({
           </div>
         </Field>
         <Field
-          label="每人限购"
+          label="身份证限购"
           required
           htmlFor={fid("purchase")}
           error={errors?.purchaseLimit}
@@ -556,12 +556,19 @@ function TicketCard({
                 })
               }
               placeholder={`1 到 ${MAX_PURCHASE_LIMIT} 张`}
-              className={`${inputBase} ${inputTone(Boolean(errors?.purchaseLimit))} pr-24`}
+              className={`${inputBase} ${inputTone(Boolean(errors?.purchaseLimit))} pr-32`}
             />
             <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[14px] whitespace-nowrap text-slate-500">
-              张 / 每个账号
+              张 / 每个身份证
             </span>
           </div>
+          <p
+            className="mt-1.5 text-[13px] leading-5 text-slate-500"
+            data-cy="ticket-purchase-limit-hint"
+          >
+            <span className="block">同一身份证在本场次本票种合并计算</span>
+            <span className="block">多个账号购买也不能超出</span>
+          </p>
         </Field>
         <Field label="实名购票" required>
           <div
@@ -593,7 +600,7 @@ function TicketCard({
             <span className="text-[13px] leading-5 text-slate-500">
               {ticket.realNameRequired
                 ? "一票一证 入场核验身份"
-                : "购票无需填写证件"}
+                : "入场不核验证件 限购仍按身份证统计"}
             </span>
           </div>
         </Field>

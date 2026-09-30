@@ -19,7 +19,7 @@ export interface TicketTypeDraft {
   saleEnd: string;
   entryLimit: EntryLimit;
   entryTimes: NumberLike;
-  /** 同一购票账号最多可购张数 */
+  /** 同一身份证在同一场次同一票种最多可购张数 多个账号合并计算 */
   purchaseLimit: NumberLike;
   /** 需要实名时一票一证 入场人证核验 */
   realNameRequired: boolean;
@@ -188,14 +188,14 @@ export function validateTicketField(
     }
     case "purchaseLimit": {
       const limit = toNumber(ticket.purchaseLimit);
-      if (limit === null) return "请输入每人限购张数";
+      if (limit === null) return "请输入身份证限购张数";
       if (
         Number.isNaN(limit) ||
         !Number.isInteger(limit) ||
         limit < 1 ||
         limit > MAX_PURCHASE_LIMIT
       )
-        return `每人限购 1 到 ${MAX_PURCHASE_LIMIT} 张`;
+        return `每个身份证限购 1 到 ${MAX_PURCHASE_LIMIT} 张`;
       const inventory = toNumber(ticket.inventory);
       return inventory && Number.isFinite(inventory) && limit > inventory
         ? "限购张数不能超过库存"
@@ -263,7 +263,7 @@ export function formatEntryRule(ticket: TicketTypeDraft) {
 export function formatPurchaseLimit(
   ticket: Pick<TicketTypeDraft, "purchaseLimit">
 ) {
-  return `每人限购 ${toNumber(ticket.purchaseLimit) ?? DEFAULT_PURCHASE_LIMIT} 张`;
+  return `每个身份证限购 ${toNumber(ticket.purchaseLimit) ?? DEFAULT_PURCHASE_LIMIT} 张`;
 }
 
 export function formatRealName(

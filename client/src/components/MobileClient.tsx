@@ -124,7 +124,7 @@ export const MobileClient: React.FC<MobileClientProps> = ({ onNewSubmission }) =
                 <div className="text-[10px] text-purple-700 font-semibold tracking-wider mb-1">乌鲁木齐试点活动</div>
                 <h3 className="font-bold text-sm text-gray-900 leading-snug">2026 魔都动漫嘉年华</h3>
                 <div className="text-[11px] text-gray-500 mt-1 flex items-center space-x-1">
-                  <span>📅 2026-06-28</span>
+                  <span>📅 2026-06-28—06-29</span>
                   <span>·</span>
                   <span>📍 新疆国际会展中心</span>
                 </div>
@@ -488,7 +488,7 @@ export const MobileClient: React.FC<MobileClientProps> = ({ onNewSubmission }) =
               <div className="text-left border-b border-white/10 pb-2">
                 <div className="text-[10px] text-purple-400 font-mono">QR-CODE 入场核销码</div>
                 <h4 className="font-bold text-sm text-gray-100">2026 魔都动漫嘉年华</h4>
-                <div className="text-[10px] text-gray-400 mt-0.5">2026-06-28 09:00-18:00 · 新疆国际会展中心</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">2026-06-28—06-29 09:00-18:00 · 新疆国际会展中心</div>
               </div>
 
               {/* Dynamic QR Mock */}

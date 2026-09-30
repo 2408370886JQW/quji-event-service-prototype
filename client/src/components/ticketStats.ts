@@ -18,6 +18,9 @@ export interface RefundSource {
   status: RefundState;
   amount: number;
   quantity?: number;
+  /** 场次日期 YYYY-MM-DD，缺省时从电子票号 QT-YYYYMMDD-xxxxx 读取 */
+  sessionDate?: string;
+  ticketCode?: string;
 }
 
 export interface TicketStockRow<T extends TicketStockSource> {
@@ -89,3 +92,61 @@ export function totalTicketStock<T extends TicketStockSource>(
 }
 
 export const formatCount = (value: number) => value.toLocaleString("zh-CN");
+
+/* ---------- 按场次日期查看 ---------- */
+
+export const ALL_SESSIONS = "all";
+
+export interface StockSession<T extends TicketStockSource> {
+  date: string;
+  tickets: T[];
+}
+
+/** 退款对应的场次日期 */
+export function refundSessionDate(refund: RefundSource) {
+  if (refund.sessionDate) return refund.sessionDate;
+  const match = /QT-(\d{4})(\d{2})(\d{2})-/.exec(refund.ticketCode ?? "");
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : "";
+}
+
+export function filterRefundsBySession<R extends RefundSource>(
+  refunds: R[],
+  date: string
+) {
+  return date === ALL_SESSIONS
+    ? refunds
+    : refunds.filter(item => refundSessionDate(item) === date);
+}
+
+/** 全部场次时按票种名称合并库存与已售 */
+export function mergeSessionTickets<T extends TicketStockSource>(
+  sessions: StockSession<T>[]
+): T[] {
+  const merged: T[] = [];
+  sessions.forEach(session =>
+    session.tickets.forEach(ticket => {
+      const index = merged.findIndex(item => item.name === ticket.name);
+      if (index < 0) merged.push({ ...ticket });
+      else
+        merged[index] = {
+          ...merged[index],
+          inventory: merged[index].inventory + ticket.inventory,
+          sold: merged[index].sold + ticket.sold,
+        };
+    })
+  );
+  return merged;
+}
+
+/** 某一场次或全部场次的按票种统计 */
+export function buildSessionStock<T extends TicketStockSource>(
+  sessions: StockSession<T>[],
+  refunds: RefundSource[],
+  date: string
+) {
+  const tickets =
+    date === ALL_SESSIONS
+      ? mergeSessionTickets(sessions)
+      : (sessions.find(session => session.date === date)?.tickets ?? []);
+  return buildTicketStock(tickets, filterRefundsBySession(refunds, date));
+}

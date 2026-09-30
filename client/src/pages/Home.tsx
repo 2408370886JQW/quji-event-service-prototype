@@ -84,11 +84,22 @@ import {
   type AdmissionState,
 } from "@/components/OnboardingFlow";
 import {
-  buildTicketStock,
+  ALL_SESSIONS,
+  buildSessionStock,
   formatCount,
+  refundSessionDate,
   totalTicketStock,
 } from "@/components/ticketStats";
+import { EVENT_SESSIONS, type SessionTicket } from "@/components/ticketSamples";
+import {
+  PurchaseLimitPanel,
+  SessionFilter,
+  loadTicketSession,
+  saveTicketSession,
+} from "@/components/TicketLimitViews";
+import { formatSessionDate } from "@/components/ticketTypes";
 type Role = "platform" | "organizer" | "culture" | "collaborator";
+type TicketMode = "all" | "orders" | "refunds" | "limits";
 type Page =
   | "workspace"
   | "events"
@@ -149,7 +160,7 @@ const EVENTS: EventItem[] = [
     id: "EVT-2026-0628",
     name: "2026 魔都动漫嘉年华",
     subtitle: "乌鲁木齐特别巡回展",
-    date: "2026-06-28 09:00—18:00",
+    date: "2026-06-28—06-29 09:00—18:00",
     venue: "新疆国际会展中心 3号馆",
     organizer: "新疆星河文化传媒有限公司",
     status: "selling",
@@ -364,53 +375,6 @@ const ROLE_INFO: Record<
     permissions: ["workspace", "activity", "costumes", "onsite"],
   },
 };
-
-const TICKETS = [
-  {
-    type: "普通观众票",
-    price: 88,
-    purchaseLimit: 4,
-    realName: true,
-    stock: 6000,
-    sold: 3548,
-    status: "售票中",
-    sales: "2026-06-01 10:00 开售",
-    channel: "漫圈用户端 / 现场窗口",
-  },
-  {
-    type: "Coser 专属票",
-    price: 68,
-    purchaseLimit: 1,
-    realName: true,
-    stock: 500,
-    sold: 326,
-    status: "售票中",
-    sales: "2026-06-01 10:00 开售",
-    channel: "漫圈用户端（实名 + 提报）",
-  },
-  {
-    type: "学生早鸟票",
-    price: 58,
-    purchaseLimit: 2,
-    realName: true,
-    stock: 800,
-    sold: 788,
-    status: "已停售",
-    sales: "2026-06-10 23:59 停售",
-    channel: "漫圈用户端",
-  },
-  {
-    type: "现场当日票",
-    price: 98,
-    purchaseLimit: 2,
-    realName: true,
-    stock: 1000,
-    sold: 0,
-    status: "待开售",
-    sales: "活动日 08:30 开售",
-    channel: "现场售票点",
-  },
-];
 
 const COSERS = [
   {
@@ -1050,19 +1014,19 @@ function LocaleSwitch({
     <div className="flex rounded-lg p-1 bg-slate-100">
       <button
         onClick={() => setLocale("zh")}
-        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "zh" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "zh" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
       >
         中文
       </button>
       <button
         onClick={() => setLocale("en")}
-        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "en" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "en" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
       >
         EN
       </button>
       <button
         onClick={() => setLocale("ug")}
-        className={`h-7 px-2.5 text-[12px] rounded-md ${locale === "ug" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "ug" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
       >
         ئۇيغۇرچە
       </button>
@@ -1105,7 +1069,7 @@ type WorkspaceSession = {
   page: Page;
   eventId: string;
   activityTab: ActivityTab;
-  ticketMode: "all" | "orders" | "refunds";
+  ticketMode: TicketMode;
   sidebarCollapsed: boolean;
   registrationOpen: boolean;
 };
@@ -1148,7 +1112,9 @@ function loadWorkspaceSession(): WorkspaceSession {
           ? saved.activityTab
           : fallback.activityTab,
       ticketMode:
-        saved.ticketMode === "orders" || saved.ticketMode === "refunds"
+        saved.ticketMode === "orders" ||
+        saved.ticketMode === "refunds" ||
+        saved.ticketMode === "limits"
           ? saved.ticketMode
           : "all",
       sidebarCollapsed: saved.sidebarCollapsed === true,
@@ -1179,9 +1145,7 @@ export default function Home() {
   const [settingOpen, setSettingOpen] = useState(false);
   const [checkins, setCheckins] = useState(0);
   const [issueOpen, setIssueOpen] = useState(false);
-  const [ticketMode, setTicketMode] = useState<"all" | "orders" | "refunds">(
-    restored.ticketMode
-  );
+  const [ticketMode, setTicketMode] = useState<TicketMode>(restored.ticketMode);
   const [registrationOpen, setRegistrationOpen] = useState(
     restored.registrationOpen
   );
@@ -1523,26 +1487,26 @@ export default function Home() {
         <div className="flex-1 min-w-0">
           <header
             data-cy="workspace-topbar"
-            className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20"
+            className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="hidden sm:flex items-center gap-2 text-[14px] text-slate-500">
+              <div className="hidden sm:flex min-w-0 items-center gap-2 text-[14px] text-slate-500">
                 <button
                   onClick={() => changePage("events")}
-                  className="hover:text-[#255ec8]"
+                  className="shrink-0 whitespace-nowrap hover:text-[#255ec8]"
                 >
                   活动管理
                 </button>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 shrink-0" />
                 <button
                   onClick={() => changePage("activity")}
-                  className="font-semibold text-slate-800 truncate max-w-[320px]"
+                  className="min-w-0 font-semibold text-slate-800 truncate max-w-[320px]"
                 >
                   {selectedEvent.name} · {selectedEvent.subtitle}
                 </button>
@@ -1551,10 +1515,10 @@ export default function Home() {
                 {currentPageLabel}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => setPage("activity")}
-                className="hidden md:flex h-9 px-3 rounded-lg border border-slate-300 text-[13px] font-semibold items-center gap-1.5 hover:bg-slate-50"
+                className="hidden md:flex h-9 shrink-0 px-3 rounded-lg border border-slate-300 text-[13px] font-semibold whitespace-nowrap items-center gap-1.5 hover:bg-slate-50"
               >
                 <FolderOpen className="w-4 h-4" />
                 当前活动档案
@@ -2837,7 +2801,7 @@ type RefundRecord = {
   logs: { action: string; actor: string; time: string; comment?: string }[];
 };
 
-const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v1";
+const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v2";
 const DEFAULT_REFUNDS: RefundRecord[] = [
   {
     id: "refund-20260929-001",
@@ -2869,7 +2833,7 @@ const DEFAULT_REFUNDS: RefundRecord[] = [
     buyerName: "艾力江·买买提",
     buyerPhone: "186****5218",
     ticketName: "Coser 专属票",
-    ticketCode: "QT-20260628-20762",
+    ticketCode: "QT-20260629-20762",
     amount: 68,
     reason: "活动时间冲突",
     detail: "临时有课程安排，无法按时参加活动。",
@@ -2948,11 +2912,17 @@ function TicketPage({
 }: {
   compact?: boolean;
   role: Role;
-  mode?: "all" | "orders" | "refunds";
-  setMode?: (mode: "all" | "orders" | "refunds") => void;
+  mode?: TicketMode;
+  setMode?: (mode: TicketMode) => void;
 }) {
-  const selected = mode || "all";
-  const set = setMode || (() => {});
+  const [localMode, setLocalMode] = useState<TicketMode>("all");
+  const selected = mode || localMode;
+  const set = setMode || setLocalMode;
+  const [session, setSession] = useState(loadTicketSession);
+  const changeSession = (value: string) => {
+    setSession(value);
+    saveTicketSession(value);
+  };
   const [refunds, setRefunds] = useState<RefundRecord[]>(loadRefundRecords);
   const pending = refunds.filter(item => item.status === "pending_review");
   const completed = refunds.filter(item => item.status === "refunded");
@@ -3062,7 +3032,10 @@ function TicketPage({
       </section>
       <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 justify-between">
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+          <div
+            className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg sm:flex sm:w-fit"
+            data-cy="ticket-tabs"
+          >
             {(
               [
                 ["all", "票种配置"],
@@ -3071,12 +3044,14 @@ function TicketPage({
                   "refunds",
                   `退款申请${pending.length ? ` ${pending.length}` : ""}`,
                 ],
+                ["limits", "限购校验"],
               ] as const
             ).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => set(id)}
-                className={`h-8 px-3 rounded-md text-[13px] font-semibold ${selected === id ? "bg-white shadow-sm text-[#255ec8]" : "text-slate-600"}`}
+                data-cy={`ticket-tab-${id}`}
+                className={`h-8 px-3 rounded-md text-[13px] font-semibold whitespace-nowrap ${selected === id ? "bg-white shadow-sm text-[#255ec8]" : "text-slate-600"}`}
               >
                 {label}
               </button>
@@ -3089,12 +3064,21 @@ function TicketPage({
             description="导出当前票务视图中的票种、订单或退款数据。"
           />
         </div>
+        {(selected === "all" || selected === "orders") && (
+          <SessionFilter value={session} onChange={changeSession} />
+        )}
         {selected === "all" ? (
-          <TicketTypes refunds={refunds} onRefunds={() => set("refunds")} />
+          <TicketTypes
+            refunds={refunds}
+            session={session}
+            onRefunds={() => set("refunds")}
+          />
         ) : selected === "orders" ? (
-          <OrderTable />
-        ) : (
+          <OrderTable session={session} />
+        ) : selected === "refunds" ? (
           <RefundTable role={role} requests={refunds} onUpdate={updateRefund} />
+        ) : (
+          <PurchaseLimitPanel refunds={refunds} />
         )}
       </section>
     </div>
@@ -3102,24 +3086,23 @@ function TicketPage({
 }
 function TicketTypes({
   refunds,
+  session,
   onRefunds,
 }: {
   refunds: RefundRecord[];
+  session: string;
   onRefunds: () => void;
 }) {
-  const rows = buildTicketStock(
-    TICKETS.map(ticket => ({
-      ...ticket,
-      name: ticket.type,
-      inventory: ticket.stock,
-    })),
-    refunds
-  );
+  const rows = buildSessionStock(EVENT_SESSIONS, refunds, session);
   const total = totalTicketStock(rows);
+  const scope =
+    session === ALL_SESSIONS
+      ? `全部 ${EVENT_SESSIONS.length} 个场次合计`
+      : `${formatSessionDate(session)} 场次`;
   const statusTone = (status: string) =>
     status === "售票中" ? "green" : status === "待开售" ? "blue" : "slate";
-  const rule = (ticket: (typeof TICKETS)[number]) =>
-    `限购 ${ticket.purchaseLimit} 张 · ${ticket.realName ? "需要实名" : "无需实名"}`;
+  const rule = (ticket: SessionTicket) =>
+    `每个身份证限购 ${ticket.purchaseLimit} 张 · ${ticket.realName ? "需要实名" : "无需实名"}`;
   const Pending = ({ count }: { count: number }) =>
     count ? (
       <button
@@ -3130,9 +3113,15 @@ function TicketTypes({
       </button>
     ) : null;
   return (
-    <div data-cy="ticket-stock-table">
+    <div data-cy="ticket-stock-table" data-session={session}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 text-[13px] leading-5 text-slate-500">
         <span>
+          <strong
+            className="block text-[14px] font-semibold text-slate-900 sm:mr-2 sm:inline"
+            data-cy="ticket-stock-scope"
+          >
+            {scope}
+          </strong>
           <span className="block sm:inline">按票种统计已售 已退款和剩余</span>
           <span className="block sm:ml-2 sm:inline">
             退款完成后票回到剩余库存
@@ -3156,17 +3145,17 @@ function TicketTypes({
           </thead>
           <tbody className="divide-y divide-slate-200">
             {rows.map(row => (
-              <tr key={row.ticket.type} data-cy="ticket-stock-row">
+              <tr key={row.ticket.name} data-cy="ticket-stock-row">
                 <td className="p-4">
                   <div className="text-[15px] font-semibold text-slate-900">
-                    {row.ticket.type}
+                    {row.ticket.name}
                   </div>
                   <div className="mt-1 text-[13px] whitespace-nowrap text-slate-500">
                     ¥{row.ticket.price} · {rule(row.ticket)}
                   </div>
                 </td>
                 <td className="data-token p-4 text-right text-[15px] text-slate-700">
-                  {formatCount(row.ticket.stock)}
+                  {formatCount(row.ticket.inventory)}
                 </td>
                 <td
                   className="data-token p-4 text-right text-[15px] font-semibold text-slate-900"
@@ -3211,7 +3200,7 @@ function TicketTypes({
                   <ActionButton
                     label="管理"
                     className="text-[14px] font-semibold text-[#255ec8]"
-                    description="可调整库存、开售停售时间、每人限购和实名规则。"
+                    description="可调整库存、开售停售时间、身份证限购和实名规则。"
                   />
                 </td>
               </tr>
@@ -3248,14 +3237,14 @@ function TicketTypes({
       <div className="divide-y divide-slate-200 md:hidden">
         {rows.map(row => (
           <article
-            key={row.ticket.type}
+            key={row.ticket.name}
             className="p-4"
             data-cy="ticket-stock-card"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[15px] font-semibold text-slate-900">
-                  {row.ticket.type}
+                  {row.ticket.name}
                 </div>
                 <div className="mt-1 text-[13px] leading-5 text-slate-500">
                   <span className="block">¥{row.ticket.price}</span>
@@ -3293,7 +3282,8 @@ function TicketTypes({
             </dl>
             <div className="mt-2.5 flex items-center justify-between gap-3 text-[13px] text-slate-500">
               <span className="whitespace-nowrap">
-                库存 {formatCount(row.ticket.stock)} · 净售出 {row.soldPercent}%
+                库存 {formatCount(row.ticket.inventory)} · 净售出{" "}
+                {row.soldPercent}%
               </span>
               <Pending count={row.pending} />
             </div>
@@ -3318,9 +3308,10 @@ function TicketTypes({
     </div>
   );
 }
-function OrderTable() {
-  const orders = [
-    [
+const ORDERS: { date: string; row: string[] }[] = [
+  {
+    date: "2026-06-28",
+    row: [
       "ORD1789301148305",
       "张三",
       "Coser 专属票",
@@ -3329,7 +3320,10 @@ function OrderTable() {
       "已支付",
       "电子票已生成",
     ],
-    [
+  },
+  {
+    date: "2026-06-28",
+    row: [
       "ORD1789301149112",
       "古丽米热·阿布都",
       "Coser 专属票",
@@ -3338,21 +3332,35 @@ function OrderTable() {
       "已支付",
       "电子票已生成",
     ],
-    [
+  },
+  {
+    date: "2026-06-29",
+    row: [
       "ORD1789301151870",
       "何晓晨",
       "普通观众票",
-      "¥88",
+      "¥176",
       "实名认证完成",
       "已支付",
       "待入场",
     ],
-  ];
+  },
+];
+function OrderTable({ session }: { session: string }) {
+  const orders = ORDERS.filter(
+    order => session === ALL_SESSIONS || order.date === session
+  ).map(order => [
+    order.row[0],
+    order.row[1],
+    formatSessionDate(order.date),
+    ...order.row.slice(2),
+  ]);
   return (
     <SimpleTable
       headers={[
         "订单号",
         "购票人",
+        "场次",
         "票种",
         "金额",
         "实名信息",
@@ -3480,7 +3488,10 @@ function RefundTable({
                 </td>
                 <td className="p-4 text-[14px]">
                   {item.ticketName}
-                  <small className="block mt-1 text-[12px] text-slate-500">
+                  <small className="block mt-1 text-[12px] whitespace-nowrap text-slate-500">
+                    {formatSessionDate(refundSessionDate(item))} 场次
+                  </small>
+                  <small className="block text-[12px] text-slate-500">
                     ¥{item.amount.toFixed(2)} · 1 张
                   </small>
                 </td>
@@ -3582,6 +3593,7 @@ function RefundTable({
                     ["订单号", selected.orderNo],
                     ["电子票号", selected.ticketCode],
                     ["票种", selected.ticketName],
+                    ["场次", formatSessionDate(refundSessionDate(selected))],
                     ["退款金额", `¥${selected.amount.toFixed(2)}`],
                     ["支付方式", "微信支付"],
                     ["退款去向", "原支付账户"],
