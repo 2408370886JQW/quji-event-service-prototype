@@ -79,7 +79,7 @@ export function SessionFilter({
         场次日期
       </span>
       <div
-        className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1 sm:inline-grid sm:w-fit sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none"
+        className="grid grid-cols-3 gap-1 rounded-2xl sm:rounded-full bg-white border border-[#e6e2ef] p-1 sm:inline-grid sm:w-fit sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none"
         role="radiogroup"
         aria-label="场次日期"
       >
@@ -94,13 +94,13 @@ export function SessionFilter({
               data-cy="session-filter-option"
               data-value={option.value}
               onClick={() => onChange(option.value)}
-              className={`min-w-0 rounded-md px-3 py-1.5 text-center transition-colors sm:min-w-[118px] ${active ? "bg-white text-[#255ec8] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+              className={`min-w-0 rounded-full px-3 py-1.5 text-center transition-colors sm:min-w-[118px] ${active ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(124,63,208,0.7)]" : "text-slate-600 hover:text-slate-900"}`}
             >
               <span className="block text-[14px] font-semibold whitespace-nowrap">
                 {option.label}
               </span>
               <span
-                className={`block text-[12px] whitespace-nowrap ${active ? "text-[#255ec8]/80" : "text-slate-500"}`}
+                className={`block text-[12px] whitespace-nowrap ${active ? "text-white/85" : "text-slate-500"}`}
               >
                 {option.sub}
               </span>
@@ -123,7 +123,7 @@ function loadLogs(): LimitCheckLog[] {
 
 const TICKET_NAMES = EVENT_SESSIONS[0].tickets.map(ticket => ticket.name);
 const fieldClass =
-  "block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#245fc4] focus:ring-2 focus:ring-[#245fc4]/15";
+  "block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
 
 function SelectField({
   label,
@@ -261,7 +261,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
       <div className="grid gap-4 border-b border-slate-200 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <section className="rounded-lg border border-slate-200 p-4 lg:self-start">
           <h3 className="flex items-center gap-2 text-[16px] font-semibold text-slate-900">
-            <IdCard className="h-4.5 w-4.5 text-[#255ec8]" />
+            <IdCard className="h-4.5 w-4.5 text-brand-600" />
             限购按身份证统计
           </h3>
           <ul className="mt-3 space-y-1.5 text-[14px] leading-6 text-slate-600">
@@ -361,7 +361,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
                 type="button"
                 data-cy="limit-check"
                 onClick={runCheck}
-                className="h-11 w-full rounded-lg bg-[#255ec8] px-4 text-[15px] font-semibold whitespace-nowrap text-white transition-transform active:scale-[0.97]"
+                className="h-11 w-full rounded-full bg-brand-grad px-4 text-[15px] font-semibold whitespace-nowrap text-white transition-transform active:scale-[0.97]"
               >
                 校验并记录
               </button>
@@ -536,7 +536,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
                     type="button"
                     data-cy="limit-review"
                     onClick={() => review(log)}
-                    className="text-[14px] font-semibold whitespace-nowrap text-[#255ec8] hover:underline"
+                    className="text-[14px] font-semibold whitespace-nowrap text-brand-600 hover:underline"
                   >
                     复核
                   </button>
@@ -579,7 +579,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
             <button
               type="button"
               onClick={() => review(log)}
-              className="mt-2 text-[14px] font-semibold text-[#255ec8]"
+              className="mt-2 text-[14px] font-semibold text-brand-600"
             >
               复核
             </button>

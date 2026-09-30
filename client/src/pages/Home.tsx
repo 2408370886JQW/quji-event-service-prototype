@@ -131,6 +131,12 @@ const RECORD_VISUALS = {
   costume: "/manus-storage/quji-costume-reference_610f2304.webp",
   prop: "/manus-storage/quji-prop-reference_ca4a00a7.webp",
 };
+export const MASCOT = {
+  avatar: "/manus-storage/quji-mascot-avatar_7ca13a7e.webp",
+  login: "/manus-storage/quji-mascot-login_78361119.webp",
+  empty: "/manus-storage/quji-mascot-empty_8b5e83fa.webp",
+  success: "/manus-storage/quji-mascot-success_3da8f21a.webp",
+};
 
 type EventStatus =
   | "created"
@@ -215,7 +221,11 @@ const STATUS_META: Record<
   { label: string; color: string; step: number }
 > = {
   created: { label: "活动创建", color: "bg-slate-100 text-slate-700", step: 0 },
-  preparing: { label: "资料准备", color: "bg-blue-50 text-blue-700", step: 1 },
+  preparing: {
+    label: "资料准备",
+    color: "bg-brand-100 text-brand-700",
+    step: 1,
+  },
   verifying: {
     label: "信息核验",
     color: "bg-amber-50 text-amber-700",
@@ -230,7 +240,7 @@ const STATUS_META: Record<
   ended: { label: "活动结束", color: "bg-slate-100 text-slate-600", step: 5 },
   archived: {
     label: "归档完成",
-    color: "bg-indigo-50 text-indigo-700",
+    color: "bg-brand-50 text-brand-800",
     step: 6,
   },
 };
@@ -319,7 +329,7 @@ const ROLE_INFO: Record<
     name: "平台运营人员",
     note: "配置活动流程、账号权限与服务运营",
     icon: Settings2,
-    color: "bg-blue-600",
+    color: "bg-brand-grad",
     permissions: [
       "workspace",
       "admissions",
@@ -337,7 +347,7 @@ const ROLE_INFO: Record<
     name: "主办方活动运营人员",
     note: "维护活动资料、票务、现场与参与人员",
     icon: Building2,
-    color: "bg-violet-600",
+    color: "bg-candy-grad",
     permissions: [
       "workspace",
       "onboarding",
@@ -357,7 +367,7 @@ const ROLE_INFO: Record<
     name: "文旅业务指导人员",
     note: "查看活动电子档案、服务进度与汇总数据",
     icon: Building,
-    color: "bg-amber-700",
+    color: "bg-navy-700",
     permissions: [
       "workspace",
       "events",
@@ -468,18 +478,22 @@ const MATERIALS = [
 
 function Brand({ mini = false }: { mini?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-9 h-9 rounded-lg bg-[#255ec8] text-white flex items-center justify-center">
-        <Sparkles className="w-5 h-5" />
+    <div data-cy="brand-mark" className="flex items-center gap-2.5">
+      <div className="w-10 h-10 rounded-full bg-brand-100 ring-2 ring-white shadow-[0_4px_12px_-6px_rgba(124,63,208,0.6)] overflow-hidden shrink-0">
+        <img
+          src={MASCOT.avatar}
+          alt="趣集"
+          width={40}
+          height={40}
+          className="w-full h-full object-cover object-top"
+        />
       </div>
       {!mini && (
         <div>
-          <div className="text-[16px] font-semibold tracking-[-0.03em]">
+          <div className="text-brand-grad text-[18px] leading-6 font-bold tracking-[-0.02em]">
             趣集
           </div>
-          <div className="text-[12px] text-slate-500 mt-0.5">
-            文化活动协同管理平台
-          </div>
+          <div className="text-[12px] text-slate-500">文化活动协同管理平台</div>
         </div>
       )}
     </div>
@@ -489,7 +503,7 @@ function Status({ status }: { status: EventStatus }) {
   const s = STATUS_META[status];
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[13px] font-semibold ${s.color}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[13px] font-semibold ${s.color}`}
     >
       {s.label}
     </span>
@@ -504,14 +518,14 @@ function Pill({
 }) {
   const colors = {
     slate: "bg-slate-100 text-slate-700",
-    blue: "bg-blue-50 text-blue-700",
+    blue: "bg-brand-100 text-brand-700",
     green: "bg-emerald-50 text-emerald-700",
     amber: "bg-amber-50 text-amber-700",
     rose: "bg-rose-50 text-rose-700",
   };
   return (
     <span
-      className={`inline-flex shrink-0 whitespace-nowrap px-2 py-1 rounded-md text-[12px] font-semibold ${colors[tone]}`}
+      className={`inline-flex shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[12px] font-semibold ${colors[tone]}`}
     >
       {children}
     </span>
@@ -561,9 +575,22 @@ function EmptyState({
   action: string;
 }) {
   return (
-    <div className="border border-dashed border-slate-300 bg-slate-50 rounded-lg p-10 text-center">
-      <div className="mx-auto w-11 h-11 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center">
-        {icon}
+    <div
+      data-cy="empty-state"
+      className="border border-dashed border-brand-200 bg-brand-50/60 rounded-xl p-8 sm:p-10 text-center"
+    >
+      <div className="relative mx-auto w-[120px]">
+        <img
+          src={MASCOT.empty}
+          alt=""
+          aria-hidden="true"
+          width={120}
+          height={133}
+          className="w-[120px] h-auto select-none"
+        />
+        <span className="absolute -right-1 bottom-1 w-9 h-9 rounded-full bg-white text-brand-600 ring-1 ring-brand-200 flex items-center justify-center [&>svg]:w-[18px] [&>svg]:h-[18px]">
+          {icon}
+        </span>
       </div>
       <h3 className="mt-4 text-[17px] font-semibold">{title}</h3>
       <p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">
@@ -572,7 +599,7 @@ function EmptyState({
       <div className="mt-5 inline-flex">
         <ActionButton
           label={action}
-          className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+          className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
           title={action}
           description="可在此开始建立新的活动档案并补充基础资料。"
         />
@@ -735,14 +762,14 @@ function ActionButton({
                           ? "例如 用于本周运营复盘"
                           : "例如 已补充主体资质文件第 2 版"
                       }
-                      className="mt-4 w-full min-h-28 resize-none rounded-md border border-slate-300 px-3 py-2 text-[14px] leading-6 outline-none focus:border-[#245fc4]"
+                      className="mt-4 w-full min-h-28 resize-none rounded-md border border-slate-300 px-3 py-2 text-[14px] leading-6 outline-none focus:border-brand-500"
                     />
                   </section>
                   <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-4 text-[14px] leading-6 text-slate-700">
                     <input
                       type="checkbox"
                       defaultChecked
-                      className="mt-1 w-4 h-4 accent-[#245fc4]"
+                      className="mt-1 w-4 h-4 accent-brand-600"
                     />
                     同步写入当前活动操作记录并保留本次处理时间与操作人
                   </label>
@@ -767,14 +794,14 @@ function ActionButton({
             <footer className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
               <button
                 onClick={close}
-                className="h-10 px-4 rounded-md border border-slate-300 text-[14px] font-semibold text-slate-700 hover:bg-slate-50"
+                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold text-slate-700 hover:bg-brand-50"
               >
                 {state === "done" ? "返回列表" : "暂存并返回"}
               </button>
               {state !== "done" && (
                 <button
                   onClick={() => setState(state === "view" ? "edit" : "done")}
-                  className="h-10 px-4 rounded-md bg-[#245fc4] hover:bg-[#1c4c9e] text-white text-[14px] font-semibold flex items-center gap-2"
+                  className="h-10 px-4 rounded-full bg-brand-grad hover:brightness-95 text-white text-[14px] font-semibold flex items-center gap-2"
                 >
                   {state === "view" ? `下一步 ${secondStep}` : finalStep}
                   <ArrowRight className="w-4 h-4" />
@@ -800,7 +827,7 @@ function TaskField({ label, value }: { label: string; value: string }) {
 function TimelineRow({ text, time }: { text: string; time: string }) {
   return (
     <div className="timeline-row grid grid-cols-[8px_minmax(0,1fr)] items-start gap-3 text-left">
-      <div className="mt-2 w-2 h-2 rounded-full bg-[#245fc4]" />
+      <div className="mt-2 w-2 h-2 rounded-full bg-brand-grad" />
       <div className="min-w-0">
         <div className="text-[14px] leading-6 text-slate-800">{text}</div>
         <div className="mt-1 text-[12px] leading-5 tabular-nums text-slate-500">
@@ -850,7 +877,7 @@ function Login({
   };
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-[#eef3f3]"
+      className="relative min-h-screen overflow-hidden bg-[#f4effb]"
       dir={locale === "ug" ? "rtl" : "ltr"}
     >
       <div className="absolute inset-0 overflow-hidden">
@@ -863,7 +890,16 @@ function Login({
         <LocaleSwitch locale={locale} setLocale={setLocale} />
       </header>
       <main className="relative z-10 max-w-[1220px] w-full mx-auto px-5 py-8 lg:py-12 grid lg:grid-cols-[0.9fr_1.05fr] gap-8 lg:gap-14 items-center">
-        <section className="max-w-[510px] rounded-xl bg-white/60 backdrop-blur-md border border-white/70 p-6 sm:p-8 shadow-[0_16px_50px_rgba(35,69,87,0.10)]">
+        <section className="relative max-w-[510px] rounded-2xl bg-white/65 backdrop-blur-md border border-white/70 p-6 sm:p-8 shadow-[0_16px_50px_rgba(76,35,133,0.12)]">
+          <img
+            src={MASCOT.login}
+            alt=""
+            aria-hidden="true"
+            width={132}
+            height={236}
+            data-cy="login-mascot"
+            className="pointer-events-none absolute -top-[150px] right-4 hidden w-[132px] h-auto select-none sm:block"
+          />
           <Pill tone="blue">新疆 · 多元文化活动协同</Pill>
           <h1 className="mt-5 text-[38px] sm:text-[48px] leading-[1.12] font-semibold tracking-[-0.06em]">
             一场活动
@@ -872,9 +908,21 @@ function Login({
           </h1>
           <p className="mt-5 text-[17px] leading-7 text-slate-700">
             <span className="block">
-              以活动为核心对象 连接主办方资料 参与人员
+              <span className="inline-block whitespace-nowrap">
+                以活动为核心对象
+              </span>{" "}
+              <span className="inline-block whitespace-nowrap">
+                连接主办方资料 参与人员
+              </span>
             </span>
-            <span className="block">票务 角色服装道具 现场核验与活动归档</span>
+            <span className="block">
+              <span className="inline-block whitespace-nowrap">
+                票务 角色服装道具
+              </span>{" "}
+              <span className="inline-block whitespace-nowrap">
+                现场核验与活动归档
+              </span>
+            </span>
           </p>
           <div className="mt-8 grid grid-cols-3 gap-3">
             <LoginMetric value="01" label="统一工作台" />
@@ -887,7 +935,7 @@ function Login({
             event.preventDefault();
             submit();
           }}
-          className="bg-white/94 border border-white rounded-xl p-6 lg:p-8 shadow-[0_22px_70px_rgba(35,69,87,0.18)] backdrop-blur-xl"
+          className="bg-white/94 border border-white rounded-2xl p-6 lg:p-8 shadow-[0_22px_70px_rgba(76,35,133,0.16)] backdrop-blur-xl"
         >
           <ModuleTitle
             eyebrow="角色登录"
@@ -907,12 +955,12 @@ function Login({
                     setRole(key);
                     setError("");
                   }}
-                  className={`role-login-card text-left rounded-lg border p-4 min-h-[138px] transition-colors ${selected ? "border-[#255ec8] bg-blue-50 ring-1 ring-[#255ec8]" : "border-slate-200 bg-white/80 hover:border-slate-400"}`}
+                  className={`role-login-card text-left rounded-xl border p-4 min-h-[138px] transition-colors ${selected ? "border-brand-400 bg-gradient-to-br from-brand-100 to-brand-50 ring-1 ring-brand-400" : "border-slate-200 bg-white/80 hover:border-brand-300"}`}
                 >
                   <div
-                    className={`w-9 h-9 rounded-lg ${item.color} text-white flex items-center justify-center`}
+                    className={`w-10 h-10 rounded-full ${item.color} text-white flex items-center justify-center shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-5 h-5" strokeWidth={1.9} />
                   </div>
                   <div className="mt-3 text-[16px] leading-5 font-semibold whitespace-nowrap">
                     {item.name}
@@ -932,7 +980,7 @@ function Login({
                 value={account}
                 onChange={e => setAccount(e.target.value)}
                 autoComplete="username"
-                className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white"
+                className="mt-2 h-11 w-full px-4 rounded-full bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-brand-400 focus:bg-white"
               />
             </label>
             <label>
@@ -942,7 +990,7 @@ function Login({
                 onChange={e => setPassword(e.target.value)}
                 type="password"
                 autoComplete="current-password"
-                className="mt-2 h-11 w-full px-3 rounded-lg bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-[#255ec8] focus:bg-white"
+                className="mt-2 h-11 w-full px-4 rounded-full bg-slate-50 border border-slate-200 text-[14px] text-slate-800 outline-none focus:border-brand-400 focus:bg-white"
               />
             </label>
           </div>
@@ -959,7 +1007,7 @@ function Login({
           <button
             type="button"
             onClick={submit}
-            className="mt-5 w-full h-12 rounded-lg bg-[#255ec8] hover:bg-[#1d4fae] text-white text-[15px] font-semibold flex items-center justify-center gap-2"
+            className="mt-5 w-full h-12 rounded-full bg-brand-grad hover:brightness-95 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
           >
             {t.enter}
             <ArrowRight className="w-4 h-4" />
@@ -969,7 +1017,7 @@ function Login({
               type="button"
               onClick={onRegister}
               data-cy="organizer-register"
-              className="mt-3 w-full h-11 rounded-lg border border-[#255ec8] bg-white text-[#1c4c9e] text-[14px] font-semibold flex items-center justify-center gap-2"
+              className="mt-3 w-full h-11 rounded-lg border border-brand-500 bg-white text-brand-700 text-[14px] font-semibold flex items-center justify-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
               首次入驻注册
@@ -985,11 +1033,13 @@ function Login({
 }
 function LoginMetric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-3">
-      <div className="text-[22px] font-semibold tracking-[-0.05em]">
+    <div className="bg-white border border-brand-100 rounded-xl p-3">
+      <div className="text-brand-grad text-[22px] font-bold tracking-[-0.03em]">
         {value}
       </div>
-      <div className="mt-1 text-[12px] text-slate-600">{label}</div>
+      <div className="mt-1 text-[12px] text-slate-600 whitespace-nowrap">
+        {label}
+      </div>
     </div>
   );
 }
@@ -1011,22 +1061,22 @@ function LocaleSwitch({
   setLocale: (locale: Locale) => void;
 }) {
   return (
-    <div className="flex rounded-lg p-1 bg-slate-100">
+    <div className="flex rounded-full p-1 bg-white border border-[#e6e2ef]">
       <button
         onClick={() => setLocale("zh")}
-        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "zh" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-full ${locale === "zh" ? "bg-brand-grad text-white font-semibold" : "text-brand-700/80 hover:text-brand-700"}`}
       >
         中文
       </button>
       <button
         onClick={() => setLocale("en")}
-        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "en" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-full ${locale === "en" ? "bg-brand-grad text-white font-semibold" : "text-brand-700/80 hover:text-brand-700"}`}
       >
         EN
       </button>
       <button
         onClick={() => setLocale("ug")}
-        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-md ${locale === "ug" ? "bg-white shadow-sm font-semibold" : "text-slate-500"}`}
+        className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-full ${locale === "ug" ? "bg-brand-grad text-white font-semibold" : "text-brand-700/80 hover:text-brand-700"}`}
       >
         ئۇيغۇرچە
       </button>
@@ -1356,17 +1406,17 @@ export default function Home() {
     );
   return (
     <div
-      className="min-h-screen bg-[#f6f7f9] text-slate-900"
+      className="workspace-canvas min-h-screen text-slate-900"
       dir={locale === "ug" ? "rtl" : "ltr"}
     >
       <div className="flex min-h-screen">
         <aside
           data-cy="desktop-sidebar"
-          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen transition-[width] duration-200`}
+          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-[#ece7f4] flex-col sticky top-0 h-screen transition-[width] duration-200`}
         >
           <div
             data-cy="sidebar-brand"
-            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-slate-200`}
+            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-[#ece7f4]`}
           >
             <Brand mini={sidebarCollapsed} />
           </div>
@@ -1390,15 +1440,20 @@ export default function Home() {
                       <button
                         key={item.id}
                         title={item.label}
+                        data-active={active}
+                        data-cy="sidebar-nav-item"
                         onClick={() => changePage(item.id)}
-                        className={`w-full h-11 mb-1 rounded-lg flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-2" : "px-3 gap-3"} ${active ? "bg-blue-50 text-[#1c4c9e] font-semibold border-l-2 border-[#245fc4]" : "text-slate-700 hover:bg-slate-100 border-l-2 border-transparent"}`}
+                        className={`w-full h-11 mb-1 rounded-full flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-0" : "pl-1.5 pr-3 gap-2.5"} ${active ? (sidebarCollapsed ? "text-brand-700 font-semibold" : "bg-gradient-to-r from-brand-100 to-brand-50 text-brand-700 font-semibold") : "text-slate-700 hover:bg-brand-50/70"}`}
                       >
-                        <Icon className="w-[18px] h-[18px] shrink-0" />
+                        <span className="nav-icon-chip">
+                          <Icon
+                            className="w-[18px] h-[18px]"
+                            strokeWidth={1.9}
+                          />
+                        </span>
                         {!sidebarCollapsed && <span>{item.label}</span>}
                         {!sidebarCollapsed && item.id === "costumes" && (
-                          <span
-                            className={`ml-auto px-1.5 py-0.5 text-[11px] rounded ${active ? "bg-white/20" : "bg-rose-100 text-rose-700"}`}
-                          >
+                          <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-grad text-white">
                             2
                           </span>
                         )}
@@ -1410,7 +1465,7 @@ export default function Home() {
             })}
           </nav>
           <div
-            className={`sidebar-footer shrink-0 border-t border-slate-200 ${sidebarCollapsed ? "p-2" : "p-3"}`}
+            className={`sidebar-footer shrink-0 border-t border-[#ece7f4] ${sidebarCollapsed ? "p-2" : "p-3"}`}
           >
             <div
               className={`flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "flex-col gap-1"}`}
@@ -1419,7 +1474,7 @@ export default function Home() {
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
                 aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                className={`sidebar-toggle h-8 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
+                className={`sidebar-toggle h-8 rounded-full border border-[#e6e2ef] flex items-center justify-center text-navy-700 hover:text-brand-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
               >
                 <PanelLeftClose
                   className={`w-4 h-4 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
@@ -1429,35 +1484,35 @@ export default function Home() {
                 onClick={() => setNotificationOpen(true)}
                 title="通知中心"
                 aria-label="通知中心"
-                className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+                className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
               >
-                <span className="relative flex">
+                <span className="relative flex text-navy-700">
                   <Bell className="w-[18px] h-[18px]" />
                   {sidebarCollapsed && (
-                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-candy-600" />
                   )}
                 </span>
                 {!sidebarCollapsed && <span>通知中心</span>}
                 {!sidebarCollapsed && (
-                  <span className="ml-auto w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="ml-auto w-2 h-2 rounded-full bg-candy-600" />
                 )}
               </button>
               <button
                 onClick={() => setSettingOpen(true)}
                 title="系统设置"
                 aria-label="系统设置"
-                className={`h-9 rounded-md flex items-center text-[14px] hover:bg-slate-100 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+                className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
               >
-                <Settings2 className="w-[18px] h-[18px]" />
+                <Settings2 className="w-[18px] h-[18px] text-navy-700" />
                 {!sidebarCollapsed && <span>系统设置</span>}
               </button>
             </div>
             <div
-              className={`sidebar-profile mt-2 ${sidebarCollapsed ? "flex justify-center" : "rounded-md bg-slate-50 border border-slate-200 p-3 flex items-center gap-2"}`}
+              className={`sidebar-profile mt-2 ${sidebarCollapsed ? "flex justify-center" : "rounded-xl bg-brand-50 border border-brand-100 p-3 flex items-center gap-2"}`}
             >
               <div
                 title={sidebarCollapsed ? roleLabel : undefined}
-                className={`w-8 h-8 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold`}
+                className={`w-8 h-8 shrink-0 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold ring-2 ring-white`}
               >
                 {displayName.slice(0, 1)}
               </div>
@@ -1475,7 +1530,7 @@ export default function Home() {
                     onClick={signOut}
                     title={t.logout}
                     aria-label={t.logout}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-500"
+                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white text-navy-700"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
@@ -1487,19 +1542,19 @@ export default function Home() {
         <div className="flex-1 min-w-0">
           <header
             data-cy="workspace-topbar"
-            className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
+            className="h-16 bg-white/90 backdrop-blur-md border-b border-[#ece7f4] px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
           >
             <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+                className="lg:hidden w-10 h-10 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
               >
                 <Menu className="w-5 h-5" />
               </button>
               <div className="hidden sm:flex min-w-0 items-center gap-2 text-[14px] text-slate-500">
                 <button
                   onClick={() => changePage("events")}
-                  className="shrink-0 whitespace-nowrap hover:text-[#255ec8]"
+                  className="shrink-0 whitespace-nowrap hover:text-brand-600"
                 >
                   活动管理
                 </button>
@@ -1518,7 +1573,7 @@ export default function Home() {
             <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => setPage("activity")}
-                className="hidden md:flex h-9 shrink-0 px-3 rounded-lg border border-slate-300 text-[13px] font-semibold whitespace-nowrap items-center gap-1.5 hover:bg-slate-50"
+                className="hidden md:flex h-9 shrink-0 px-3.5 rounded-full border border-brand-200 bg-white text-brand-700 text-[13px] font-semibold whitespace-nowrap items-center gap-1.5 hover:bg-brand-50"
               >
                 <FolderOpen className="w-4 h-4" />
                 当前活动档案
@@ -1526,10 +1581,10 @@ export default function Home() {
               <LocaleSwitch locale={locale} setLocale={setLocale} />
               <button
                 onClick={() => setNotificationOpen(true)}
-                className="relative w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+                className="relative w-9 h-9 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
               >
                 <Bell className="w-[18px] h-[18px]" />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-candy-600" />
               </button>
             </div>
           </header>
@@ -1668,16 +1723,20 @@ function MobileMenu({
   onNavigate: (page: Page) => void;
 }) {
   return (
-    <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-slate-200 shadow-lg p-3 grid grid-cols-2 gap-2">
+    <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-[#ece7f4] shadow-[0_18px_40px_-24px_rgba(76,35,133,0.45)] p-3 grid grid-cols-2 gap-2">
       {nav.map(item => {
         const Icon = item.icon;
+        const active = page === item.id;
         return (
           <button
             key={item.id}
+            data-active={active}
             onClick={() => onNavigate(item.id)}
-            className={`h-11 rounded-lg flex items-center gap-2 px-3 text-[14px] ${page === item.id ? "bg-blue-50 text-[#255ec8] font-semibold" : "bg-slate-50 text-slate-700"}`}
+            className={`h-11 rounded-full flex items-center gap-2 pl-1.5 pr-3 text-[14px] ${active ? "bg-gradient-to-r from-brand-100 to-brand-50 text-brand-700 font-semibold" : "bg-[#f7f6fb] text-slate-700"}`}
           >
-            <Icon className="w-4 h-4" />
+            <span className="nav-icon-chip">
+              <Icon className="w-4 h-4" strokeWidth={1.9} />
+            </span>
             {item.label}
           </button>
         );
@@ -1705,13 +1764,13 @@ function Workspace({
           <>
             <button
               onClick={() => onNavigate("events")}
-              className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-[14px] font-semibold"
+              className="h-10 px-4 rounded-full border border-brand-200 bg-white text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
             >
               全部活动
             </button>
             <button
               onClick={() => onNavigate("events")}
-              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               创建活动
@@ -1720,17 +1779,22 @@ function Workspace({
         }
       />
       <section className="grid xl:grid-cols-[1.45fr_0.85fr] gap-5">
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="p-5 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="text-[18px] font-semibold">近期活动</h3>
               <p className="mt-1 text-[14px] text-slate-600">
-                每场活动进入独立数字档案，统一管理资料、票务与现场服务。
+                <span className="inline-block whitespace-nowrap">
+                  每场活动进入独立数字档案
+                </span>{" "}
+                <span className="inline-block whitespace-nowrap">
+                  统一管理资料 票务与现场服务
+                </span>
               </p>
             </div>
             <button
               onClick={() => onNavigate("events")}
-              className="text-[14px] font-semibold text-[#255ec8]"
+              className="shrink-0 whitespace-nowrap text-[14px] font-semibold text-brand-600"
             >
               查看列表
             </button>
@@ -1743,8 +1807,8 @@ function Workspace({
                 className="w-full text-left p-5 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-5 h-5" strokeWidth={1.9} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap gap-2 items-center">
@@ -1849,7 +1913,7 @@ function TaskPanel({
     ["确认现场售票点库存", "魔都动漫嘉年华", "票务管理"],
   ];
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-5">
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-[18px] font-semibold">我的待办</h3>
         <Pill tone="amber">8 项</Pill>
@@ -1868,7 +1932,7 @@ function TaskPanel({
                 target === "资料管理" ? "materials" : undefined
               )
             }
-            className="w-full text-left rounded-lg border border-slate-200 p-3 hover:border-blue-300 hover:bg-blue-50"
+            className="w-full text-left rounded-lg border border-slate-200 p-3 hover:border-brand-300 hover:bg-brand-50"
           >
             <div className="text-[14px] font-semibold">{title}</div>
             <div className="mt-1 text-[13px] text-slate-600">{sub}</div>
@@ -1884,7 +1948,7 @@ function AlertPanel({
   onNavigate: (page: Page, tab?: ActivityTab) => void;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-5">
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
       <div className="flex items-center gap-2">
         <AlertTriangle className="w-5 h-5 text-rose-600" />
         <h3 className="text-[18px] font-semibold">异常提醒</h3>
@@ -1930,19 +1994,20 @@ function TodayStat({
   link?: () => void;
 }) {
   const colors = {
-    blue: "bg-blue-50 text-[#255ec8]",
-    amber: "bg-amber-50 text-amber-700",
-    rose: "bg-rose-50 text-rose-700",
+    blue: "bg-brand-grad text-white shadow-[0_6px_14px_-8px_rgba(124,63,208,0.8)]",
+    amber:
+      "bg-gradient-to-br from-[#ffc98a] to-[#f39a4a] text-white shadow-[0_6px_14px_-8px_rgba(226,128,40,0.8)]",
+    rose: "bg-candy-grad text-white shadow-[0_6px_14px_-8px_rgba(212,72,138,0.8)]",
   }[tone];
   const inner = (
     <>
       <div className="flex items-center justify-between">
         <div
-          className={`w-9 h-9 rounded-lg flex items-center justify-center ${colors}`}
+          className={`w-10 h-10 rounded-full flex items-center justify-center ${colors}`}
         >
           {icon}
         </div>
-        {link && <ArrowRight className="w-4 h-4 text-[#255ec8]" />}
+        {link && <ArrowRight className="w-4 h-4 text-brand-600" />}
       </div>
       <div className="mt-4 text-[14px] leading-5 text-slate-600 [word-break:keep-all]">
         {label}
@@ -1955,7 +2020,7 @@ function TodayStat({
       </div>
     </>
   );
-  const classes = `metric-card bg-white border border-slate-200 rounded-lg p-5 text-left ${link ? "hover:border-blue-300 hover:bg-blue-50/30" : ""}`;
+  const classes = `metric-card bg-white border border-[#ece7f4] rounded-xl p-5 text-left ${link ? "hover:border-brand-300 hover:bg-brand-50/40" : ""}`;
   return link ? (
     <button onClick={link} className={classes}>
       {inner}
@@ -1978,17 +2043,18 @@ function QuickAction({
   onClick: () => void;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-5">
-      <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+    <div className="bg-white border border-[#ece7f4] rounded-xl p-5">
+      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center">
         {icon}
       </div>
       <h3 className="mt-4 text-[17px] font-semibold">{title}</h3>
       <p className="mt-2 text-[14px] leading-6 text-slate-600">{text}</p>
       <button
         onClick={onClick}
-        className="mt-4 text-[14px] font-semibold text-[#255ec8]"
+        className="mt-4 h-9 px-4 rounded-full bg-brand-50 text-[14px] font-semibold text-brand-700 hover:bg-brand-100 inline-flex items-center gap-1.5"
       >
-        {action} →
+        {action}
+        <ArrowRight className="w-4 h-4" />
       </button>
     </div>
   );
@@ -2017,13 +2083,13 @@ function EventsPage({
         actions={
           <ActionButton
             label="创建活动"
-            className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+            className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
             icon={<Plus className="w-4 h-4" />}
             description="将创建活动基础档案，并进入资料准备阶段。"
           />
         }
       />
-      <div className="bg-white border border-slate-200 rounded-lg">
+      <div className="bg-white border border-slate-200 rounded-xl">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
           <div className="relative w-full sm:w-[360px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -2031,7 +2097,7 @@ function EventsPage({
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="搜索活动名称、主办方或场地"
-              className="w-full h-11 pl-9 pr-3 border border-slate-300 rounded-lg text-[14px] outline-none focus:border-[#255ec8]"
+              className="w-full h-11 pl-9 pr-3 border border-slate-300 rounded-lg text-[14px] outline-none focus:border-brand-500"
             />
           </div>
           <div className="flex gap-2">
@@ -2101,7 +2167,7 @@ function EventsPage({
                     <td className="p-4 text-right">
                       <button
                         onClick={() => onOpen(event)}
-                        className="h-9 px-3.5 rounded-lg text-[14px] font-semibold text-[#255ec8] hover:bg-blue-50"
+                        className="h-9 px-3.5 rounded-lg text-[14px] font-semibold text-brand-600 hover:bg-brand-50"
                       >
                         进入档案
                       </button>
@@ -2155,7 +2221,7 @@ function ActivityRecord({
   const currentStep = STATUS_META[event.status].step;
   return (
     <div className="space-y-6">
-      <section className="bg-white border border-slate-200 rounded-lg">
+      <section className="bg-white border border-slate-200 rounded-xl">
         <div className="p-5 lg:p-6 border-b border-slate-200">
           <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
             <div className="min-w-0">
@@ -2195,14 +2261,14 @@ function ActivityRecord({
             <div className="flex gap-2">
               <button
                 onClick={() => setSummaryOpen(true)}
-                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
               >
                 <FileText className="w-4 h-4" />
                 导出活动摘要
               </button>
               <button
                 onClick={() => onNavigate("onsite")}
-                className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+                className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
               >
                 进入现场管理
               </button>
@@ -2211,7 +2277,7 @@ function ActivityRecord({
         </div>
         <ProgressFlow current={currentStep} />
       </section>
-      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <div className="min-w-[900px] flex p-2 gap-1">
           {tabs.map(item => {
             const Icon = item.icon;
@@ -2220,7 +2286,7 @@ function ActivityRecord({
               <button
                 key={item.id}
                 onClick={() => setTab(item.id)}
-                className={`h-10 px-3 rounded-lg flex items-center gap-1.5 whitespace-nowrap text-[14px] ${active ? "bg-[#255ec8] text-white font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
+                className={`h-10 px-3 rounded-full flex items-center gap-1.5 whitespace-nowrap text-[14px] ${active ? "bg-brand-grad text-white font-semibold" : "text-slate-600 hover:bg-slate-100"}`}
               >
                 <Icon className="w-4 h-4" />
                 {item.label}
@@ -2302,7 +2368,7 @@ ${event.name} ${event.subtitle}
           </button>
         </div>
         <div className="p-5 sm:p-7 space-y-5">
-          <section className="bg-white border border-slate-200 rounded-lg p-5">
+          <section className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Status status={event.status} />
               <span className="text-[13px] text-slate-500">{event.id}</span>
@@ -2331,7 +2397,7 @@ ${event.name} ${event.subtitle}
             <ReportMetric label="异常核验" value="2 项" tone="rose" />
           </section>
           <section className="grid lg:grid-cols-2 gap-5">
-            <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
               <h3 className="text-[17px] font-semibold">活动生命周期</h3>
               <div className="mt-4 space-y-3">
                 <ReportLine
@@ -2351,7 +2417,7 @@ ${event.name} ${event.subtitle}
                 />
               </div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
               <h3 className="text-[17px] font-semibold">业务汇总</h3>
               <div className="mt-4 space-y-3 text-[14px] leading-6">
                 <ReportList
@@ -2377,13 +2443,13 @@ ${event.name} ${event.subtitle}
           <div className="flex justify-end gap-2">
             <button
               onClick={onClose}
-              className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+              className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
             >
               关闭
             </button>
             <button
               onClick={download}
-              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
             >
               <Download className="w-4 h-4" />
               下载活动摘要
@@ -2405,11 +2471,11 @@ function ReportMetric({
 }) {
   return (
     <div
-      className={`rounded-lg border p-4 ${tone === "rose" ? "border-rose-200 bg-rose-50" : "border-blue-100 bg-blue-50"}`}
+      className={`rounded-lg border p-4 ${tone === "rose" ? "border-rose-200 bg-rose-50" : "border-brand-100 bg-brand-50"}`}
     >
       <div className="text-[13px] text-slate-600">{label}</div>
       <div
-        className={`mt-2 text-[22px] font-semibold ${tone === "rose" ? "text-rose-700" : "text-[#255ec8]"}`}
+        className={`mt-2 text-[22px] font-semibold ${tone === "rose" ? "text-rose-700" : "text-brand-600"}`}
       >
         {value}
       </div>
@@ -2427,7 +2493,7 @@ function ReportLine({
 }) {
   const styles = {
     green: "bg-emerald-50 text-emerald-800",
-    blue: "bg-blue-50 text-blue-800",
+    blue: "bg-brand-50 text-brand-800",
     amber: "bg-amber-50 text-amber-800",
   }[tone];
   return (
@@ -2455,7 +2521,7 @@ function ProgressFlow({ current }: { current: number }) {
           return (
             <div key={label} className="relative text-center">
               <div
-                className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold relative z-10 ${done ? "bg-emerald-600 text-white" : active ? "bg-[#255ec8] text-white ring-4 ring-blue-100" : "bg-slate-100 text-slate-500"}`}
+                className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold relative z-10 ${done ? "bg-emerald-600 text-white" : active ? "bg-brand-grad text-white ring-4 ring-brand-100" : "bg-slate-100 text-slate-500"}`}
               >
                 {done ? <Check className="w-4 h-4" /> : index + 1}
               </div>
@@ -2465,7 +2531,7 @@ function ProgressFlow({ current }: { current: number }) {
                 />
               )}
               <div
-                className={`mt-2 text-[13px] leading-5 font-medium ${active ? "text-[#255ec8]" : done ? "text-emerald-700" : "text-slate-500"}`}
+                className={`mt-2 text-[13px] leading-5 font-medium ${active ? "text-brand-600" : done ? "text-emerald-700" : "text-slate-500"}`}
               >
                 {label}
               </div>
@@ -2506,7 +2572,7 @@ function ProgressInfo({
   tone: "blue" | "green" | "amber";
 }) {
   const styles = {
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    blue: "border-brand-200 bg-brand-50 text-brand-800",
     green: "border-emerald-200 bg-emerald-50 text-emerald-800",
     amber: "border-amber-200 bg-amber-50 text-amber-800",
   }[tone];
@@ -2529,7 +2595,7 @@ function ActivityOverview({
   return (
     <div className="grid xl:grid-cols-[1.35fr_0.85fr] gap-5">
       <div className="space-y-5">
-        <section className="bg-white border border-slate-200 rounded-lg p-5">
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex flex-col min-[640px]:flex-row gap-4">
             <img
               src={RECORD_VISUALS.poster}
@@ -2543,7 +2609,7 @@ function ActivityOverview({
                 actions={
                   <button
                     onClick={() => onTab("materials")}
-                    className="text-[14px] font-semibold text-[#255ec8] whitespace-nowrap"
+                    className="text-[14px] font-semibold text-brand-600 whitespace-nowrap"
                   >
                     查看活动资料
                   </button>
@@ -2561,7 +2627,7 @@ function ActivityOverview({
             />
           </div>
         </section>
-        <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="p-5 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="text-[18px] font-semibold">活动待办</h3>
@@ -2571,7 +2637,7 @@ function ActivityOverview({
             </div>
             <button
               onClick={() => onTab("issues")}
-              className="w-24 text-center text-[14px] font-semibold text-[#255ec8]"
+              className="w-24 text-center text-[14px] font-semibold text-brand-600"
             >
               问题记录
             </button>
@@ -2602,7 +2668,7 @@ function ActivityOverview({
         </section>
       </div>
       <div className="space-y-5">
-        <section className="bg-white border border-slate-200 rounded-lg p-5">
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h3 className="text-[18px] font-semibold">当前活动数据</h3>
           <div className="mt-4 space-y-4">
             <MiniMetric
@@ -2628,7 +2694,7 @@ function ActivityOverview({
             />
           </div>
         </section>
-        <section className="bg-white border border-slate-200 rounded-lg p-5">
+        <section className="bg-white border border-slate-200 rounded-xl p-5">
           <h3 className="text-[18px] font-semibold">活动操作记录</h3>
           <div className="mt-4 space-y-4">
             <LogLine time="今天 10:36" text="主办方更新了活动入场规则" />
@@ -2676,7 +2742,7 @@ function TaskRow({
       </div>
       <button
         onClick={onClick}
-        className="h-9 w-24 rounded-lg text-center text-[13px] font-semibold text-[#255ec8] hover:bg-blue-50"
+        className="h-9 w-24 rounded-lg text-center text-[13px] font-semibold text-brand-600 hover:bg-brand-50"
       >
         {action}
       </button>
@@ -2709,7 +2775,7 @@ function MiniMetric({
 function LogLine({ time, text }: { time: string; text: string }) {
   return (
     <div className="relative pl-4">
-      <span className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-[#255ec8]" />
+      <span className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-brand-grad" />
       <div className="text-[14px] leading-5 font-medium">{text}</div>
       <div className="mt-1 text-[12px] text-slate-500">{time}</div>
     </div>
@@ -2745,7 +2811,7 @@ function Participants() {
         actions={
           <ActionButton
             label="导出脱敏名单"
-            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
             description="将按权限导出参与人员脱敏汇总，不包含原始敏感身份信息。"
           />
         }
@@ -2754,9 +2820,9 @@ function Participants() {
         {people.map(item => (
           <div
             key={item.name}
-            className="bg-white border border-slate-200 rounded-lg p-5"
+            className="bg-white border border-slate-200 rounded-xl p-5"
           >
-            <Users className="w-5 h-5 text-[#255ec8]" />
+            <Users className="w-5 h-5 text-brand-600" />
             <div className="mt-4 text-[16px] font-semibold">{item.name}</div>
             <div className="mt-2 text-[28px] leading-8 font-semibold">
               {item.total}
@@ -2764,7 +2830,7 @@ function Participants() {
             <div className="mt-2 text-[13px] text-slate-600">{item.status}</div>
             <ActionButton
               label={`${item.action} →`}
-              className="mt-5 text-[14px] font-semibold text-[#255ec8] text-left"
+              className="mt-5 text-[14px] font-semibold text-brand-600 text-left"
               title={item.action}
               description={`可按权限查阅${item.name}的实名、报名或资料核验明细。`}
             />
@@ -2946,7 +3012,7 @@ function TicketPage({
       icon: ListChecks,
       title: "平台运营处理",
       text: "核对订单规则并作出决定",
-      tone: "text-[#255ec8] bg-blue-50",
+      tone: "text-brand-600 bg-brand-50",
     },
     {
       icon: WalletCards,
@@ -2965,7 +3031,7 @@ function TicketPage({
           actions={
             <button
               onClick={() => set("refunds")}
-              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
             >
               <RefreshCcw className="w-4 h-4" />
               {role === "platform" ? "处理退款申请" : "查看退款申请"}
@@ -2978,7 +3044,7 @@ function TicketPage({
           }
         />
       )}
-      <section className="bg-white border border-slate-200 rounded-lg px-4 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center">
+      <section className="bg-white border border-slate-200 rounded-xl px-4 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center">
         {refundSteps.map(({ icon: Icon, title, text, tone }, index) => (
           <div key={title} className="contents">
             <div className="flex items-center gap-3 min-w-0">
@@ -3030,10 +3096,10 @@ function TicketPage({
           icon={<ShieldCheck className="w-5 h-5" />}
         />
       </section>
-      <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 justify-between">
           <div
-            className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg sm:flex sm:w-fit"
+            className="grid grid-cols-2 gap-1 bg-white border border-[#e6e2ef] p-1 rounded-2xl sm:rounded-full sm:flex sm:w-fit"
             data-cy="ticket-tabs"
           >
             {(
@@ -3051,7 +3117,7 @@ function TicketPage({
                 key={id}
                 onClick={() => set(id)}
                 data-cy={`ticket-tab-${id}`}
-                className={`h-8 px-3 rounded-md text-[13px] font-semibold whitespace-nowrap ${selected === id ? "bg-white shadow-sm text-[#255ec8]" : "text-slate-600"}`}
+                className={`h-8 px-3 rounded-full text-[13px] font-semibold whitespace-nowrap ${selected === id ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(124,63,208,0.7)]" : "text-slate-600"}`}
               >
                 {label}
               </button>
@@ -3059,7 +3125,7 @@ function TicketPage({
           </div>
           <ActionButton
             label="导出数据"
-            className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            className="h-10 px-3 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
             icon={<Download className="w-4 h-4" />}
             description="导出当前票务视图中的票种、订单或退款数据。"
           />
@@ -3172,7 +3238,7 @@ function TicketTypes({
                   <Pending count={row.pending} />
                 </td>
                 <td
-                  className="data-token p-4 text-right text-[15px] font-semibold text-[#1c4c9e]"
+                  className="data-token p-4 text-right text-[15px] font-semibold text-brand-700"
                   data-cy="stock-remaining"
                 >
                   {formatCount(row.remaining)}
@@ -3183,7 +3249,7 @@ function TicketTypes({
                   </div>
                   <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full bg-[#255ec8]"
+                      className="h-full bg-brand-grad"
                       style={{ width: `${row.soldPercent}%` }}
                     />
                   </div>
@@ -3199,7 +3265,7 @@ function TicketTypes({
                 <td className="p-4 text-right">
                   <ActionButton
                     label="管理"
-                    className="text-[14px] font-semibold text-[#255ec8]"
+                    className="text-[14px] font-semibold text-brand-600"
                     description="可调整库存、开售停售时间、身份证限购和实名规则。"
                   />
                 </td>
@@ -3226,7 +3292,7 @@ function TicketTypes({
                   退款 ¥{total.refundedAmount.toFixed(2)}
                 </span>
               </td>
-              <td className="data-token p-4 text-right text-[#1c4c9e]">
+              <td className="data-token p-4 text-right text-brand-700">
                 {formatCount(total.remaining)}
               </td>
               <td className="p-4" colSpan={3} />
@@ -3264,7 +3330,7 @@ function TicketTypes({
                     row.refunded,
                     row.refunded ? "text-rose-700" : "text-slate-400",
                   ],
-                  ["剩余", row.remaining, "text-[#1c4c9e]"],
+                  ["剩余", row.remaining, "text-brand-700"],
                 ] as const
               ).map(([label, value, tone], index) => (
                 <div
@@ -3511,7 +3577,7 @@ function RefundTable({
                 <td className="p-4">
                   <button
                     onClick={() => setSelected(item)}
-                    className="text-[14px] font-semibold text-[#255ec8]"
+                    className="text-[14px] font-semibold text-brand-600"
                   >
                     查看处理
                   </button>
@@ -3631,7 +3697,7 @@ function RefundTable({
                   {selected.logs.map((log, index) => (
                     <div
                       key={`${log.action}-${index}`}
-                      className="border-l-2 border-blue-200 pl-3"
+                      className="border-l-2 border-brand-200 pl-3"
                     >
                       <strong className="block text-[14px]">
                         {log.action}
@@ -3657,7 +3723,7 @@ function RefundTable({
                         setDecision("reject");
                         setComment("");
                       }}
-                      className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+                      className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
                     >
                       驳回申请
                     </button>
@@ -3666,7 +3732,7 @@ function RefundTable({
                         setDecision("approve");
                         setComment("符合活动退票规则，同意原路退回");
                       }}
-                      className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+                      className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
                     >
                       同意退款 ¥{selected.amount.toFixed(2)}
                     </button>
@@ -3718,7 +3784,7 @@ function RefundTable({
                   value={comment}
                   onChange={event => setComment(event.target.value)}
                   rows={4}
-                  className="w-full rounded-lg border border-slate-300 p-3 text-[14px] outline-none focus:border-[#255ec8]"
+                  className="w-full rounded-lg border border-slate-300 p-3 text-[14px] outline-none focus:border-brand-500"
                   placeholder={
                     decision === "approve"
                       ? "可填写退款处理说明"
@@ -3730,14 +3796,14 @@ function RefundTable({
             <div className="p-4 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => setDecision(null)}
-                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
               >
                 取消
               </button>
               <button
                 disabled={decision === "reject" && !comment.trim()}
                 onClick={decide}
-                className="h-10 px-4 rounded-lg bg-[#255ec8] disabled:bg-slate-300 text-white text-[14px] font-semibold"
+                className="h-10 px-4 rounded-full bg-brand-grad disabled:bg-slate-300 text-white text-[14px] font-semibold"
               >
                 {decision === "approve" ? "确认同意退款" : "确认驳回"}
               </button>
@@ -3841,13 +3907,13 @@ function CostumePage({ compact = false }: { compact?: boolean }) {
             <>
               <button
                 onClick={() => setTool("export")}
-                className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
               >
                 导出清单
               </button>
               <button
                 onClick={() => setTool("batch")}
-                className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+                className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
               >
                 批量处理
               </button>
@@ -3884,7 +3950,7 @@ function CostumePage({ compact = false }: { compact?: boolean }) {
           tone="rose"
         />
       </section>
-      <section className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+      <section className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="min-w-[1260px] w-full text-left">
           <thead>
             <tr className="bg-slate-50 text-[13px] text-slate-600">
@@ -3962,7 +4028,7 @@ function CostumePage({ compact = false }: { compact?: boolean }) {
                 <td className="p-4 text-right">
                   <button
                     onClick={() => setDetail(item)}
-                    className="text-[14px] font-semibold text-[#255ec8]"
+                    className="text-[14px] font-semibold text-brand-600"
                   >
                     查看详情
                   </button>
@@ -4077,13 +4143,13 @@ function CostumeDetailDrawer({
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="flex-1 h-11 rounded-lg border border-slate-300 text-[14px] font-semibold"
+              className="flex-1 h-11 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
             >
               退回补充
             </button>
             <button
               onClick={onClose}
-              className="flex-1 h-11 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+              className="flex-1 h-11 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
             >
               确认通过
             </button>
@@ -4106,7 +4172,7 @@ function CostumeToolPanel({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button onClick={onClose} className="absolute inset-0 bg-black/30" />
       <section className="relative w-full max-w-[460px] bg-white rounded-lg shadow-2xl p-6">
-        <div className="w-11 h-11 rounded-lg bg-blue-50 text-[#255ec8] flex items-center justify-center">
+        <div className="w-11 h-11 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
           {exportMode ? (
             <Download className="w-5 h-5" />
           ) : (
@@ -4134,14 +4200,14 @@ function CostumeToolPanel({
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
           >
             {done ? "关闭" : "取消"}
           </button>
           {!done && (
             <button
               onClick={() => setDone(true)}
-              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold"
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
             >
               {exportMode ? "生成清单" : "确认处理"}
             </button>
@@ -4184,20 +4250,20 @@ function OnsitePage({
           }
         />
       )}
-      <section className="bg-slate-900 rounded-lg p-5 sm:p-6 text-white">
+      <section className="rounded-2xl p-5 sm:p-6 text-white bg-[linear-gradient(120deg,#6a5cc4_0%,#4b3a9e_55%,#34276f_100%)] shadow-[0_18px_40px_-24px_rgba(52,39,111,0.8)]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
-            <div className="text-[13px] text-slate-300">
+            <div className="text-[13px] text-brand-100">
               当前场次 · 2026 魔都动漫嘉年华
             </div>
             <h2 className="mt-2 text-[26px] font-semibold">现场核验工作台</h2>
-            <p className="mt-2 text-[15px] text-slate-300">
+            <p className="mt-2 text-[15px] text-white/85">
               请扫描电子票二维码，系统将核对订单、实名状态与活动规则。
             </p>
           </div>
           <button
             onClick={() => setCheckins(checkins + 1)}
-            className="h-16 px-7 rounded-lg bg-[#2563eb] hover:bg-blue-500 text-[18px] font-semibold flex items-center justify-center gap-3"
+            className="h-16 px-7 rounded-full bg-candy-grad hover:brightness-105 text-[18px] font-semibold flex items-center justify-center gap-3 shadow-[0_10px_24px_-12px_rgba(240,144,180,0.9)]"
           >
             <ScanLine className="w-7 h-7" />
             扫码核验
@@ -4215,7 +4281,7 @@ function OnsitePage({
         </div>
       </section>
       <section className="grid xl:grid-cols-[1.1fr_0.9fr] gap-5">
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="p-5 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="text-[18px] font-semibold">实时入场记录</h3>
@@ -4250,13 +4316,13 @@ function OnsitePage({
           </div>
         </div>
         <div className="space-y-5">
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
             <h3 className="text-[18px] font-semibold">进场速度</h3>
             <div className="mt-4 flex items-end gap-2 h-28">
               {[35, 48, 42, 72, 78, 63, 82, 66, 90, 76, 70, 84].map((v, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-t bg-[#255ec8]"
+                  className="flex-1 rounded-t bg-brand-grad"
                   style={{ height: `${v}%` }}
                 />
               ))}
@@ -4270,19 +4336,19 @@ function OnsitePage({
               当前 118 人 / 10 分钟
             </div>
           </div>
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
             <h3 className="text-[18px] font-semibold">现场操作</h3>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <ActionButton
                 label="手动核验电子票"
                 className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<QrCode className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                icon={<QrCode className="mb-2 w-5 h-5 text-brand-600" />}
                 description="可输入订单号或电子票编号进行人工核验。"
               />
               <ActionButton
                 label="实名信息核对"
                 className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<UserCheck className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                icon={<UserCheck className="mb-2 w-5 h-5 text-brand-600" />}
                 description="按授权范围核对订单关联的实名状态与核验结果。"
               />
               <button
@@ -4295,7 +4361,7 @@ function OnsitePage({
               <ActionButton
                 label="导出现场交接表"
                 className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<Download className="mb-2 w-5 h-5 text-[#255ec8]" />}
+                icon={<Download className="mb-2 w-5 h-5 text-brand-600" />}
                 description="导出入场、异常核验和现场处置的交接汇总。"
               />
             </div>
@@ -4316,8 +4382,8 @@ function OnsiteStat({
   danger?: boolean;
 }) {
   return (
-    <div className="bg-white/10 border border-white/10 rounded-lg p-3">
-      <div className="text-[12px] text-slate-300">{label}</div>
+    <div className="bg-white/12 border border-white/15 rounded-xl p-3">
+      <div className="text-[12px] text-brand-100">{label}</div>
       <div
         className={`mt-1 text-[24px] leading-7 font-semibold ${danger ? "text-rose-300" : ""}`}
       >
@@ -4392,7 +4458,7 @@ function IssueModal({ onClose }: { onClose: () => void }) {
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
           >
             取消
           </button>
@@ -4417,7 +4483,7 @@ function EventData() {
         actions={
           <ActionButton
             label="导出活动数据"
-            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
             icon={<Download className="w-4 h-4" />}
             description="导出售票、入场、退款、人员、客流、核验和异常统计。"
           />
@@ -4452,7 +4518,7 @@ function EventData() {
         />
       </div>
       <div className="grid grid-cols-1 min-[1080px]:grid-cols-[1.35fr_0.65fr] gap-5">
-        <div className="bg-white border border-slate-200 rounded-lg p-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
           <h3 className="text-[18px] font-semibold">售票与入场趋势</h3>
           <p className="mt-1 text-[14px] text-slate-600">
             按活动日与时段汇总的票务、客流与核验数据。
@@ -4461,7 +4527,7 @@ function EventData() {
             {[44, 62, 55, 74, 68, 88, 94, 82, 72, 64].map((v, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <div
-                  className="w-full max-w-[42px] bg-[#255ec8] rounded-t"
+                  className="w-full max-w-[42px] bg-brand-grad rounded-t"
                   style={{ height: `${v}%` }}
                 />
                 <span className="text-[12px] text-slate-500">{i + 8}:00</span>
@@ -4469,7 +4535,7 @@ function EventData() {
             ))}
           </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
           <h3 className="text-[18px] font-semibold">数据口径</h3>
           <div className="mt-4 space-y-4">
             <MiniMetric
@@ -4508,7 +4574,7 @@ function Issues() {
           />
         }
       />
-      <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-200">
+      <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-200">
         <IssueRow
           level="高"
           title="仿真道具尺寸待复验"
@@ -4550,7 +4616,7 @@ function IssueRow({
   return (
     <div className="p-5 flex flex-col md:flex-row gap-4 md:items-center">
       <div
-        className={`w-10 h-10 rounded-lg flex items-center justify-center ${level === "高" ? "bg-rose-50 text-rose-600" : level === "中" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"}`}
+        className={`w-10 h-10 rounded-lg flex items-center justify-center ${level === "高" ? "bg-rose-50 text-rose-600" : level === "中" ? "bg-amber-50 text-amber-600" : "bg-brand-50 text-brand-600"}`}
       >
         <CircleAlert className="w-5 h-5" />
       </div>
@@ -4573,7 +4639,7 @@ function IssueRow({
         </div>
         <ActionButton
           label="处理记录"
-          className="text-[14px] font-semibold text-[#255ec8]"
+          className="text-[14px] font-semibold text-brand-600"
           description="查看问题的登记、分派、处理与结项记录。"
         />
       </div>
@@ -4592,7 +4658,7 @@ function ArchivePage({ compact = false }: { compact?: boolean }) {
           actions={
             <ActionButton
               label="生成归档摘要"
-              className="h-10 px-4 rounded-lg bg-[#255ec8] text-white text-[14px] font-semibold flex items-center gap-1.5"
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
               icon={<FileArchive className="w-4 h-4" />}
               description="将汇集资料、票务、现场、问题、数据和操作日志形成归档摘要。"
             />
@@ -4619,7 +4685,7 @@ function ArchivePage({ compact = false }: { compact?: boolean }) {
           state="待进行"
         />
       </section>
-      <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="p-5 border-b border-slate-200">
           <h3 className="text-[18px] font-semibold">本场活动归档清单</h3>
           <p className="mt-1 text-[14px] text-slate-600">
@@ -4669,7 +4735,7 @@ function ArchiveCard({
   state: string;
 }) {
   return (
-    <div className="metric-card min-w-0 bg-white border border-slate-200 rounded-lg p-5">
+    <div className="metric-card min-w-0 bg-white border border-slate-200 rounded-xl p-5">
       <div className="text-[14px] text-slate-600 [word-break:keep-all]">
         {title}
       </div>
@@ -4713,7 +4779,7 @@ function ArchiveLine({
       </Pill>
       <ActionButton
         label="查看"
-        className="text-[14px] font-semibold text-[#255ec8]"
+        className="text-[14px] font-semibold text-brand-600"
         description="查看该归档事项关联的活动材料和操作记录。"
       />
     </div>
@@ -4730,13 +4796,13 @@ function DataCenter() {
         actions={
           <ActionButton
             label="导出活动复盘数据"
-            className="h-10 px-4 rounded-lg border border-slate-300 text-[14px] font-semibold flex items-center gap-1.5"
+            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
             icon={<Download className="w-4 h-4" />}
             description="导出各活动的售票、入场、退款、人员、核验与异常数据。"
           />
         }
       />
-      <section className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+      <section className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="min-w-[940px] w-full text-left">
           <thead>
             <tr className="bg-slate-50 text-[13px] text-slate-600">
@@ -4816,7 +4882,7 @@ function DataRow({
   return (
     <tr>
       <td className="p-4 text-[15px] font-semibold">{title}</td>
-      <td className="p-4 text-[15px] font-semibold text-[#255ec8]">{value}</td>
+      <td className="p-4 text-[15px] font-semibold text-brand-600">{value}</td>
       <td className="p-4 text-[14px] leading-6 text-slate-600">{definition}</td>
       <td className="p-4">
         <Pill tone="blue">{module}</Pill>
@@ -4855,7 +4921,7 @@ function NotificationPanel({
         <div className="p-5">
           <button
             onClick={() => setRead(true)}
-            className="w-full h-10 rounded-lg border border-slate-300 text-[14px] font-semibold"
+            className="w-full h-10 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
           >
             {read ? "已全部标记为已读" : "全部标记为已读"}
           </button>
@@ -4916,7 +4982,7 @@ function Notice({
   const c = {
     rose: "bg-rose-50 text-rose-600",
     amber: "bg-amber-50 text-amber-600",
-    blue: "bg-blue-50 text-[#245fc4]",
+    blue: "bg-brand-50 text-brand-600",
   }[tone];
   return (
     <div className="p-4 border border-slate-200 rounded-lg">
@@ -4930,7 +4996,7 @@ function Notice({
           <div className="flex gap-2">
             <div className="text-[15px] font-semibold flex-1">{title}</div>
             {unread && (
-              <span className="mt-1.5 w-2 h-2 rounded-full bg-[#245fc4]" />
+              <span className="mt-1.5 w-2 h-2 rounded-full bg-brand-grad" />
             )}
           </div>
           <p className="semantic-copy mt-1 text-[14px] leading-6 text-slate-600">
@@ -4941,7 +5007,7 @@ function Notice({
             {onClick ? (
               <button
                 onClick={onClick}
-                className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]"
+                className="text-[13px] font-semibold text-brand-600 hover:text-brand-700"
               >
                 {action}
               </button>
@@ -4950,7 +5016,7 @@ function Notice({
                 label={action}
                 title={title}
                 description={text}
-                className="text-[13px] font-semibold text-[#245fc4] hover:text-[#1c4c9e]"
+                className="text-[13px] font-semibold text-brand-600 hover:text-brand-700"
               />
             )}
           </div>
@@ -5004,7 +5070,7 @@ function SettingsPanel({
                 <button
                   key={item}
                   onClick={() => onRoleChange(item)}
-                  className={`h-10 px-3 text-left rounded-md border text-[13px] font-semibold whitespace-nowrap ${item === role ? "border-[#245fc4] bg-blue-50 text-[#1c4c9e]" : "border-slate-300 hover:bg-slate-50"}`}
+                  className={`h-10 px-3 text-left rounded-full border text-[13px] font-semibold whitespace-nowrap ${item === role ? "border-brand-500 bg-brand-50 text-brand-700" : "border-brand-200 hover:bg-brand-50"}`}
                 >
                   {ROLE_INFO[item].name}
                 </button>
@@ -5028,7 +5094,7 @@ function SettingsPanel({
               active
             />
           </section>
-          <section className="p-4 rounded-lg bg-blue-50 border border-blue-100 text-[14px] leading-6 text-blue-900">
+          <section className="p-4 rounded-lg bg-brand-50 border border-brand-100 text-[14px] leading-6 text-brand-900">
             账号权限和可见数据范围由平台管理员统一配置。系统用于活动服务协同与资料归集，不替代相关行政审批、监管执法或其他已有业务系统。
           </section>
           <button
@@ -5060,7 +5126,7 @@ function SettingRow({
       </div>
       <button
         onClick={() => setOn(!on)}
-        className={`w-11 h-6 rounded-full p-0.5 ${on ? "bg-[#255ec8]" : "bg-slate-300"}`}
+        className={`w-11 h-6 rounded-full p-0.5 ${on ? "bg-brand-grad" : "bg-slate-300"}`}
       >
         <span
           className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`}

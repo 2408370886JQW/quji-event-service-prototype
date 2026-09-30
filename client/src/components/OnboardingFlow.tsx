@@ -41,6 +41,8 @@ import {
   validateSessions,
   type TicketSession,
 } from "./ticketTypes";
+const MASCOT_SUCCESS = "/manus-storage/quji-mascot-success_3da8f21a.webp";
+const MASCOT_AVATAR = "/manus-storage/quji-mascot-avatar_7ca13a7e.webp";
 
 export type AdmissionStatus =
   | "not_started"
@@ -312,18 +314,18 @@ function guideLines(key: MaterialKey) {
 function AdmissionProgress({ status }: { status: AdmissionStatus }) {
   const current = activeStep(status);
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4">
       <div className="grid min-w-[720px] grid-cols-5">
         {STEPS.map((label, index) => (
           <div key={label} className="relative flex items-center">
             {index > 0 && (
               <div
-                className={`absolute right-1/2 left-[-50%] top-4 h-px ${index <= current ? "bg-[#245fc4]" : "bg-slate-200"}`}
+                className={`absolute right-1/2 left-[-50%] top-4 h-px ${index <= current ? "bg-brand-grad" : "bg-slate-200"}`}
               />
             )}
             <div className="relative z-10 flex flex-1 flex-col items-center">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold ${index < current || status === "approved" ? "border-[#245fc4] bg-[#245fc4] text-white" : index === current ? "border-[#245fc4] bg-blue-50 text-[#1c4c9e]" : "border-slate-300 bg-white text-slate-500"}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold ${index < current || status === "approved" ? "border-brand-500 bg-brand-grad text-white" : index === current ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-500"}`}
               >
                 {index < current || status === "approved" ? (
                   <Check className="h-4 w-4" />
@@ -383,7 +385,7 @@ function TextInput({
 }) {
   const isDate = type === "date";
   const baseClass =
-    "block h-11 w-full min-w-0 max-w-full rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-[#245fc4] focus:ring-2 focus:ring-blue-100";
+    "block h-11 w-full min-w-0 max-w-full rounded-md border border-slate-300 bg-white px-3 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
   return (
     // min-w-0：网格子项默认 min-width:auto，iPad Safari 原生日期控件会借此撑宽并压到相邻格子
     <label className="block min-w-0">
@@ -474,7 +476,7 @@ export function OrganizerRegistration({
     ["填写本人实名信息", "主办方主体信息将在上传营业执照后自动关联"],
   ][step];
   return (
-    <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
+    <div className="min-h-screen bg-[#f7f6fb] text-slate-900">
       <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
         <button
           onClick={onBack}
@@ -486,18 +488,18 @@ export function OrganizerRegistration({
         <div className="text-[14px] text-slate-500">已有账号可直接登录</div>
       </header>
       <main className="mx-auto max-w-[980px] px-5 py-8 sm:py-12">
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4">
           <div className="grid min-w-[540px] grid-cols-3">
             {["手机验证", "身份选择", "实名与主体"].map((label, index) => (
               <div key={label} className="relative flex items-center">
                 {index > 0 && (
                   <div
-                    className={`absolute right-1/2 left-[-50%] top-4 h-px ${index <= step ? "bg-[#245fc4]" : "bg-slate-200"}`}
+                    className={`absolute right-1/2 left-[-50%] top-4 h-px ${index <= step ? "bg-brand-grad" : "bg-slate-200"}`}
                   />
                 )}
                 <div className="relative z-10 flex flex-1 flex-col items-center">
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold ${index < step ? "border-[#245fc4] bg-[#245fc4] text-white" : index === step ? "border-[#245fc4] bg-blue-50 text-[#1c4c9e]" : "border-slate-300 bg-white text-slate-500"}`}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold ${index < step ? "border-brand-500 bg-brand-grad text-white" : index === step ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-500"}`}
                   >
                     {index < step ? <Check className="h-4 w-4" /> : index + 1}
                   </div>
@@ -512,8 +514,8 @@ export function OrganizerRegistration({
           </div>
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="rounded-lg border border-slate-200 bg-white p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
+          <aside className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50 text-brand-600">
               {step === 0 ? (
                 <Phone className="h-5 w-5" />
               ) : (
@@ -542,7 +544,7 @@ export function OrganizerRegistration({
               <span className="block">查看与操作均保留记录</span>
             </div>
           </aside>
-          <section className="rounded-lg border border-slate-200 bg-white p-5 sm:p-7">
+          <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
             <Heading
               eyebrow={`首次入驻 · 第 ${step + 1} 步 共 3 步`}
               title={registrationTitle}
@@ -574,9 +576,9 @@ export function OrganizerRegistration({
                       setAgreement(false);
                       setError("");
                     }}
-                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "legal_representative" ? "border-[#245fc4] bg-blue-50 ring-1 ring-[#245fc4]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "legal_representative" ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500" : "border-slate-200 bg-white hover:border-slate-400"}`}
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-50 text-brand-600">
                       <ShieldCheck className="h-5 w-5" />
                     </span>
                     <strong className="mt-4 block text-[16px]">
@@ -595,9 +597,9 @@ export function OrganizerRegistration({
                       setAgreement(false);
                       setError("");
                     }}
-                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "authorized_agent" ? "border-[#245fc4] bg-blue-50 ring-1 ring-[#245fc4]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                    className={`min-h-[144px] rounded-lg border p-5 text-left transition-colors ${agentIdentity === "authorized_agent" ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500" : "border-slate-200 bg-white hover:border-slate-400"}`}
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-[#245fc4]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-50 text-brand-600">
                       <UserCheck className="h-5 w-5" />
                     </span>
                     <strong className="mt-4 block text-[16px]">
@@ -611,7 +613,7 @@ export function OrganizerRegistration({
                 </div>
               ) : (
                 <>
-                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 p-4">
+                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand-200 bg-brand-50 p-4">
                     <div>
                       <div className="text-[14px] font-semibold text-slate-900">
                         {agentIdentity === "legal_representative"
@@ -627,7 +629,7 @@ export function OrganizerRegistration({
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="h-9 rounded-md bg-white px-3 text-[13px] font-semibold text-[#1c4c9e]"
+                      className="h-9 rounded-md bg-white px-3 text-[13px] font-semibold text-brand-700"
                     >
                       重新选择
                     </button>
@@ -661,7 +663,7 @@ export function OrganizerRegistration({
                       type="checkbox"
                       checked={agreement}
                       onChange={event => setAgreement(event.target.checked)}
-                      className="mt-1 h-4 w-4 accent-[#245fc4]"
+                      className="mt-1 h-4 w-4 accent-brand-600"
                     />
                     <span>
                       {agentIdentity === "legal_representative"
@@ -682,14 +684,14 @@ export function OrganizerRegistration({
                 onClick={() =>
                   step === 0 ? onBack() : setStep(current => current - 1)
                 }
-                className="h-11 rounded-md border border-slate-300 px-5 text-[14px] font-semibold"
+                className="h-11 rounded-full border border-brand-200 px-5 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
               >
                 {step === 0 ? "返回登录" : "上一步"}
               </button>
               <button
                 onClick={next}
                 data-cy="registration-next"
-                className="flex h-11 items-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+                className="flex h-11 items-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
               >
                 {step === 0
                   ? "下一步 选择身份"
@@ -780,7 +782,7 @@ function MaterialDrawer({
         </header>
         <div className="flex-1 overflow-y-auto p-5">
           <MaterialPreview material={material} />
-          <div className="mt-5 rounded-md bg-blue-50 p-4 text-[14px] leading-6 text-blue-950">
+          <div className="mt-5 rounded-md bg-brand-50 p-4 text-[14px] leading-6 text-brand-950">
             <span className="block font-semibold">政府公开样例</span>
             <span className="block">用于说明材料版式与上传范围</span>
           </div>
@@ -798,7 +800,7 @@ function MaterialDrawer({
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
           <button
             onClick={onClose}
-            className="h-10 rounded-md border border-slate-300 px-4 text-[14px] font-semibold"
+            className="h-10 rounded-full border border-brand-200 px-4 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
           >
             关闭
           </button>
@@ -816,13 +818,13 @@ function MaterialDrawer({
               />
               <button
                 onClick={onUseSample}
-                className="h-10 rounded-md border border-blue-200 bg-blue-50 px-4 text-[14px] font-semibold text-[#1c4c9e]"
+                className="h-10 rounded-md border border-brand-200 bg-brand-50 px-4 text-[14px] font-semibold text-brand-700"
               >
                 使用公开样例
               </button>
               <button
                 onClick={() => inputRef.current?.click()}
-                className="flex h-10 items-center gap-2 rounded-md bg-[#245fc4] px-4 text-[14px] font-semibold text-white"
+                className="flex h-10 items-center gap-2 rounded-full bg-brand-grad px-4 text-[14px] font-semibold text-white"
               >
                 <Upload className="h-4 w-4" />
                 选择本地文件
@@ -1028,7 +1030,7 @@ export function OrganizerOnboarding({
         {identitySide ? (
           <div data-cy={`identity-heading-${item.key}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="whitespace-nowrap text-[13px] font-semibold text-[#245fc4]">
+              <span className="whitespace-nowrap text-[13px] font-semibold text-brand-600">
                 {identitySide.label}
               </span>
               <span className={statusClass}>{item.status}</span>
@@ -1051,7 +1053,7 @@ export function OrganizerOnboarding({
                   </span>
                 )}
                 {item.key === "authorization" && (
-                  <span className="whitespace-nowrap rounded bg-blue-50 px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+                  <span className="whitespace-nowrap rounded bg-brand-50 px-2 py-1 text-[12px] font-semibold text-brand-700">
                     经办人必填
                   </span>
                 )}
@@ -1095,11 +1097,11 @@ export function OrganizerOnboarding({
         {options?.license && item.fileName && (
           <section
             data-cy="license-recognition"
-            className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4"
+            className="mt-4 rounded-md border border-brand-200 bg-brand-50 p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1c4c9e]">
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-brand-700">
                   <BadgeCheck className="h-4 w-4" />
                   营业执照信息已自动关联
                 </div>
@@ -1107,7 +1109,7 @@ export function OrganizerOnboarding({
                   无需再次逐项录入 请核对后直接继续
                 </div>
               </div>
-              <span className="rounded bg-white px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+              <span className="rounded bg-white px-2 py-1 text-[12px] font-semibold text-brand-700">
                 识别度 98%
               </span>
             </div>
@@ -1142,7 +1144,7 @@ export function OrganizerOnboarding({
         >
           <button
             onClick={() => setSelectedKey(item.key)}
-            className={`flex h-10 items-center gap-2 rounded-md border border-slate-300 px-3 text-[14px] font-semibold ${identitySide ? "order-2 w-full justify-center whitespace-nowrap" : ""}`}
+            className={`flex h-10 items-center gap-2 rounded-full border border-brand-200 px-3 text-[14px] font-semibold ${identitySide ? "order-2 w-full justify-center whitespace-nowrap" : ""} hover:bg-brand-50 text-brand-700`}
           >
             <Eye className="h-4 w-4" />
             {item.fileName
@@ -1154,7 +1156,7 @@ export function OrganizerOnboarding({
           {editable && item.key === "safety" && (
             <button
               onClick={saveSafety}
-              className="h-10 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white"
+              className="h-10 rounded-full bg-brand-grad px-3 text-[14px] font-semibold text-white"
             >
               保存责任人信息
             </button>
@@ -1162,7 +1164,7 @@ export function OrganizerOnboarding({
           {editable && item.key !== "safety" && (
             <>
               <label
-                className={`flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#245fc4] px-3 text-[14px] font-semibold text-white ${identitySide ? "order-1 w-full justify-center whitespace-nowrap" : ""}`}
+                className={`flex h-10 cursor-pointer items-center gap-2 rounded-full bg-brand-grad px-3 text-[14px] font-semibold text-white ${identitySide ? "order-1 w-full justify-center whitespace-nowrap" : ""}`}
               >
                 <Upload className="h-4 w-4" />
                 {item.key === "license"
@@ -1186,7 +1188,7 @@ export function OrganizerOnboarding({
               </label>
               <button
                 onClick={() => useSample(item.key)}
-                className={`h-10 rounded-md border border-blue-200 bg-blue-50 px-3 text-[14px] font-semibold text-[#1c4c9e] ${identitySide ? "order-3 w-full whitespace-nowrap" : ""}`}
+                className={`h-10 rounded-md border border-brand-200 bg-brand-50 px-3 text-[14px] font-semibold text-brand-700 ${identitySide ? "order-3 w-full whitespace-nowrap" : ""}`}
               >
                 {identitySide ? "使用样例" : "使用公开样例"}
               </button>
@@ -1211,7 +1213,7 @@ export function OrganizerOnboarding({
         {state.status === "approved" && (
           <button
             onClick={onCreateActivity}
-            className="flex h-11 items-center justify-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+            className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
           >
             <Plus className="h-4 w-4" />
             创建活动
@@ -1220,10 +1222,10 @@ export function OrganizerOnboarding({
       </div>
       <AdmissionProgress status={state.status} />
       <div
-        className={`rounded-lg border p-5 ${state.status === "approved" ? "border-emerald-200 bg-emerald-50" : state.status === "changes_required" ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"}`}
+        className={`rounded-lg border p-5 ${state.status === "approved" ? "border-emerald-200 bg-emerald-50" : state.status === "changes_required" ? "border-amber-200 bg-amber-50" : "border-brand-200 bg-brand-50"}`}
       >
         <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 h-5 w-5 text-[#245fc4]" />
+          <ShieldCheck className="mt-0.5 h-5 w-5 text-brand-600" />
           <div>
             <h2 className="text-[17px] font-semibold">{statusTitle}</h2>
             <p className="mt-1 text-[14px] leading-6 text-slate-700">
@@ -1237,7 +1239,7 @@ export function OrganizerOnboarding({
           </div>
         </div>
       </div>
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-[18px] font-semibold">实名与主体信息</h2>
           <p className="mt-1 text-[14px] text-slate-600">
@@ -1273,7 +1275,7 @@ export function OrganizerOnboarding({
         </div>
       </section>
       <section
-        className="rounded-lg border border-slate-200 bg-white"
+        className="rounded-xl border border-slate-200 bg-white"
         data-cy="material-list"
       >
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 p-5">
@@ -1292,11 +1294,11 @@ export function OrganizerOnboarding({
         <div className="grid items-start gap-4 p-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
           <section
             data-cy="identity-material-column"
-            className="min-w-0 rounded-lg border border-blue-200 bg-blue-50/40 p-4"
+            className="min-w-0 rounded-lg border border-brand-200 bg-brand-50/40 p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1c4c9e]">
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-brand-700">
                   <IdCard className="h-4 w-4" />
                   身份材料
                 </div>
@@ -1307,13 +1309,13 @@ export function OrganizerOnboarding({
                   正面和反面放在同一栏内 分别选择文件即可
                 </p>
               </div>
-              <span className="rounded bg-blue-100 px-2 py-1 text-[12px] font-semibold text-[#1c4c9e]">
+              <span className="rounded bg-brand-100 px-2 py-1 text-[12px] font-semibold text-brand-700">
                 {state.agentIdentity === "authorized_agent"
                   ? "经办人办理 需授权书"
                   : "本人办理 无需授权书"}
               </span>
             </div>
-            <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
                 <div>
                   <div className="text-[14px] font-semibold">身份证正反面</div>
@@ -1321,7 +1323,7 @@ export function OrganizerOnboarding({
                     两个上传位属于同一份身份证材料
                   </div>
                 </div>
-                <span className="text-[12px] font-semibold text-[#1c4c9e]">
+                <span className="text-[12px] font-semibold text-brand-700">
                   已完成{" "}
                   {identityMaterials.filter(item => item.fileName).length} / 2
                 </span>
@@ -1333,7 +1335,7 @@ export function OrganizerOnboarding({
               </div>
             </div>
             {authorizationMaterial && (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white">
                 {renderMaterialCard(authorizationMaterial, { embedded: true })}
               </div>
             )}
@@ -1360,7 +1362,7 @@ export function OrganizerOnboarding({
             <button
               onClick={submit}
               data-cy="submit-admission"
-              className="flex h-11 items-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+              className="flex h-11 items-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
             >
               <Send className="h-4 w-4" />
               提交平台审核
@@ -1387,7 +1389,7 @@ function ReviewMaterial({ material }: { material: AdmissionMaterial }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex min-h-20 w-full items-center gap-3 rounded-md border border-slate-200 p-3 text-left hover:border-blue-300"
+        className="flex min-h-20 w-full items-center gap-3 rounded-md border border-slate-200 p-3 text-left hover:border-brand-300"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
           {material.preview ? (
@@ -1402,7 +1404,7 @@ function ReviewMaterial({ material }: { material: AdmissionMaterial }) {
             {material.fileName || "未上传"}
           </div>
         </div>
-        <span className="text-[13px] font-semibold text-[#245fc4]">查看</span>
+        <span className="text-[13px] font-semibold text-brand-600">查看</span>
       </button>
       {open && (
         <MaterialDrawer
@@ -1451,7 +1453,7 @@ export function AdmissionReview({
       ) : (
         <>
           <AdmissionProgress status={state.status} />
-          <section className="rounded-lg border border-slate-200 bg-white">
+          <section className="rounded-xl border border-slate-200 bg-white">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 p-5">
               <div>
                 <h2 className="text-[20px] font-semibold">
@@ -1463,7 +1465,7 @@ export function AdmissionReview({
                 </p>
               </div>
               <span
-                className={`rounded px-3 py-1.5 text-[13px] font-semibold ${state.status === "approved" ? "bg-emerald-50 text-emerald-700" : state.status === "changes_required" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-[#1c4c9e]"}`}
+                className={`rounded px-3 py-1.5 text-[13px] font-semibold ${state.status === "approved" ? "bg-emerald-50 text-emerald-700" : state.status === "changes_required" ? "bg-amber-50 text-amber-700" : "bg-brand-50 text-brand-700"}`}
               >
                 {title}
               </span>
@@ -1535,7 +1537,7 @@ export function AdmissionReview({
                 value={note}
                 onChange={event => setNote(event.target.value)}
                 placeholder="填写通过说明或需要补充的具体内容"
-                className="mt-2 min-h-24 w-full resize-none rounded-md border border-slate-300 p-3 text-[14px] leading-6 outline-none focus:border-[#245fc4]"
+                className="mt-2 min-h-24 w-full resize-none rounded-md border border-slate-300 p-3 text-[14px] leading-6 outline-none focus:border-brand-500"
               />
               <div className="mt-4 flex flex-wrap justify-end gap-3">
                 <button
@@ -1561,7 +1563,7 @@ export function AdmissionReview({
                     )
                   }
                   data-cy="approve-admission"
-                  className="flex h-11 items-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white disabled:opacity-40"
+                  className="flex h-11 items-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white disabled:opacity-40"
                 >
                   <BadgeCheck className="h-4 w-4" />
                   审核通过
@@ -1586,7 +1588,7 @@ function SummaryItem({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-md bg-slate-50 p-3">
-      <div className="text-[#245fc4]">{icon}</div>
+      <div className="text-brand-600">{icon}</div>
       <div>
         <div className="text-[12px] text-slate-500">{label}</div>
         <div className="mt-0.5 text-[14px] font-semibold">{value}</div>
@@ -1673,7 +1675,7 @@ export function ActivityCreationWizard({
         </p>
         <button
           onClick={onBack}
-          className="mt-6 h-11 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+          className="mt-6 h-11 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
         >
           去完善主体材料
         </button>
@@ -1689,11 +1691,11 @@ export function ActivityCreationWizard({
         title="新建文化活动"
         lines={["主体认证已通过", "按步骤完善活动资料与票务设置后提交发布"]}
       />
-      <div className="grid grid-cols-4 gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:p-3">
+      <div className="grid grid-cols-4 gap-2 rounded-xl border border-slate-200 bg-white p-2 sm:p-3">
         {steps.map((label, index) => (
           <div
             key={label}
-            className={`rounded-md px-1 py-2.5 text-center text-[13px] font-semibold sm:px-3 sm:py-3 ${index === step ? "bg-blue-50 text-[#1c4c9e]" : index < step ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
+            className={`rounded-md px-1 py-2.5 text-center text-[13px] font-semibold sm:px-3 sm:py-3 ${index === step ? "bg-brand-50 text-brand-700" : index < step ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
           >
             <span className="block sm:inline">0{index + 1}</span>
             <span className="block whitespace-nowrap sm:ml-1 sm:inline">
@@ -1702,7 +1704,7 @@ export function ActivityCreationWizard({
           </div>
         ))}
       </div>
-      <section className="rounded-lg border border-slate-200 bg-white p-5 sm:p-7">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
         {step === 0 && (
           <div>
             <h2 className="text-[19px] font-semibold">活动基本信息</h2>
@@ -1772,7 +1774,7 @@ export function ActivityCreationWizard({
                   key={item}
                   className="flex min-h-16 items-center gap-3 rounded-md border border-slate-200 px-4 text-left"
                 >
-                  <Upload className="h-5 w-5 text-[#245fc4]" />
+                  <Upload className="h-5 w-5 text-brand-600" />
                   <span className="text-[14px] font-semibold">{item}</span>
                 </button>
               ))}
@@ -1854,7 +1856,7 @@ export function ActivityCreationWizard({
                             {ticket.name}
                           </strong>
                           {ticket.category && (
-                            <span className="status-token rounded bg-blue-50 px-1.5 py-0.5 text-[12px] font-semibold text-[#1c4c9e]">
+                            <span className="status-token rounded bg-brand-50 px-1.5 py-0.5 text-[12px] font-semibold text-brand-700">
                               {TICKET_CATEGORY_LABEL[ticket.category]}
                             </span>
                           )}
@@ -1898,13 +1900,13 @@ export function ActivityCreationWizard({
         <div className="mt-7 flex justify-between gap-3">
           <button
             onClick={() => (step === 0 ? onBack() : setStep(step - 1))}
-            className="h-11 rounded-md border border-slate-300 px-5 text-[14px] font-semibold"
+            className="h-11 rounded-full border border-brand-200 px-5 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
           >
             {step === 0 ? "返回" : "上一步"}
           </button>
           <button
             onClick={next}
-            className="flex h-11 items-center gap-2 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+            className="flex h-11 items-center gap-2 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
           >
             {step === 3 ? "提交并发布" : "下一步"}
             <ArrowRight className="h-4 w-4" />
@@ -1922,24 +1924,35 @@ export function ActivityPublished({
   onTickets: () => void;
 }) {
   return (
-    <div className="mx-auto max-w-[720px] rounded-lg border border-emerald-200 bg-white px-6 py-16 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-        <CheckCircle2 className="h-7 w-7" />
-      </div>
-      <h1 className="mt-5 text-[24px] font-semibold">活动已提交发布</h1>
+    <div
+      data-cy="activity-published"
+      className="mx-auto max-w-[720px] rounded-2xl border border-brand-100 bg-[linear-gradient(180deg,#f6effe_0%,#ffffff_55%)] px-6 py-12 text-center"
+    >
+      <img
+        src={MASCOT_SUCCESS}
+        alt=""
+        aria-hidden="true"
+        width={150}
+        height={174}
+        className="mx-auto h-auto w-[150px] select-none"
+      />
+      <h1 className="mt-4 flex items-center justify-center gap-2 text-[24px] font-semibold">
+        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+        活动已提交发布
+      </h1>
       <p className="mt-2 text-[14px] leading-6 text-slate-600">
         活动档案已建立 可以继续管理活动资料 票种库存和现场工作
       </p>
       <div className="mt-7 flex flex-wrap justify-center gap-3">
         <button
           onClick={onWorkspace}
-          className="h-11 rounded-md border border-slate-300 px-5 text-[14px] font-semibold"
+          className="h-11 rounded-full border border-brand-200 px-5 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
         >
           进入活动管理
         </button>
         <button
           onClick={onTickets}
-          className="h-11 rounded-md bg-[#245fc4] px-5 text-[14px] font-semibold text-white"
+          className="h-11 rounded-full bg-brand-grad px-5 text-[14px] font-semibold text-white"
         >
           配置票务
         </button>
@@ -1956,9 +1969,17 @@ export function OnboardingWorkspaceGate({
 }) {
   const [title, text] = statusCopy(state.status);
   return (
-    <div className="mb-6 flex flex-col gap-4 rounded-lg border border-blue-200 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-start gap-3">
-        <UserCheck className="mt-0.5 h-5 w-5 text-[#245fc4]" />
+    <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <img
+          src={MASCOT_AVATAR}
+          alt=""
+          aria-hidden="true"
+          width={48}
+          height={48}
+          className="h-12 w-12 shrink-0 rounded-full bg-white object-cover object-top ring-2 ring-white"
+        />
+        <UserCheck className="sr-only" />
         <div>
           <div className="text-[16px] font-semibold">{title}</div>
           <div className="mt-1 text-[14px] leading-6 text-slate-700">
@@ -1968,7 +1989,7 @@ export function OnboardingWorkspaceGate({
       </div>
       <button
         onClick={onContinue}
-        className="h-10 shrink-0 rounded-md bg-[#245fc4] px-4 text-[14px] font-semibold text-white"
+        className="h-10 shrink-0 rounded-full bg-brand-grad px-4 text-[14px] font-semibold text-white"
       >
         继续办理
       </button>
@@ -1978,9 +1999,9 @@ export function OnboardingWorkspaceGate({
 export function ApplicantSummary({ state }: { state: AdmissionState }) {
   const [title] = statusCopy(state.status);
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-center gap-3">
-        <Building2 className="h-5 w-5 text-[#245fc4]" />
+        <Building2 className="h-5 w-5 text-brand-600" />
         <div>
           <div className="text-[15px] font-semibold">
             {state.organizationName || "新主办方主体"}

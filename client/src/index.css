@@ -1,23 +1,73 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 漫圈 user-end aligned brand scale: lavender purple, soft pink accent, deep navy line icons. */
+@theme {
+  --color-brand-50: #f8f3fe;
+  --color-brand-100: #f0e6fd;
+  --color-brand-200: #e2cffb;
+  --color-brand-300: #cdaaf6;
+  --color-brand-400: #b67cef;
+  --color-brand-500: #9b5de5;
+  --color-brand-600: #7c3fd0;
+  --color-brand-700: #6a32b5;
+  --color-brand-800: #562a92;
+  --color-brand-900: #472677;
+  --color-brand-950: #2d1250;
+  --color-candy-50: #fdf1f6;
+  --color-candy-100: #fbe2ed;
+  --color-candy-400: #f090b4;
+  --color-candy-600: #d4488a;
+  --color-candy-700: #b23873;
+  --color-navy-700: #243c6c;
+  /* Light neutrals carry a faint lavender tint so borders and washes sit with the brand purple. */
+  --color-slate-50: #f9f8fc;
+  --color-slate-100: #f2f0f7;
+  --color-slate-200: #e6e2ee;
+  --color-slate-300: #d4cee0;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+@utility bg-brand-grad {
+  background-color: var(--color-brand-600);
+  background-image: linear-gradient(100deg, #9150e0 0%, #7338c2 100%);
+}
+
+@utility bg-candy-grad {
+  background-color: #d4488a;
+  background-image: linear-gradient(100deg, #f090b4 0%, #b46cf0 100%);
+}
+
+@utility text-brand-grad {
+  background-image: linear-gradient(100deg, #b46cf0 0%, #7c3fd0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 @layer base {
   :root {
     --ink: #18212f;
     --ink-muted: #617083;
-    --canvas: #f5f6f8;
+    --canvas: #f7f6fb;
     --surface: #ffffff;
-    --line: #dfe4ea;
-    --line-strong: #cbd3dd;
-    --action: #245fc4;
-    --action-hover: #1c4c9e;
+    --line: #e6e2ef;
+    --line-strong: #d3cce2;
+    --action: #7c3fd0;
+    --action-hover: #6a32b5;
     --success: #22744e;
     --warning: #a16415;
     --danger: #b84242;
-    --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans:
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
+      -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
   body {
     font-family: var(--font-sans);
@@ -29,32 +79,102 @@
     text-wrap: pretty;
   }
 
-  button, input, textarea, select { font: inherit; }
-
-  button:not(:disabled) {
-    transition: color 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms cubic-bezier(0.23, 1, 0.32, 1), border-color 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 120ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
   }
 
-  button:not(:disabled):active { transform: scale(0.98); }
-  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgb(36 95 196 / 22%); outline-offset: 2px; }
+  button:not(:disabled) {
+    transition:
+      color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid rgb(145 80 224 / 24%);
+    outline-offset: 2px;
+  }
+}
+
+/* Disabled gradient buttons fall back to their flat disabled colour. */
+.bg-brand-grad:disabled,
+.bg-candy-grad:disabled {
+  background-image: none;
+}
+
+/* Primary gradient buttons get the soft purple lift used in the user-end CTA. */
+button.bg-brand-grad:not(:disabled) {
+  box-shadow: 0 6px 16px -8px rgb(124 63 208 / 55%);
+}
+
+/* Soft lavender wash at the top of the workspace, echoing the user-end page headers. */
+.workspace-canvas {
+  background-color: var(--canvas);
+  background-image: linear-gradient(
+    180deg,
+    #efe6fb 0px,
+    rgb(247 246 251 / 0%) 260px
+  );
+  background-repeat: no-repeat;
+}
+
+/* Sidebar navigation: navy line icons, active item uses a filled purple circle like the user-end tab bar. */
+.nav-icon-chip {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-navy-700);
+}
+[data-active="true"] > .nav-icon-chip {
+  color: #fff;
+  background-image: linear-gradient(135deg, #b46cf0 0%, #7c3fd0 100%);
+  box-shadow: 0 4px 10px -4px rgb(124 63 208 / 60%);
 }
 
 /* Quiet, document-led visual language for an operational platform. */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #b9c3d0; border-radius: 999px; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cdc3e0;
+  border-radius: 999px;
+}
 
 .login-scenic-background {
-  background-image: url('/manus-storage/quji-xinjiang-login-background_3120f429.webp');
+  background-image: url("/manus-storage/quji-xinjiang-login-background_3120f429.webp");
   background-size: cover;
   background-position: center;
-  animation: login-scenic-drift 28s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
+  animation: login-scenic-drift 28s cubic-bezier(0.23, 1, 0.32, 1) infinite
+    alternate;
   transform-origin: center;
 }
 
 @keyframes login-scenic-drift {
-  from { transform: scale(1.02) translate3d(-0.25%, -0.2%, 0); }
-  to { transform: scale(1.05) translate3d(0.3%, 0.25%, 0); }
+  from {
+    transform: scale(1.02) translate3d(-0.25%, -0.2%, 0);
+  }
+  to {
+    transform: scale(1.05) translate3d(0.3%, 0.25%, 0);
+  }
 }
 
 /* Chinese names, dates, money and statuses are indivisible business tokens. */
@@ -73,28 +193,61 @@
   overflow-wrap: break-word;
 }
 
-.metric-grid > * { min-width: 0; }
-.metric-card { min-width: 0; overflow: hidden; border-radius: 8px; box-shadow: none; }
-.metric-value { white-space: nowrap; word-break: keep-all; font-variant-numeric: tabular-nums; }
-.metric-sub { overflow-wrap: break-word; word-break: normal; }
-.role-login-card { min-width: 0; border-radius: 8px; }
+.metric-grid > * {
+  min-width: 0;
+}
+.metric-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.metric-value {
+  white-space: nowrap;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+}
+.metric-sub {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.role-login-card {
+  min-width: 0;
+  border-radius: 12px;
+}
 
 /* Shared task surfaces replace generic confirmation modals. */
 .task-drawer {
   box-shadow: -18px 0 38px rgb(24 33 47 / 12%);
 }
 .task-step[data-active="true"] {
-  border-color: #245fc4;
-  color: #1c4c9e;
-  background: #f4f7fc;
+  border-color: #9b5de5;
+  color: #6a32b5;
+  background: #f8f3fe;
 }
 
 @media (max-width: 639px) {
-  .role-login-card { min-height: 116px; }
-  .metric-card { min-height: 136px; }
-  .data-token, .status-token, .date-token, .org-token { font-size: inherit; }
+  .role-login-card {
+    min-height: 116px;
+  }
+  .metric-card {
+    min-height: 136px;
+  }
+  .data-token,
+  .status-token,
+  .date-token,
+  .org-token {
+    font-size: inherit;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

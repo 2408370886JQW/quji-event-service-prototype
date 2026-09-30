@@ -30,7 +30,7 @@ const inputBase =
 const inputTone = (invalid: boolean) =>
   invalid
     ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-    : "border-slate-300 focus:border-[#245fc4] focus:ring-blue-100";
+    : "border-slate-300 focus:border-brand-500 focus:ring-brand-100";
 
 function fromYMD(value: string) {
   if (!value) return undefined;
@@ -208,7 +208,7 @@ export function DateRangeField({
             <button
               type="button"
               onClick={() => setDraft(undefined)}
-              className="h-9 rounded-md px-3 text-[14px] font-semibold text-[#245fc4] hover:bg-blue-50"
+              className="h-9 rounded-md px-3 text-[14px] font-semibold text-brand-600 hover:bg-brand-50"
             >
               清空
             </button>
@@ -217,7 +217,7 @@ export function DateRangeField({
               disabled={!ready}
               onClick={confirm}
               data-cy={`${dataCy}-confirm`}
-              className="h-9 rounded-md bg-[#245fc4] px-4 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              className="h-9 rounded-full bg-brand-grad px-4 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
               确定
             </button>
@@ -248,15 +248,15 @@ const CALENDAR_CLASSES = {
   week: "mt-1 flex",
   day: "h-10 w-10 p-0 text-center text-[14px]",
   day_button:
-    "h-10 w-10 rounded-md text-slate-800 outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-200",
+    "h-10 w-10 rounded-md text-slate-800 outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-200",
   selected: "",
   range_start:
-    "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
+    "[&>button]:bg-brand-grad [&>button]:text-white [&>button]:hover:brightness-95",
   range_end:
-    "[&>button]:bg-[#245fc4] [&>button]:text-white [&>button]:hover:bg-[#1c4c9e]",
+    "[&>button]:bg-brand-grad [&>button]:text-white [&>button]:hover:brightness-95",
   range_middle:
-    "bg-blue-50 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:text-[#1c4c9e]",
-  today: "[&>button]:font-semibold [&>button]:text-[#245fc4]",
+    "bg-brand-50 [&>button]:rounded-none [&>button]:bg-transparent [&>button]:text-brand-700",
+  today: "[&>button]:font-semibold [&>button]:text-brand-600",
   outside: "[&>button]:text-slate-300",
   disabled:
     "[&>button]:cursor-not-allowed [&>button]:text-slate-300 [&>button]:hover:bg-transparent",
@@ -351,7 +351,7 @@ function TicketCard({
             票种 {index + 1}
           </span>
           {ticket.category && (
-            <span className="status-token rounded bg-blue-50 px-2 py-0.5 text-[12px] font-semibold text-[#1c4c9e]">
+            <span className="status-token rounded bg-brand-50 px-2 py-0.5 text-[12px] font-semibold text-brand-700">
               {TICKET_CATEGORY_LABEL[ticket.category]}
             </span>
           )}
@@ -513,7 +513,7 @@ function TicketCard({
                           : ticket.entryTimes,
                     })
                   }
-                  className="h-4 w-4 accent-[#245fc4]"
+                  className="h-4 w-4 accent-brand-600"
                 />
                 {label}
               </label>
@@ -592,7 +592,7 @@ function TicketCard({
                   checked={ticket.realNameRequired === value}
                   data-cy={`ticket-realname-${key}`}
                   onChange={() => onChange({ realNameRequired: value })}
-                  className="h-4 w-4 accent-[#245fc4]"
+                  className="h-4 w-4 accent-brand-600"
                 />
                 {label}
               </label>
@@ -719,7 +719,7 @@ export function TicketTypesEditor({
           onClick={add}
           disabled={!canAdd}
           data-cy="ticket-add"
-          className="inline-flex h-11 items-center gap-2 rounded-md border border-[#245fc4] bg-white px-4 text-[14px] font-semibold text-[#245fc4] hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+          className="inline-flex h-11 items-center gap-2 rounded-md border border-brand-500 bg-white px-4 text-[14px] font-semibold text-brand-600 hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
         >
           <Plus className="h-4 w-4" />
           添加票种

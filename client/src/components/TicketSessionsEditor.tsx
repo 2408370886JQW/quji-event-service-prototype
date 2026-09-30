@@ -50,7 +50,7 @@ function CopySessionButton({
         <button
           type="button"
           data-cy="session-copy"
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[14px] font-semibold whitespace-nowrap text-slate-700 hover:border-[#245fc4] hover:text-[#245fc4]"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 text-[14px] font-semibold whitespace-nowrap text-slate-700 hover:border-brand-500 hover:text-brand-600"
         >
           <Copy className="h-4 w-4" />
           复制到其他日期
@@ -76,7 +76,7 @@ function CopySessionButton({
             className="flex h-10 w-full items-center gap-3 rounded-md px-2 text-left text-[14px] font-semibold text-slate-700 hover:bg-slate-50"
           >
             <span
-              className={`flex h-4 w-4 items-center justify-center rounded border ${allPicked ? "border-[#245fc4] bg-[#245fc4] text-white" : "border-slate-300 bg-white"}`}
+              className={`flex h-4 w-4 items-center justify-center rounded border ${allPicked ? "border-brand-500 bg-brand-grad text-white" : "border-slate-300 bg-white"}`}
             >
               {allPicked && <Check className="h-3 w-3" />}
             </span>
@@ -95,7 +95,7 @@ function CopySessionButton({
                 className="flex h-10 w-full items-center gap-3 rounded-md px-2 text-left text-[14px] text-slate-800 hover:bg-slate-50"
               >
                 <span
-                  className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? "border-[#245fc4] bg-[#245fc4] text-white" : "border-slate-300 bg-white"}`}
+                  className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? "border-brand-500 bg-brand-grad text-white" : "border-slate-300 bg-white"}`}
                 >
                   {checked && <Check className="h-3 w-3" />}
                 </span>
@@ -120,7 +120,7 @@ function CopySessionButton({
               onCopy(picked);
               setOpen(false);
             }}
-            className="h-9 rounded-md bg-[#245fc4] px-4 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+            className="h-9 rounded-full bg-brand-grad px-4 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
           >
             复制到 {picked.length} 天
           </button>
@@ -224,10 +224,10 @@ export function TicketSessionsEditor({
                 data-cy="session-tab"
                 data-date={session.date}
                 onClick={() => onActiveDateChange(session.date)}
-                className={`relative min-w-[132px] shrink-0 rounded-md border py-2.5 pl-3 text-left ${issues > 0 ? "pr-9" : "pr-3"} ${selected ? "border-[#245fc4] bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                className={`relative min-w-[132px] shrink-0 rounded-md border py-2.5 pl-3 text-left ${issues > 0 ? "pr-9" : "pr-3"} ${selected ? "border-brand-500 bg-brand-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
               >
                 <span
-                  className={`date-token block text-[14px] font-semibold ${selected ? "text-[#1c4c9e]" : "text-slate-900"}`}
+                  className={`date-token block text-[14px] font-semibold ${selected ? "text-brand-700" : "text-slate-900"}`}
                 >
                   {formatSessionDate(session.date)}
                 </span>
