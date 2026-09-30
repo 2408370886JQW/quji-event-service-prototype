@@ -483,7 +483,7 @@ export function OrganizerRegistration({
     onBack();
   };
   const sendCode = () => {
-    if (sending || countdown > 0) return;
+    if (sending || resendSeconds(ticket, Date.now()) > 0) return;
     if (!isValidPhone(phone)) return setError(SMS_MESSAGES.invalidPhone);
     setError("");
     setCode("");
