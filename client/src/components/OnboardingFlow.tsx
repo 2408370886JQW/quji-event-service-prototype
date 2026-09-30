@@ -22,6 +22,18 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
+import { TicketTypesEditor } from "./TicketTypesEditor";
+import {
+  TICKET_CATEGORY_LABEL,
+  createTicketType,
+  formatEntryRule,
+  formatPrice,
+  suggestSaleRange,
+  summarizeTicketTypes,
+  todayYMD,
+  validateTicketTypes,
+  type TicketTypeDraft,
+} from "./ticketTypes";
 
 export type AdmissionStatus =
   | "not_started"
@@ -1588,15 +1600,53 @@ export function ActivityCreationWizard({
   const [name, setName] = useState("");
   const [venue, setVenue] = useState("");
   const [date, setDate] = useState("");
-  const [ticketName, setTicketName] = useState("普通票");
-  const [price, setPrice] = useState("68");
-  const [stock, setStock] = useState("2000");
+  const [tickets, setTickets] = useState<TicketTypeDraft[]>(() => [
+    { ...createTicketType(), name: "预售票", category: "presale" },
+    { ...createTicketType(), name: "现场票", category: "onsite" },
+  ]);
+  const [showTicketErrors, setShowTicketErrors] = useState(false);
   const [error, setError] = useState("");
   const steps = ["基本信息", "活动资料", "票务设置", "提交发布"];
+  // 活动日期当前为单日 后续多日活动只需把 end 改为结束日期
+  const activityWindow = { start: date, end: date };
+  const ticketErrors = showTicketErrors
+    ? validateTicketTypes(tickets, activityWindow)
+    : {};
+  const ticketSummary = summarizeTicketTypes(tickets);
+  const enterTicketStep = () =>
+    setTickets(list =>
+      list.map(ticket => {
+        if (ticket.saleStart || !ticket.category) return ticket;
+        const suggestion = suggestSaleRange(
+          ticket.category,
+          activityWindow,
+          todayYMD()
+        );
+        return suggestion ? { ...ticket, ...suggestion } : ticket;
+      })
+    );
   const next = () => {
     if (step === 0 && (!name.trim() || !venue.trim() || !date))
       return setError("请完整填写活动名称 时间和场地");
+    if (step === 2) {
+      const found = validateTicketTypes(tickets, activityWindow);
+      const count = Object.values(found).reduce(
+        (sum, fields) => sum + Object.keys(fields).length,
+        0
+      );
+      if (count) {
+        setShowTicketErrors(true);
+        requestAnimationFrame(() =>
+          document
+            .querySelector('[data-ticket-error="true"]')
+            ?.closest('[data-cy="ticket-card"]')
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        );
+        return setError(`票种信息还有 ${count} 项需要完善`);
+      }
+    }
     setError("");
+    if (step === 1) enterTicketStep();
     if (step < 3) setStep(step + 1);
     else onFinish();
   };
@@ -1697,29 +1747,20 @@ export function ActivityCreationWizard({
           </div>
         )}
         {step === 2 && (
-          <div>
-            <h2 className="text-[19px] font-semibold">票务设置</h2>
-            <div className="mt-5 grid gap-5 sm:grid-cols-3">
-              <TextInput
-                label="票种名称"
-                value={ticketName}
-                onChange={setTicketName}
-                placeholder="例如 普通票"
-              />
-              <TextInput
-                label="票价"
-                value={price}
-                onChange={setPrice}
-                placeholder="0"
-              />
-              <TextInput
-                label="库存"
-                value={stock}
-                onChange={setStock}
-                placeholder="0"
-              />
-            </div>
-          </div>
+          <TicketTypesEditor
+            tickets={tickets}
+            onChange={next => {
+              setTickets(next);
+              if (showTicketErrors && error) {
+                const left = Object.keys(
+                  validateTicketTypes(next, activityWindow)
+                ).length;
+                if (!left) setError("");
+              }
+            }}
+            errors={ticketErrors}
+            window={activityWindow}
+          />
         )}
         {step === 3 && (
           <div>
@@ -1742,10 +1783,55 @@ export function ActivityCreationWizard({
                 />
                 <SummaryItem
                   label="票务"
-                  value={`${ticketName} ¥${price} / ${stock}张`}
+                  value={`${ticketSummary.count} 个票种 / ${ticketSummary.totalInventory.toLocaleString("zh-CN")}张`}
                   icon={<Ticket className="h-5 w-5" />}
                 />
               </div>
+            </div>
+            <div
+              className="mt-4 overflow-hidden rounded-md border border-slate-200"
+              data-cy="ticket-publish-summary"
+            >
+              <div className="hidden grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_1.6fr_1fr] gap-3 bg-slate-50 px-4 py-2.5 text-[13px] font-semibold text-slate-600 md:grid">
+                <span>票种名称</span>
+                <span>类别</span>
+                <span>价格</span>
+                <span>库存</span>
+                <span>销售时间</span>
+                <span>入场次数</span>
+              </div>
+              {tickets.map(ticket => (
+                <div
+                  key={ticket.id}
+                  className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-slate-200 px-4 py-3 text-[14px] first:border-t-0 md:grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_1.6fr_1fr] md:items-center md:first:border-t"
+                >
+                  <span className="col-span-2 font-semibold text-slate-900 md:col-span-1">
+                    {ticket.name}
+                  </span>
+                  <span className="status-token text-slate-700">
+                    {ticket.category
+                      ? TICKET_CATEGORY_LABEL[ticket.category]
+                      : "—"}
+                  </span>
+                  <span className="data-token text-slate-700">
+                    {formatPrice(ticket.price)}
+                  </span>
+                  <span className="data-token text-slate-700">
+                    {Number(ticket.inventory).toLocaleString("zh-CN")} 张
+                  </span>
+                  <span className="date-token text-slate-700">
+                    {ticket.saleStart} 至 {ticket.saleEnd}
+                  </span>
+                  <span className="col-span-2 text-slate-700 md:col-span-1">
+                    {formatEntryRule(ticket)}
+                  </span>
+                  {ticket.remark && (
+                    <span className="col-span-2 text-[13px] leading-5 text-slate-500 md:col-span-6">
+                      备注 {ticket.remark}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
