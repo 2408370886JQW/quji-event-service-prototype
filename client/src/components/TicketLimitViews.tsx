@@ -18,12 +18,11 @@ import {
 } from "./purchaseLimit";
 import {
   DEFAULT_LIMIT_LOGS,
-  EVENT_SESSIONS,
   PURCHASE_RECORDS,
   SESSION_DATES,
-  ticketLimit,
   type LimitCheckLog,
 } from "./ticketSamples";
+import { configuredLimit, useTicketConfig } from "./ticketConfig";
 import { ALL_SESSIONS } from "./ticketStats";
 import { formatSessionDate } from "./ticketTypes";
 
@@ -121,7 +120,6 @@ function loadLogs(): LimitCheckLog[] {
   }
 }
 
-const TICKET_NAMES = EVENT_SESSIONS[0].tickets.map(ticket => ticket.name);
 const fieldClass =
   "block h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
 
@@ -177,6 +175,13 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
   const [logs, setLogs] = useState<LimitCheckLog[]>(loadLogs);
   const [idCard, setIdCard] = useState("");
   const [sessionDate, setSessionDate] = useState(SESSION_DATES[0]);
+  const config = useTicketConfig();
+  const sessionTickets =
+    config.sessions.find(item => item.date === sessionDate)?.tickets ??
+    config.sessions[0].tickets;
+  const TICKET_NAMES = sessionTickets.map(ticket => ticket.name);
+  const ticketLimit = (name: string) =>
+    configuredLimit(config, sessionDate, name);
   const [ticketName, setTicketName] = useState(TICKET_NAMES[0]);
   const [quantity, setQuantity] = useState("1");
   const [result, setResult] = useState<LimitCheckResult | null>(null);
@@ -271,7 +276,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
             <li>漫圈 App 下单和现场售票都按此规则校验</li>
           </ul>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {EVENT_SESSIONS[0].tickets.map(ticket => (
+            {sessionTickets.map(ticket => (
               <div
                 key={ticket.name}
                 className="rounded-md bg-slate-50 px-3 py-2"

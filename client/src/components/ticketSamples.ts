@@ -19,6 +19,10 @@ export interface SessionTicket {
   status: SessionTicketStatus;
   sales: string;
   channel: string;
+  /** 开售时间 YYYY-MM-DD HH:mm（票种配置保存后写入） */
+  saleStart?: string;
+  /** 停售时间 YYYY-MM-DD HH:mm */
+  saleEnd?: string;
 }
 
 const ticket = (

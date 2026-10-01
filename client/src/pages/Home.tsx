@@ -98,7 +98,14 @@ import {
   refundSessionDate,
   totalTicketStock,
 } from "@/components/ticketStats";
-import { EVENT_SESSIONS, type SessionTicket } from "@/components/ticketSamples";
+import { type SessionTicket } from "@/components/ticketSamples";
+import { useTicketConfig } from "@/components/ticketConfig";
+import {
+  TicketConfigDrawer,
+  TicketCreateDrawer,
+  canEditTickets,
+  downloadCsv,
+} from "@/components/TicketConfigViews";
 import {
   CostumeReviewPage,
   useMyReviewCount,
@@ -3214,6 +3221,130 @@ function TicketPage({
     }));
   };
   const completed = refunds.filter(item => item.status === "refunded");
+  const ticketConfig = useTicketConfig();
+  const exportLabel = {
+    all: "票种数据",
+    orders: "订单",
+    refunds: "退款记录",
+    limits: "限购规则",
+  } as const;
+  const exportTickets = () => {
+    const scope =
+      session === ALL_SESSIONS ? "全部场次" : formatSessionDate(session);
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    let rows: (string | number)[][] = [];
+    if (selected === "all") {
+      rows = [
+        [
+          "场次",
+          "票种",
+          "票价",
+          "库存",
+          "已售",
+          "已退款",
+          "剩余",
+          "每个身份证限购",
+          "实名",
+          "销售状态",
+          "销售时间",
+        ],
+        ...(session === ALL_SESSIONS
+          ? ticketConfig.sessions.map(item => item.date)
+          : [session]
+        ).flatMap(date =>
+          buildSessionStock(ticketConfig.sessions, refunds, date).map(row => [
+            formatSessionDate(date),
+            row.ticket.name,
+            row.ticket.price,
+            row.ticket.inventory,
+            row.sold,
+            row.refunded,
+            row.remaining,
+            row.ticket.purchaseLimit,
+            row.ticket.realName ? "需要实名" : "无需实名",
+            row.ticket.status,
+            row.ticket.sales,
+          ])
+        ),
+      ];
+    } else if (selected === "orders") {
+      rows = [
+        [
+          "订单号",
+          "购票人",
+          "场次",
+          "票种",
+          "金额",
+          "实名",
+          "支付状态",
+          "电子票",
+        ],
+        ...ORDERS.filter(
+          order => session === ALL_SESSIONS || order.date === session
+        ).map(order => [
+          order.row[0],
+          order.row[1],
+          formatSessionDate(order.date),
+          ...order.row.slice(2),
+        ]),
+      ];
+    } else if (selected === "refunds") {
+      const label = {
+        pending_review: "待平台审批",
+        refunded: "已同意并退款",
+        rejected: "已驳回",
+      } as const;
+      rows = [
+        [
+          "申请编号",
+          "订单号",
+          "申请人",
+          "票种",
+          "电子票号",
+          "金额",
+          "原因",
+          "申请时间",
+          "状态",
+          "处理人",
+          "处理时间",
+          "处理意见",
+        ],
+        ...refunds.map(item => [
+          item.requestNo,
+          item.orderNo,
+          item.buyerName,
+          item.ticketName,
+          item.ticketCode,
+          item.amount,
+          item.reason,
+          item.requestedAt,
+          label[item.status],
+          item.processedBy ?? "",
+          item.processedAt ?? "",
+          item.comment ?? "",
+        ]),
+      ];
+    } else {
+      rows = [
+        ["场次", "票种", "每个身份证限购", "实名", "统计口径"],
+        ...ticketConfig.sessions.flatMap(item =>
+          item.tickets.map(ticket => [
+            formatSessionDate(item.date),
+            ticket.name,
+            ticket.purchaseLimit,
+            ticket.realName ? "需要实名" : "无需实名",
+            "同一身份证 同一场次 同一票种 多账号合并",
+          ])
+        ),
+      ];
+    }
+    downloadCsv(
+      `趣集票务_${exportLabel[selected]}_${scope}_${stamp}.csv`,
+      rows
+    );
+    toast.success(`已导出${exportLabel[selected]} ${rows.length - 1} 条`);
+  };
   const updateRefund = (next: RefundRecord[]) => {
     setRefunds(next);
     window.localStorage.setItem(REFUND_STORAGE_KEY, JSON.stringify(next));
@@ -3347,21 +3478,29 @@ function TicketPage({
               </button>
             ))}
           </div>
-          <ActionButton
-            label="导出数据"
-            className="h-10 px-3 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
-            icon={<Download className="w-4 h-4" />}
-            description="导出当前票务视图中的票种、订单或退款数据。"
-          />
+          <button
+            type="button"
+            data-cy="ticket-export"
+            onClick={exportTickets}
+            className="h-10 px-3 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700 whitespace-nowrap"
+          >
+            <Download className="w-4 h-4" />
+            导出{exportLabel[selected]}
+          </button>
         </div>
         {(selected === "all" || selected === "orders") && (
           <SessionFilter value={session} onChange={changeSession} />
         )}
         {selected === "all" ? (
           <TicketTypes
+            role={role}
             refunds={refunds}
             session={session}
             onRefunds={() => set("refunds")}
+            onViewOrders={date => {
+              changeSession(date);
+              set("orders");
+            }}
           />
         ) : selected === "orders" ? (
           <OrderTable session={session} />
@@ -3380,24 +3519,71 @@ function TicketPage({
   );
 }
 function TicketTypes({
+  role,
   refunds,
   session,
   onRefunds,
+  onViewOrders,
 }: {
+  role: Role;
   refunds: RefundRecord[];
   session: string;
   onRefunds: () => void;
+  onViewOrders: (date: string) => void;
 }) {
-  const rows = buildSessionStock(EVENT_SESSIONS, refunds, session);
+  const config = useTicketConfig();
+  const sessions = config.sessions;
+  const rows = buildSessionStock(sessions, refunds, session);
   const total = totalTicketStock(rows);
+  const editable = canEditTickets(role);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const firstDate = session === ALL_SESSIONS ? sessions[0]?.date : session;
+  const [editDate, setEditDate] = useState(firstDate);
+  const openConfig = (name: string) => {
+    const date =
+      session === ALL_SESSIONS
+        ? (sessions.find(item =>
+            item.tickets.some(ticket => ticket.name === name)
+          )?.date ?? sessions[0].date)
+        : session;
+    setEditDate(date);
+    setEditing(name);
+  };
+  const manageLabel = editable ? "配置" : "查看";
   const scope =
     session === ALL_SESSIONS
-      ? `全部 ${EVENT_SESSIONS.length} 个场次合计`
+      ? `全部 ${sessions.length} 个场次合计`
       : `${formatSessionDate(session)} 场次`;
   const statusTone = (status: string) =>
     status === "售票中" ? "green" : status === "待开售" ? "blue" : "slate";
-  const rule = (ticket: SessionTicket) =>
-    `每个身份证限购 ${ticket.purchaseLimit} 张 · ${ticket.realName ? "需要实名" : "无需实名"}`;
+  const variants = (ticket: SessionTicket) =>
+    session === ALL_SESSIONS
+      ? sessions.flatMap(item =>
+          item.tickets.filter(entry => entry.name === ticket.name)
+        )
+      : [ticket];
+  const span = (values: number[], unit = "") => {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return min === max ? `${min}${unit}` : `${min}-${max}${unit}`;
+  };
+  const priceText = (ticket: SessionTicket) =>
+    `¥${span(variants(ticket).map(item => item.price))}`;
+  const rule = (ticket: SessionTicket) => {
+    const list = variants(ticket);
+    const limits = span(
+      list.map(item => item.purchaseLimit),
+      " 张"
+    );
+    const real = list.every(item => item.realName)
+      ? "需要实名"
+      : list.every(item => !item.realName)
+        ? "无需实名"
+        : "实名按场次";
+    const byDay = new Set(list.map(item => item.purchaseLimit)).size > 1;
+    return `每个身份证限购 ${limits}${byDay ? " 按场次" : ""} · ${real}`;
+  };
   const Pending = ({ count }: { count: number }) =>
     count ? (
       <button
@@ -3422,7 +3608,20 @@ function TicketTypes({
             退款完成后票回到剩余库存
           </span>
         </span>
-        <span className="whitespace-nowrap">剩余 = 库存 - 已售 + 已退款</span>
+        <span className="flex flex-wrap items-center gap-3">
+          <span className="whitespace-nowrap">剩余 = 库存 - 已售 + 已退款</span>
+          {editable && (
+            <button
+              type="button"
+              data-cy="ticket-create"
+              onClick={() => setCreating(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 text-[14px] font-semibold whitespace-nowrap text-brand-700 hover:bg-brand-50"
+            >
+              <Plus className="h-4 w-4" />
+              新增票种
+            </button>
+          )}
+        </span>
       </div>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[980px] text-left">
@@ -3446,7 +3645,7 @@ function TicketTypes({
                     {row.ticket.name}
                   </div>
                   <div className="mt-1 text-[13px] whitespace-nowrap text-slate-500">
-                    ¥{row.ticket.price} · {rule(row.ticket)}
+                    {priceText(row.ticket)} · {rule(row.ticket)}
                   </div>
                 </td>
                 <td className="data-token p-4 text-right text-[15px] text-slate-700">
@@ -3492,11 +3691,15 @@ function TicketTypes({
                   </div>
                 </td>
                 <td className="p-4 text-right">
-                  <ActionButton
-                    label="管理"
-                    className="text-[14px] font-semibold text-brand-600"
-                    description="可调整库存、开售停售时间、身份证限购和实名规则。"
-                  />
+                  <button
+                    type="button"
+                    data-cy="stock-manage"
+                    onClick={() => openConfig(row.ticket.name)}
+                    className="inline-flex h-9 items-center gap-1 rounded-full border border-brand-200 px-3 text-[14px] font-semibold whitespace-nowrap text-brand-700 hover:bg-brand-50"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    {manageLabel}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -3542,7 +3745,7 @@ function TicketTypes({
                   {row.ticket.name}
                 </div>
                 <div className="mt-1 text-[13px] leading-5 text-slate-500">
-                  <span className="block">¥{row.ticket.price}</span>
+                  <span className="block">{priceText(row.ticket)}</span>
                   <span className="block">{rule(row.ticket)}</span>
                 </div>
               </div>
@@ -3582,6 +3785,15 @@ function TicketTypes({
               </span>
               <Pending count={row.pending} />
             </div>
+            <button
+              type="button"
+              data-cy="stock-manage-card"
+              onClick={() => openConfig(row.ticket.name)}
+              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full border border-brand-200 text-[14px] font-semibold text-brand-700 hover:bg-brand-50"
+            >
+              <Settings2 className="h-4 w-4" />
+              {editable ? "配置票价 库存 限购" : "查看票种配置"}
+            </button>
           </article>
         ))}
         <div className="bg-slate-50 p-4 text-[14px]">
@@ -3600,6 +3812,31 @@ function TicketTypes({
           </div>
         </div>
       </div>
+      {editing && (
+        <TicketConfigDrawer
+          key={editing}
+          role={role}
+          ticketName={editing}
+          initialDate={editDate}
+          refunds={refunds}
+          onClose={() => setEditing(null)}
+          onViewOrders={date => {
+            setEditing(null);
+            onViewOrders(date);
+          }}
+        />
+      )}
+      {creating && (
+        <TicketCreateDrawer
+          role={role}
+          onClose={() => setCreating(false)}
+          onCreated={(name, date) => {
+            setCreating(false);
+            setEditDate(date);
+            setEditing(name);
+          }}
+        />
+      )}
     </div>
   );
 }
