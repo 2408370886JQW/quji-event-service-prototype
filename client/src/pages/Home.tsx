@@ -75,6 +75,7 @@ import {
   Shirt,
   ScrollText,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   ActivityMaterials,
   OrganizerMaterials,
@@ -98,6 +99,10 @@ import {
   totalTicketStock,
 } from "@/components/ticketStats";
 import { EVENT_SESSIONS, type SessionTicket } from "@/components/ticketSamples";
+import {
+  CostumeReviewPage,
+  useMyReviewCount,
+} from "@/components/CostumeReview";
 import {
   PurchaseLimitPanel,
   SessionFilter,
@@ -405,53 +410,6 @@ const ROLE_INFO: Record<
     ],
   },
 };
-
-const COSERS = [
-  {
-    person: "张三",
-    character: "甘雨",
-    source: "《原神》",
-    ref: "角色原案图",
-    costume: "白色长袍 / 渐变蓝发 / 羊角发箍",
-    props: "紫色铃铛挂饰，无锐利金属",
-    status: "已通过",
-    log: "林洁 · 10:35 完成初核",
-    risk: "低风险",
-  },
-  {
-    person: "古丽米热·阿布都",
-    character: "敦煌伎乐飞天",
-    source: "国风原创",
-    ref: "飞天服装设计图",
-    costume: "石青色长裙 / 朱砂红飘带",
-    props: "EVA 泡棉琵琶，非金属材质",
-    status: "已通过",
-    log: "陈涛 · 11:22 完成初核",
-    risk: "低风险",
-  },
-  {
-    person: "李思远",
-    character: "机甲重装佣兵",
-    source: "原创设定",
-    ref: "机甲设定图",
-    costume: "黑色仿战术背心 / 外骨骼臂甲",
-    props: "仿真重弩模型，长约 1.2 米",
-    status: "协同核验",
-    log: "已转现场安保复验",
-    risk: "高关注",
-  },
-  {
-    person: "何晓晨",
-    character: "雷电将军",
-    source: "《原神》",
-    ref: "角色参考图",
-    costume: "紫色印花振袖 / 编发发簪",
-    props: "轻质木质长刀，海绵安全鞘",
-    status: "待审核",
-    log: "用户端 12:05 提交",
-    risk: "常规核验",
-  },
-];
 
 const MATERIALS = [
   {
@@ -1451,12 +1409,6 @@ export default function Home() {
         icon: ClipboardCheck,
         group: "账号与主体",
       },
-      {
-        id: "activity-create",
-        label: "创建活动",
-        icon: Plus,
-        group: "活动运营",
-      },
       { id: "events", label: t.events, icon: CalendarDays, group: "工作协同" },
       { id: "tickets", label: t.tickets, icon: Ticket, group: "活动运营" },
       { id: "costumes", label: t.costumes, icon: Shirt, group: "活动运营" },
@@ -1488,7 +1440,20 @@ export default function Home() {
   ).filter(item => permissions.includes(item.id));
   const currentPageLabel =
     nav.find(item => item.id === page)?.label ||
-    (page === "activity-published" ? "发布完成" : t.activity);
+    (page === "activity-published"
+      ? "发布完成"
+      : page === "activity-create"
+        ? "新建文化活动"
+        : t.activity);
+  const [createFrom, setCreateFrom] = useState<Page>("workspace");
+  const reviewBadge = useMyReviewCount(role);
+  const createActivity =
+    role === "organizer"
+      ? () => {
+          setCreateFrom(page);
+          setPage("activity-create");
+        }
+      : undefined;
   const changePage = (next: Page, tab?: ActivityTab) => {
     if (permissions.includes(next) || next === "activity") {
       setPage(next);
@@ -1578,7 +1543,12 @@ export default function Home() {
                     const Icon = item.icon;
                     const active =
                       page === item.id ||
-                      (page === "activity" && item.id === "events");
+                      ([
+                        "activity",
+                        "activity-create",
+                        "activity-published",
+                      ].includes(page) &&
+                        item.id === "events");
                     return (
                       <button
                         key={item.id}
@@ -1595,11 +1565,16 @@ export default function Home() {
                           />
                         </span>
                         {!sidebarCollapsed && <span>{item.label}</span>}
-                        {!sidebarCollapsed && item.id === "costumes" && (
-                          <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-600 text-white">
-                            2
-                          </span>
-                        )}
+                        {!sidebarCollapsed &&
+                          item.id === "costumes" &&
+                          reviewBadge > 0 && (
+                            <span
+                              data-cy="costume-badge"
+                              className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-600 text-white"
+                            >
+                              {reviewBadge}
+                            </span>
+                          )}
                       </button>
                     );
                   })}
@@ -1759,6 +1734,7 @@ export default function Home() {
                     changePage("activity");
                   }}
                   onNavigate={changePage}
+                  onCreate={createActivity}
                 />
               </>
             )}
@@ -1769,6 +1745,7 @@ export default function Home() {
                   setSelectedEvent(event);
                   changePage("activity");
                 }}
+                onCreate={createActivity}
               />
             )}
             {page === "activity" && (
@@ -1788,7 +1765,7 @@ export default function Home() {
                 setMode={setTicketMode}
               />
             )}
-            {page === "costumes" && <CostumePage />}
+            {page === "costumes" && <CostumeReviewPage role={role} />}
             {page === "onsite" && (
               <OnsitePage
                 checkins={checkins}
@@ -1817,7 +1794,15 @@ export default function Home() {
             {page === "activity-create" && (
               <ActivityCreationWizard
                 approved={admission.status === "approved"}
-                onBack={() => setPage("onboarding")}
+                onBack={() =>
+                  setPage(
+                    admission.status === "approved"
+                      ? createFrom === "events"
+                        ? "events"
+                        : "workspace"
+                      : "onboarding"
+                  )
+                }
                 onFinish={() => setPage("activity-published")}
               />
             )}
@@ -1871,7 +1856,12 @@ function MobileMenu({
     <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-[#e7e6f4] shadow-[0_18px_40px_-24px_rgba(67,47,108,0.45)] p-3 grid grid-cols-2 gap-2">
       {nav.map(item => {
         const Icon = item.icon;
-        const active = page === item.id;
+        const active =
+          page === item.id ||
+          (["activity", "activity-create", "activity-published"].includes(
+            page
+          ) &&
+            item.id === "events");
         return (
           <button
             key={item.id}
@@ -1894,10 +1884,12 @@ function Workspace({
   events,
   onOpenEvent,
   onNavigate,
+  onCreate,
 }: {
   events: EventItem[];
   onOpenEvent: (event: EventItem) => void;
   onNavigate: (page: Page, tab?: ActivityTab) => void;
+  onCreate?: () => void;
 }) {
   return (
     <div className="space-y-6">
@@ -1913,13 +1905,16 @@ function Workspace({
             >
               全部活动
             </button>
-            <button
-              onClick={() => onNavigate("events")}
-              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              创建活动
-            </button>
+            {onCreate && (
+              <button
+                data-cy="workspace-create-activity"
+                onClick={onCreate}
+                className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                创建活动
+              </button>
+            )}
           </>
         }
       />
@@ -2207,9 +2202,11 @@ function QuickAction({
 function EventsPage({
   events,
   onOpen,
+  onCreate,
 }: {
   events: EventItem[];
   onOpen: (event: EventItem) => void;
+  onCreate?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const results = events.filter(event =>
@@ -2222,15 +2219,19 @@ function EventsPage({
     <div className="space-y-6">
       <ModuleTitle
         eyebrow="活动管理"
-        title="活动数字档案库"
-        description="每场活动对应一套独立数字档案，贯穿创建、准备、核验、售票、现场、结束与归档。"
+        title="活动列表"
+        description="点击进入档案查看单场活动的资料 票务 现场与归档"
         actions={
-          <ActionButton
-            label="创建活动"
-            className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
-            icon={<Plus className="w-4 h-4" />}
-            description="将创建活动基础档案，并进入资料准备阶段。"
-          />
+          onCreate && (
+            <button
+              data-cy="events-create-activity"
+              onClick={onCreate}
+              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              创建活动
+            </button>
+          )
         }
       />
       <div className="bg-white border border-slate-200 rounded-xl">
@@ -2322,12 +2323,40 @@ function EventsPage({
             </table>
           </div>
         ) : (
-          <EmptyState
-            icon={<Search className="w-5 h-5" />}
-            title="未找到匹配活动"
-            text="可调整搜索关键词，或创建一场新的活动并开始建立数字档案。"
-            action="创建活动"
-          />
+          <div
+            data-cy="empty-state"
+            className="m-4 border border-dashed border-brand-200 bg-brand-50/60 rounded-xl p-8 text-center"
+          >
+            <img
+              src={MASCOT.empty}
+              alt=""
+              aria-hidden="true"
+              width={110}
+              height={111}
+              className="mx-auto w-[110px] h-auto select-none"
+            />
+            <h3 className="mt-4 text-[17px] font-semibold">未找到匹配活动</h3>
+            <p className="mt-2 text-[14px] leading-6 text-slate-600">
+              <PhraseLine parts={["请调整搜索关键词", "或创建一场新的活动"]} />
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <button
+                onClick={() => setQuery("")}
+                className="h-10 px-4 rounded-full border border-brand-200 bg-white text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
+              >
+                清除搜索
+              </button>
+              {onCreate && (
+                <button
+                  onClick={onCreate}
+                  className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  创建活动
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -2443,7 +2472,7 @@ function ActivityRecord({
       {tab === "materials" && <ActivityMaterials canEdit={canEdit} />}
       {tab === "participants" && <Participants />}
       {tab === "tickets" && <TicketPage compact role={role} />}
-      {tab === "costumes" && <CostumePage compact />}
+      {tab === "costumes" && <CostumeReviewPage role={role} compact />}
       {tab === "onsite" && (
         <OnsitePage
           checkins={tabCheckins}
@@ -3025,7 +3054,7 @@ type RefundRecord = {
   logs: { action: string; actor: string; time: string; comment?: string }[];
 };
 
-const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v2";
+const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v3";
 const DEFAULT_REFUNDS: RefundRecord[] = [
   {
     id: "refund-20260929-001",
@@ -3047,6 +3076,28 @@ const DEFAULT_REFUNDS: RefundRecord[] = [
         actor: "马晓彤 · 漫圈 App 用户",
         time: "2026-09-29 16:42",
         comment: "重复购票",
+      },
+    ],
+  },
+  {
+    id: "refund-20260929-004",
+    requestNo: "TK202609290004",
+    orderNo: "ORD1789301121958",
+    buyerName: "帕提古丽·吐尔逊",
+    buyerPhone: "159****2207",
+    ticketName: "学生早鸟票",
+    ticketCode: "QT-20260629-21958",
+    amount: 58,
+    reason: "活动时间冲突",
+    detail: "学校临时安排考试，6月29日无法到场，电子票尚未使用。",
+    requestedAt: "2026-09-29 09:30",
+    status: "pending_review",
+    logs: [
+      {
+        action: "用户提交退款申请",
+        actor: "帕提古丽·吐尔逊 · 漫圈 App 用户",
+        time: "2026-09-29 09:30",
+        comment: "活动时间冲突",
       },
     ],
   },
@@ -3148,7 +3199,20 @@ function TicketPage({
     saveTicketSession(value);
   };
   const [refunds, setRefunds] = useState<RefundRecord[]>(loadRefundRecords);
-  const pending = refunds.filter(item => item.status === "pending_review");
+  const pending = refunds
+    .filter(item => item.status === "pending_review")
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+  const [refundFocus, setRefundFocus] = useState<{
+    id?: string;
+    n: number;
+  } | null>(null);
+  const openRefunds = () => {
+    set("refunds");
+    setRefundFocus(current => ({
+      id: role === "platform" ? pending[0]?.id : undefined,
+      n: (current?.n || 0) + 1,
+    }));
+  };
   const completed = refunds.filter(item => item.status === "refunded");
   const updateRefund = (next: RefundRecord[]) => {
     setRefunds(next);
@@ -3185,14 +3249,15 @@ function TicketPage({
         <ModuleTitle
           eyebrow="票务管理"
           title="订单、退款与电子票"
-          description="用户在漫圈 App 提交退款申请后自动进入这里，平台运营人员核对订单与退款原因后完成同意或驳回。"
+          description="用户在漫圈 App 提交退款申请后自动进入这里 平台运营人员核对订单与规则后同意或驳回"
           actions={
             <button
-              onClick={() => set("refunds")}
+              data-cy="refund-entry"
+              onClick={openRefunds}
               className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
             >
               <RefreshCcw className="w-4 h-4" />
-              {role === "platform" ? "处理退款申请" : "查看退款申请"}
+              {role === "platform" ? "处理退款申请" : "查看退款进度"}
               {pending.length > 0 && (
                 <span className="min-w-5 h-5 px-1 rounded-full bg-white/20 text-[12px] flex items-center justify-center">
                   {pending.length}
@@ -3228,11 +3293,12 @@ function TicketPage({
       </section>
       <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
         <TodayStat
-          label="待平台处理"
+          label="退款待审批"
           value={String(pending.length)}
           sub={`待退金额 ¥${pending.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}`}
           icon={<Clock3 className="w-5 h-5" />}
           tone="amber"
+          link={openRefunds}
         />
         <TodayStat
           label="已完成退款"
@@ -3300,7 +3366,12 @@ function TicketPage({
         ) : selected === "orders" ? (
           <OrderTable session={session} />
         ) : selected === "refunds" ? (
-          <RefundTable role={role} requests={refunds} onUpdate={updateRefund} />
+          <RefundTable
+            role={role}
+            requests={refunds}
+            onUpdate={updateRefund}
+            focus={refundFocus}
+          />
         ) : (
           <PurchaseLimitPanel refunds={refunds} />
         )}
@@ -3595,21 +3666,61 @@ function OrderTable({ session }: { session: string }) {
     />
   );
 }
+const USED_TICKET_REFUNDS = new Set(["refund-20260927-003"]);
+function refundChecks(item: RefundRecord) {
+  const used = USED_TICKET_REFUNDS.has(item.id);
+  return [
+    {
+      label: "订单已支付",
+      detail: `支付金额 ¥${item.amount.toFixed(2)}`,
+      passed: true,
+    },
+    {
+      label: used ? "电子票已核验入场" : "电子票未使用",
+      detail: used ? "已有入场核验记录 不符合退款条件" : "无入场核验记录",
+      passed: !used,
+    },
+    { label: "在可退时间内", detail: "距离活动开始超过 24 小时", passed: true },
+    {
+      label: "票种允许退款",
+      detail: `${item.ticketName}支持活动前退款`,
+      passed: true,
+    },
+  ];
+}
+type RefundFilter = "pending" | "done" | "all";
 function RefundTable({
   role,
   requests,
   onUpdate,
+  focus,
 }: {
   role: Role;
   requests: RefundRecord[];
   onUpdate: (requests: RefundRecord[]) => void;
+  focus: { id?: string; n: number } | null;
 }) {
-  const [selected, setSelected] = useState<RefundRecord | null>(null);
-  const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
+  const canDecide = role === "platform";
+  const pendingList = requests.filter(item => item.status === "pending_review");
+  const [filter, setFilter] = useState<RefundFilter>(
+    pendingList.length ? "pending" : "all"
+  );
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<{
+    id: string;
+    type: "approve" | "reject";
+  } | null>(null);
   const [comment, setComment] = useState("");
+  useEffect(() => {
+    if (!focus) return;
+    setFilter(focus.id ? "pending" : "all");
+    setDetailId(focus.id || null);
+  }, [focus?.n]);
+  const detail = requests.find(item => item.id === detailId) || null;
+  const deciding = requests.find(item => item.id === decision?.id) || null;
   const labels: Record<RefundStatus, string> = {
-    pending_review: "待平台处理",
-    refunded: "已同意并退款",
+    pending_review: "待平台审批",
+    refunded: "已同意 已退款",
     rejected: "已驳回",
   };
   const tones: Record<RefundStatus, string> = {
@@ -3617,178 +3728,305 @@ function RefundTable({
     refunded: "bg-emerald-50 text-emerald-700",
     rejected: "bg-rose-50 text-rose-700",
   };
+  const sorted = [...requests].sort((a, b) =>
+    a.status === b.status
+      ? b.requestedAt.localeCompare(a.requestedAt)
+      : a.status === "pending_review"
+        ? -1
+        : b.status === "pending_review"
+          ? 1
+          : b.requestedAt.localeCompare(a.requestedAt)
+  );
+  const rows = sorted.filter(item =>
+    filter === "pending"
+      ? item.status === "pending_review"
+      : filter === "done"
+        ? item.status !== "pending_review"
+        : true
+  );
+  const startDecision = (item: RefundRecord, type: "approve" | "reject") => {
+    setDecision({ id: item.id, type });
+    setComment(type === "approve" ? "符合活动退票规则，同意原路退回" : "");
+  };
   const decide = () => {
-    if (!selected || !decision || role !== "platform") return;
-    if (decision === "reject" && !comment.trim()) return;
-    const time = new Date().toLocaleString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    if (!deciding || !decision || !canDecide) return;
+    if (decision.type === "reject" && !comment.trim()) return;
+    const time = new Date()
+      .toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+      .replaceAll("/", "-");
+    const approve = decision.type === "approve";
     const processingComment =
       comment.trim() || "符合活动退票规则，同意原路退回";
     const updated: RefundRecord = {
-      ...selected,
-      status: decision === "approve" ? "refunded" : "rejected",
+      ...deciding,
+      status: approve ? "refunded" : "rejected",
       processedBy: "周可",
       processedAt: time,
       comment: processingComment,
       logs: [
-        ...selected.logs,
+        ...deciding.logs,
         {
-          action: decision === "approve" ? "平台同意退款" : "平台驳回退款申请",
+          action: approve ? "平台同意退款" : "平台驳回退款申请",
           actor: "周可 · 平台运营人员",
           time,
           comment: processingComment,
         },
-        ...(decision === "approve"
+        ...(approve
           ? [
               {
                 action: "退款已提交原支付渠道",
                 actor: "系统 · 票务系统",
                 time,
-                comment: "预计 1—3 个工作日到账",
+                comment: "预计 1—3 个工作日到账 结果已同步漫圈 App",
               },
             ]
           : []),
       ],
     };
     onUpdate(requests.map(item => (item.id === updated.id ? updated : item)));
-    setSelected(updated);
     setDecision(null);
     setComment("");
+    toast.success(
+      approve
+        ? `已同意 ${updated.buyerName} 的退款 ¥${updated.amount.toFixed(2)}`
+        : `已驳回 ${updated.buyerName} 的退款申请`
+    );
   };
+  const nextPending = pendingList.filter(item => item.id !== detailId);
+  const filters: [RefundFilter, string][] = [
+    ["pending", `待审批 ${pendingList.length}`],
+    ["done", `已处理 ${requests.length - pendingList.length}`],
+    ["all", `全部 ${requests.length}`],
+  ];
 
   return (
     <>
-      <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[13px]">
-        <span className="flex items-center gap-2 font-semibold text-slate-900">
-          <Smartphone className="w-4 h-4" />
-          来自漫圈 App 的退款申请
-        </span>
-        <span className="text-slate-500">
-          按申请时间排序 待处理记录优先展示
+      <div className="px-4 py-3 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div
+          data-cy="refund-filters"
+          className="flex flex-wrap gap-1 bg-white border border-[#e4e3f0] p-1 rounded-full w-fit"
+        >
+          {filters.map(([id, label]) => (
+            <button
+              key={id}
+              data-cy={`refund-filter-${id}`}
+              aria-pressed={filter === id}
+              onClick={() => setFilter(id)}
+              className={`h-8 px-3 rounded-full text-[13px] font-semibold whitespace-nowrap ${filter === id ? "bg-brand-grad text-white" : "text-slate-600 hover:bg-brand-50"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span
+          data-cy="refund-permission"
+          className={`flex items-center gap-2 text-[13px] ${canDecide ? "text-brand-700" : "text-slate-600"}`}
+        >
+          <ShieldCheck className="w-4 h-4 shrink-0" />
+          {canDecide ? (
+            <PhraseLine parts={["来自漫圈 App 的退款申请", "由你审批"]} />
+          ) : (
+            <PhraseLine
+              parts={["退款审批由平台运营人员完成", "主办方可实时查看进度"]}
+            />
+          )}
         </span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-[1040px] w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-[13px] text-slate-600">
-              {[
-                "申请编号 / 时间",
-                "购票人 / 订单",
-                "票种 / 金额",
-                "退款原因",
-                "处理状态",
-                "操作",
-              ].map(header => (
-                <th key={header} className="p-4 font-semibold">
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {requests.map(item => (
-              <tr key={item.id} className="hover:bg-slate-50 align-top">
-                <td className="p-4">
-                  <strong className="block text-[14px]">
-                    {item.requestNo}
-                  </strong>
-                  <small className="block mt-1 text-[12px] text-slate-500">
-                    {item.requestedAt}
-                  </small>
-                </td>
-                <td className="p-4">
-                  <strong className="block text-[14px]">
-                    {item.buyerName}
-                  </strong>
-                  <small className="block mt-1 text-[12px] text-slate-500">
-                    {item.orderNo}
-                  </small>
-                </td>
-                <td className="p-4 text-[14px]">
-                  {item.ticketName}
-                  <small className="block mt-1 text-[12px] whitespace-nowrap text-slate-500">
-                    {formatSessionDate(refundSessionDate(item))} 场次
-                  </small>
-                  <small className="block text-[12px] text-slate-500">
-                    ¥{item.amount.toFixed(2)} · 1 张
-                  </small>
-                </td>
-                <td className="p-4 max-w-[260px]">
-                  <strong className="block text-[14px]">{item.reason}</strong>
-                  <small className="block mt-1 text-[12px] leading-5 text-slate-500">
-                    {item.detail}
-                  </small>
-                </td>
-                <td className="p-4">
-                  <span
-                    className={`inline-flex rounded-md px-2 py-1 text-[12px] font-semibold ${tones[item.status]}`}
-                  >
-                    {labels[item.status]}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => setSelected(item)}
-                    className="text-[14px] font-semibold text-brand-600"
-                  >
-                    查看处理
-                  </button>
-                </td>
+      {rows.length === 0 ? (
+        <div className="px-6 py-12 text-center" data-cy="refund-empty">
+          <CheckCircle2 className="mx-auto w-9 h-9 text-emerald-500" />
+          <h3 className="mt-3 text-[17px] font-semibold">
+            {filter === "pending" ? "退款申请已全部处理" : "暂无记录"}
+          </h3>
+          <p className="mt-1 text-[14px] text-slate-600">
+            <PhraseLine
+              parts={["用户在漫圈 App 提交退款后", "会自动出现在这里"]}
+            />
+          </p>
+          <button
+            onClick={() => setFilter("done")}
+            className="mt-4 h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
+          >
+            查看已处理记录
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-[1080px] w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-[13px] text-slate-600">
+                {[
+                  "申请编号 / 时间",
+                  "购票人 / 订单",
+                  "票种 / 金额",
+                  "退款原因",
+                  "处理状态",
+                ].map(header => (
+                  <th key={header} className="p-4 font-semibold">
+                    {header}
+                  </th>
+                ))}
+                <th className="p-4 font-semibold text-right">操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {rows.map(item => {
+                const pending = item.status === "pending_review";
+                const blocked = refundChecks(item).some(check => !check.passed);
+                return (
+                  <tr
+                    key={item.id}
+                    data-cy="refund-row"
+                    data-status={item.status}
+                    className={`align-top ${pending ? "bg-amber-50/30" : ""}`}
+                  >
+                    <td className="p-4">
+                      <strong className="block text-[14px]">
+                        {item.requestNo}
+                      </strong>
+                      <small className="block mt-1 text-[12px] text-slate-500">
+                        {item.requestedAt}
+                      </small>
+                    </td>
+                    <td className="p-4">
+                      <strong className="block text-[14px]">
+                        {item.buyerName}
+                      </strong>
+                      <small className="block mt-1 text-[12px] text-slate-500">
+                        {item.orderNo}
+                      </small>
+                    </td>
+                    <td className="p-4 text-[14px]">
+                      <span className="whitespace-nowrap">
+                        {item.ticketName}
+                      </span>
+                      <small className="block mt-1 text-[12px] whitespace-nowrap text-slate-500">
+                        {formatSessionDate(refundSessionDate(item))} 场次
+                      </small>
+                      <small className="block text-[12px] text-slate-500">
+                        ¥{item.amount.toFixed(2)} · 1 张
+                      </small>
+                    </td>
+                    <td className="p-4 max-w-[260px]">
+                      <strong className="block text-[14px]">
+                        {item.reason}
+                      </strong>
+                      <small className="block mt-1 text-[12px] leading-5 text-slate-500">
+                        {item.detail}
+                      </small>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold ${tones[item.status]}`}
+                      >
+                        {labels[item.status]}
+                      </span>
+                      {item.processedBy && (
+                        <small className="block mt-1.5 text-[12px] text-slate-500 whitespace-nowrap">
+                          {item.processedBy} · {item.processedAt}
+                        </small>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-end gap-2">
+                        {pending && canDecide ? (
+                          <>
+                            <button
+                              data-cy="refund-row-reject"
+                              onClick={() => startDecision(item, "reject")}
+                              className="h-9 px-3 rounded-full border border-brand-200 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 whitespace-nowrap"
+                            >
+                              驳回
+                            </button>
+                            <button
+                              data-cy="refund-row-approve"
+                              disabled={blocked}
+                              onClick={() => startDecision(item, "approve")}
+                              className="h-9 px-3.5 rounded-full bg-brand-grad text-white text-[13px] font-semibold whitespace-nowrap disabled:bg-slate-300"
+                            >
+                              同意退款
+                            </button>
+                            <button
+                              data-cy="refund-open"
+                              onClick={() => setDetailId(item.id)}
+                              className="h-9 px-2.5 rounded-full text-[13px] font-semibold text-brand-600 hover:bg-brand-50 whitespace-nowrap"
+                            >
+                              详情
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            data-cy="refund-open"
+                            onClick={() => setDetailId(item.id)}
+                            className="h-9 px-3 rounded-full text-[14px] font-semibold text-brand-600 hover:bg-brand-50 whitespace-nowrap"
+                          >
+                            {pending ? "查看进度" : "查看记录"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {selected && (
+      {detail && (
         <div
           className="fixed inset-0 z-[60] bg-slate-950/35 flex justify-end"
-          onClick={() => setSelected(null)}
+          onClick={() => setDetailId(null)}
         >
           <aside
-            className="w-full max-w-[620px] h-full overflow-y-auto bg-white shadow-2xl"
+            data-cy="refund-drawer"
+            className="w-full max-w-[620px] h-full bg-white shadow-2xl flex flex-col"
             onClick={event => event.stopPropagation()}
           >
-            <header className="sticky top-0 z-10 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between">
+            <header className="shrink-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between">
               <div>
                 <div className="text-[13px] text-slate-500">退款申请详情</div>
                 <h3 className="mt-1 text-[18px] font-semibold">
-                  {selected.requestNo}
+                  {detail.buyerName} · {detail.requestNo}
                 </h3>
               </div>
               <button
-                onClick={() => setSelected(null)}
+                onClick={() => setDetailId(null)}
                 className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
                 aria-label="关闭退款申请详情"
               >
                 <X className="w-4 h-4" />
               </button>
             </header>
-            <div className="p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               <div
-                className={`rounded-lg p-4 flex items-center gap-3 ${tones[selected.status]}`}
+                data-cy="refund-detail-status"
+                className={`rounded-lg p-4 flex items-center gap-3 ${tones[detail.status]}`}
               >
-                {selected.status === "refunded" ? (
+                {detail.status === "refunded" ? (
                   <CheckCircle2 className="w-5 h-5" />
-                ) : selected.status === "rejected" ? (
+                ) : detail.status === "rejected" ? (
                   <XCircle className="w-5 h-5" />
                 ) : (
                   <Clock3 className="w-5 h-5" />
                 )}
                 <div>
-                  <strong className="block text-[14px]">
-                    {labels[selected.status]}
+                  <strong className="block text-[15px]">
+                    {labels[detail.status]}
                   </strong>
-                  <small className="block mt-1 text-[12px]">
-                    {selected.processedBy
-                      ? `处理人 ${selected.processedBy} · ${selected.processedAt}`
-                      : "等待平台运营人员处理"}
+                  <small className="block mt-1 text-[13px]">
+                    {detail.processedBy
+                      ? `处理人 ${detail.processedBy} · ${detail.processedAt}`
+                      : canDecide
+                        ? "核对订单与规则后 在下方同意或驳回"
+                        : "等待平台运营人员审批"}
                   </small>
                 </div>
               </div>
@@ -3800,10 +4038,10 @@ function RefundTable({
                 <RefundDetailGrid
                   items={[
                     ["来源", "漫圈 App"],
-                    ["申请时间", selected.requestedAt],
-                    ["购票人", selected.buyerName],
-                    ["联系电话", selected.buyerPhone],
-                    ["退款原因", `${selected.reason} · ${selected.detail}`],
+                    ["申请时间", detail.requestedAt],
+                    ["购票人", detail.buyerName],
+                    ["联系电话", detail.buyerPhone],
+                    ["退款原因", `${detail.reason} · ${detail.detail}`],
                   ]}
                 />
               </RefundDetailSection>
@@ -3814,11 +4052,11 @@ function RefundTable({
               >
                 <RefundDetailGrid
                   items={[
-                    ["订单号", selected.orderNo],
-                    ["电子票号", selected.ticketCode],
-                    ["票种", selected.ticketName],
-                    ["场次", formatSessionDate(refundSessionDate(selected))],
-                    ["退款金额", `¥${selected.amount.toFixed(2)}`],
+                    ["订单号", detail.orderNo],
+                    ["电子票号", detail.ticketCode],
+                    ["票种", detail.ticketName],
+                    ["场次", formatSessionDate(refundSessionDate(detail))],
+                    ["退款金额", `¥${detail.amount.toFixed(2)}`],
                     ["支付方式", "微信支付"],
                     ["退款去向", "原支付账户"],
                   ]}
@@ -3830,18 +4068,18 @@ function RefundTable({
                 icon={<ListChecks className="w-4 h-4" />}
               >
                 <div className="grid gap-2">
-                  {[
-                    "订单已支付 · 支付金额已核对",
-                    "电子票未使用 · 无入场核验记录",
-                    "在可退时间内 · 距离活动开始超过 24 小时",
-                    "票种允许退款 · 支持活动前退款",
-                  ].map(text => (
+                  {refundChecks(detail).map(check => (
                     <div
-                      key={text}
-                      className="rounded-lg bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-700 flex items-center gap-2"
+                      key={check.label}
+                      className={`rounded-lg px-3 py-2.5 text-[13px] flex items-center gap-2 ${check.passed ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}
                     >
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      {text}
+                      {check.passed ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <CircleAlert className="w-4 h-4 shrink-0" />
+                      )}
+                      <strong>{check.label}</strong>
+                      <span className="opacity-80">{check.detail}</span>
                     </div>
                   ))}
                 </div>
@@ -3852,7 +4090,7 @@ function RefundTable({
                 icon={<FileText className="w-4 h-4" />}
               >
                 <div className="space-y-3">
-                  {selected.logs.map((log, index) => (
+                  {detail.logs.map((log, index) => (
                     <div
                       key={`${log.action}-${index}`}
                       className="border-l-2 border-brand-200 pl-3"
@@ -3872,79 +4110,114 @@ function RefundTable({
                   ))}
                 </div>
               </RefundDetailSection>
-
-              {selected.status === "pending_review" &&
-                (role === "platform" ? (
-                  <div className="sticky bottom-0 bg-white border-t border-slate-200 pt-4 flex justify-end gap-2">
-                    <button
-                      onClick={() => {
-                        setDecision("reject");
-                        setComment("");
-                      }}
-                      className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-                    >
-                      驳回申请
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDecision("approve");
-                        setComment("符合活动退票规则，同意原路退回");
-                      }}
-                      className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
-                    >
-                      同意退款 ¥{selected.amount.toFixed(2)}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="rounded-lg bg-slate-100 p-3 text-[13px] leading-6 text-slate-600 flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 mt-1 shrink-0" />
-                    主办方可查看申请与订单信息 退款决定由平台运营人员完成
-                  </div>
-                ))}
             </div>
+            <footer
+              data-cy="refund-actions"
+              className="shrink-0 bg-white border-t border-slate-200 px-5 py-4"
+            >
+              {detail.status === "pending_review" && canDecide ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    data-cy="refund-reject"
+                    onClick={() => startDecision(detail, "reject")}
+                    className="h-11 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
+                  >
+                    驳回申请
+                  </button>
+                  <button
+                    data-cy="refund-approve"
+                    disabled={refundChecks(detail).some(check => !check.passed)}
+                    onClick={() => startDecision(detail, "approve")}
+                    className="h-11 rounded-full bg-brand-grad text-white text-[14px] font-semibold disabled:bg-slate-300"
+                  >
+                    同意退款 ¥{detail.amount.toFixed(2)}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="flex-1 flex items-start gap-2 text-[14px] leading-6 text-slate-600">
+                    <ShieldCheck className="w-4 h-4 mt-1 shrink-0 text-brand-600" />
+                    <span>
+                      <PhraseLine
+                        parts={
+                          detail.status !== "pending_review"
+                            ? ["处理结果已同步漫圈 App", "并写入操作记录"]
+                            : [
+                                "退款审批由平台运营人员完成",
+                                "主办方可实时查看进度",
+                              ]
+                        }
+                      />
+                    </span>
+                  </span>
+                  {canDecide && nextPending.length > 0 ? (
+                    <button
+                      data-cy="refund-next"
+                      onClick={() => setDetailId(nextPending[0].id)}
+                      className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold whitespace-nowrap inline-flex items-center gap-1.5"
+                    >
+                      处理下一条 · 剩余 {nextPending.length}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setDetailId(null)}
+                      className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700 whitespace-nowrap"
+                    >
+                      关闭
+                    </button>
+                  )}
+                </div>
+              )}
+            </footer>
           </aside>
         </div>
       )}
 
-      {selected && decision && (
+      {deciding && decision && (
         <div
           className="fixed inset-0 z-[70] bg-slate-950/45 flex items-center justify-center p-4"
           onClick={() => setDecision(null)}
         >
           <div
+            data-cy="refund-decision"
+            role="dialog"
+            aria-modal="true"
             className="w-full max-w-[500px] rounded-xl bg-white shadow-2xl"
             onClick={event => event.stopPropagation()}
           >
             <div className="p-5 border-b border-slate-200">
               <h3 className="text-[18px] font-semibold">
-                {decision === "approve" ? "确认同意退款" : "驳回退款申请"}
+                {decision.type === "approve" ? "确认同意退款" : "驳回退款申请"}
               </h3>
             </div>
             <div className="p-5 space-y-4">
               <div className="rounded-lg bg-slate-50 p-4">
                 <span className="block text-[14px] text-slate-600">
-                  {selected.buyerName} · {selected.ticketName}
+                  {deciding.buyerName} · {deciding.ticketName} ·{" "}
+                  {formatSessionDate(refundSessionDate(deciding))}
                 </span>
                 <strong className="block mt-1 text-[24px]">
-                  ¥{selected.amount.toFixed(2)}
+                  ¥{deciding.amount.toFixed(2)}
                 </strong>
                 <small className="block mt-2 text-[13px] leading-5 text-slate-500">
-                  {decision === "approve"
-                    ? "确认后将退款提交原支付渠道并同步用户端状态"
+                  {decision.type === "approve"
+                    ? "确认后退款提交原支付渠道 票回到剩余库存 同步用户端"
                     : "驳回原因将同步给用户 请填写清楚具体原因"}
                 </small>
               </div>
               <label className="block">
                 <span className="block mb-2 text-[14px] font-semibold">
-                  {decision === "approve" ? "处理说明" : "驳回原因"}
+                  {decision.type === "approve" ? "处理说明" : "驳回原因"}
                 </span>
                 <textarea
+                  data-cy="refund-comment"
                   value={comment}
                   onChange={event => setComment(event.target.value)}
                   rows={4}
                   className="w-full rounded-lg border border-slate-300 p-3 text-[14px] outline-none focus:border-brand-500"
                   placeholder={
-                    decision === "approve"
+                    decision.type === "approve"
                       ? "可填写退款处理说明"
                       : "请填写不符合退款条件的具体原因"
                   }
@@ -3959,11 +4232,12 @@ function RefundTable({
                 取消
               </button>
               <button
-                disabled={decision === "reject" && !comment.trim()}
+                data-cy="refund-confirm"
+                disabled={decision.type === "reject" && !comment.trim()}
                 onClick={decide}
                 className="h-10 px-4 rounded-full bg-brand-grad disabled:bg-slate-300 text-white text-[14px] font-semibold"
               >
-                {decision === "approve" ? "确认同意退款" : "确认驳回"}
+                {decision.type === "approve" ? "确认同意退款" : "确认驳回"}
               </button>
             </div>
           </div>
@@ -4047,331 +4321,6 @@ function SimpleTable({
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function CostumePage({ compact = false }: { compact?: boolean }) {
-  const [detail, setDetail] = useState<(typeof COSERS)[number] | null>(null);
-  const [tool, setTool] = useState<"export" | "batch" | null>(null);
-  return (
-    <div className="space-y-5">
-      {!compact && (
-        <ModuleTitle
-          eyebrow="角色服装道具"
-          title="角色、服装与道具申报管理"
-          description="承接用户端 Coser 提交的信息，统一查看参与人、角色名、作品来源、参考图、服装图、道具信息、申报状态与操作记录。"
-          actions={
-            <>
-              <button
-                onClick={() => setTool("export")}
-                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-              >
-                导出清单
-              </button>
-              <button
-                onClick={() => setTool("batch")}
-                className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
-              >
-                批量处理
-              </button>
-            </>
-          }
-        />
-      )}
-      <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
-        <TodayStat
-          label="申报总数"
-          value="326"
-          sub="来自已支付 Coser 票订单"
-          icon={<ClipboardCheck className="w-5 h-5" />}
-        />
-        <TodayStat
-          label="已通过"
-          value="318"
-          sub="可进入现场核验"
-          icon={<CircleCheckBig className="w-5 h-5" />}
-          tone="blue"
-        />
-        <TodayStat
-          label="待审核"
-          value="6"
-          sub="资料完整性待确认"
-          icon={<Clock3 className="w-5 h-5" />}
-          tone="amber"
-        />
-        <TodayStat
-          label="协同核验"
-          value="2"
-          sub="需现场安保复验"
-          icon={<ShieldCheck className="w-5 h-5" />}
-          tone="rose"
-        />
-      </section>
-      <section className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="min-w-[1260px] w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-[13px] text-slate-600">
-              <th className="p-4 font-semibold">参与人 / 角色</th>
-              <th className="p-4 font-semibold">作品来源</th>
-              <th className="p-4 font-semibold">参考图 / 服装图</th>
-              <th className="p-4 font-semibold">服装信息</th>
-              <th className="p-4 font-semibold">道具信息</th>
-              <th className="p-4 font-semibold">申报状态</th>
-              <th className="p-4 font-semibold">操作记录</th>
-              <th className="p-4 text-right font-semibold">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {COSERS.map((item, index) => (
-              <tr key={item.person}>
-                <td className="p-4">
-                  <div className="text-[15px] font-semibold">{item.person}</div>
-                  <div className="mt-1 text-[14px] text-slate-700">
-                    {item.character}
-                  </div>
-                </td>
-                <td className="p-4 text-[14px] font-medium">{item.source}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      <img
-                        src={RECORD_VISUALS.character}
-                        alt={`${item.character}角色参考图`}
-                        className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100"
-                      />
-                      <img
-                        src={RECORD_VISUALS.costume}
-                        alt={`${item.character}服装全身图`}
-                        className="w-10 h-12 object-cover rounded border-2 border-white bg-slate-100"
-                      />
-                    </div>
-                    <div className="text-[13px] leading-5 text-slate-600">
-                      <span className="block whitespace-nowrap">
-                        角色参考图已上传
-                      </span>
-                      <span className="block whitespace-nowrap">
-                        服装全身图已上传
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 text-[14px] leading-5 max-w-[200px]">
-                  {item.costume}
-                </td>
-                <td className="p-4 text-[14px] leading-5 max-w-[210px]">
-                  {item.props}
-                </td>
-                <td className="p-4">
-                  <div className="w-[96px] flex flex-col items-center gap-2">
-                    <Pill
-                      tone={
-                        item.status === "已通过"
-                          ? "green"
-                          : item.status === "协同核验"
-                            ? "rose"
-                            : "amber"
-                      }
-                    >
-                      {item.status}
-                    </Pill>
-                    <div className="text-[12px] text-slate-500 text-center">
-                      {item.risk}
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 text-[13px] leading-5 text-slate-600">
-                  {item.log}
-                </td>
-                <td className="p-4 text-right">
-                  <button
-                    onClick={() => setDetail(item)}
-                    className="text-[14px] font-semibold text-brand-600"
-                  >
-                    查看详情
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-      {detail && (
-        <CostumeDetailDrawer item={detail} onClose={() => setDetail(null)} />
-      )}
-      {tool && <CostumeToolPanel type={tool} onClose={() => setTool(null)} />}
-    </div>
-  );
-}
-
-function CostumeDetailDrawer({
-  item,
-  onClose,
-}: {
-  item: (typeof COSERS)[number];
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
-      <section className="relative w-full max-w-[560px] h-full bg-white shadow-2xl overflow-y-auto">
-        <div className="sticky top-0 z-10 p-5 bg-white border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <div className="text-[13px] text-slate-500">
-              角色服装道具申报详情
-            </div>
-            <h2 className="mt-1 text-[21px] font-semibold">{item.character}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-5 space-y-5">
-          <section className="grid grid-cols-2 gap-3">
-            <InfoBlock label="参与人" value={item.person} />
-            <InfoBlock label="作品来源" value={item.source} />
-            <InfoBlock label="申报状态" value={item.status} />
-            <InfoBlock label="风险提示" value={item.risk} />
-          </section>
-          <section className="border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-[16px] font-semibold">
-                角色、服装与道具资料
-              </h3>
-              <span className="text-[13px] text-slate-500 whitespace-nowrap">
-                3 项已上传
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-1 min-[460px]:grid-cols-3 gap-3">
-              <figure className="min-w-0">
-                <img
-                  src={RECORD_VISUALS.character}
-                  alt={`${item.character}角色参考图`}
-                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
-                />
-                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
-                  角色参考图
-                </figcaption>
-              </figure>
-              <figure className="min-w-0">
-                <img
-                  src={RECORD_VISUALS.costume}
-                  alt={`${item.character}服装全身图`}
-                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
-                />
-                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
-                  服装全身图
-                </figcaption>
-              </figure>
-              <figure className="min-w-0">
-                <img
-                  src={RECORD_VISUALS.prop}
-                  alt={`${item.character}道具参考图`}
-                  className="w-full aspect-[3/4] object-cover rounded-md border border-slate-200 bg-slate-100"
-                />
-                <figcaption className="mt-2 text-[13px] font-medium text-slate-700 whitespace-nowrap">
-                  道具参考图
-                </figcaption>
-              </figure>
-            </div>
-          </section>
-          <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
-            <div className="p-4">
-              <div className="text-[13px] font-semibold text-slate-500">
-                服装信息
-              </div>
-              <div className="mt-2 text-[15px] leading-6">{item.costume}</div>
-            </div>
-            <div className="p-4">
-              <div className="text-[13px] font-semibold text-slate-500">
-                道具信息
-              </div>
-              <div className="mt-2 text-[15px] leading-6">{item.props}</div>
-            </div>
-            <div className="p-4">
-              <div className="text-[13px] font-semibold text-slate-500">
-                操作记录
-              </div>
-              <div className="mt-2 text-[15px] leading-6">{item.log}</div>
-            </div>
-          </section>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 h-11 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-            >
-              退回补充
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 h-11 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
-            >
-              确认通过
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-function CostumeToolPanel({
-  type,
-  onClose,
-}: {
-  type: "export" | "batch";
-  onClose: () => void;
-}) {
-  const [done, setDone] = useState(false);
-  const exportMode = type === "export";
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button onClick={onClose} className="absolute inset-0 bg-black/30" />
-      <section className="relative w-full max-w-[460px] bg-white rounded-lg shadow-2xl p-6">
-        <div className="w-11 h-11 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-          {exportMode ? (
-            <Download className="w-5 h-5" />
-          ) : (
-            <ClipboardCheck className="w-5 h-5" />
-          )}
-        </div>
-        <h2 className="mt-4 text-[21px] font-semibold">
-          {done
-            ? exportMode
-              ? "清单已生成"
-              : "批量处理已提交"
-            : exportMode
-              ? "导出角色服装道具清单"
-              : "批量处理角色道具申报"}
-        </h2>
-        <p className="mt-2 text-[14px] leading-6 text-slate-600">
-          {done
-            ? exportMode
-              ? "已按当前筛选范围生成清单。"
-              : "已将 6 条待审核申报加入统一处理队列。"
-            : exportMode
-              ? "导出参与人、角色、服装、道具、申报状态与操作记录。"
-              : "可统一分配审核人员、发送补充提醒或更新申报状态。"}
-        </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-          >
-            {done ? "关闭" : "取消"}
-          </button>
-          {!done && (
-            <button
-              onClick={() => setDone(true)}
-              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
-            >
-              {exportMode ? "生成清单" : "确认处理"}
-            </button>
-          )}
-        </div>
-      </section>
     </div>
   );
 }
