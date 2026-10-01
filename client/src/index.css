@@ -1,68 +1,68 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* 漫圈 user-end aligned brand scale: lavender purple, soft pink accent, deep navy line icons. */
+/* 漫圈 VI Guidelines (第二版): VI Purple #9c9afa, Dark Purple #7471d6, Pink #f9c5e4, Yellow #ffc728.
+   Flat colour only; contrast-safe darker steps carry text and buttons. */
 @theme {
-  --color-brand-50: #f8f3fe;
-  --color-brand-100: #f0e6fd;
-  --color-brand-200: #e2cffb;
-  --color-brand-300: #cdaaf6;
-  --color-brand-400: #b67cef;
-  --color-brand-500: #9b5de5;
-  --color-brand-600: #7c3fd0;
-  --color-brand-700: #6a32b5;
-  --color-brand-800: #562a92;
-  --color-brand-900: #472677;
-  --color-brand-950: #2d1250;
-  --color-candy-50: #fdf1f6;
-  --color-candy-100: #fbe2ed;
-  --color-candy-400: #f090b4;
-  --color-candy-600: #d4488a;
-  --color-candy-700: #b23873;
-  --color-navy-700: #243c6c;
-  /* Light neutrals carry a faint lavender tint so borders and washes sit with the brand purple. */
-  --color-slate-50: #f9f8fc;
-  --color-slate-100: #f2f0f7;
-  --color-slate-200: #e6e2ee;
-  --color-slate-300: #d4cee0;
+  --color-brand-50: #f5f5ff;
+  --color-brand-100: #ebebfe;
+  --color-brand-200: #d9d8fd;
+  --color-brand-300: #bebdfb;
+  --color-brand-400: #9c9afa;
+  --color-brand-500: #7471d6;
+  --color-brand-600: #6461c9;
+  --color-brand-700: #5552b4;
+  --color-brand-800: #45429a;
+  --color-brand-900: #432f6c;
+  --color-brand-950: #2b2350;
+  --color-candy-50: #fdf2f8;
+  --color-candy-100: #fbe3f1;
+  --color-candy-400: #f9c5e4;
+  --color-candy-600: #a94a8d;
+  --color-candy-700: #9a3f80;
+  --color-sun-100: #ffe6b2;
+  --color-sun-400: #ffc728;
+  --color-sun-700: #8a5a00;
+  --color-navy-700: #432f6c;
+  /* Light neutrals carry a faint VI-lavender tint so borders and washes sit with the brand purple. */
+  --color-slate-50: #f9f9fc;
+  --color-slate-100: #f1f1f8;
+  --color-slate-200: #e5e4ef;
+  --color-slate-300: #d2d1e2;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
 }
 
+/* Kept as class names for compatibility; the VI asks for flat colour, not gradients. */
 @utility bg-brand-grad {
   background-color: var(--color-brand-600);
-  background-image: linear-gradient(100deg, #9150e0 0%, #7338c2 100%);
 }
 
 @utility bg-candy-grad {
-  background-color: #d4488a;
-  background-image: linear-gradient(100deg, #f090b4 0%, #b46cf0 100%);
+  background-color: var(--color-candy-600);
 }
 
 @utility text-brand-grad {
-  background-image: linear-gradient(100deg, #b46cf0 0%, #7c3fd0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-brand-600);
 }
 
 @layer base {
   :root {
     --ink: #18212f;
     --ink-muted: #617083;
-    --canvas: #f7f6fb;
+    --canvas: #f6f6fb;
     --surface: #ffffff;
-    --line: #e6e2ef;
-    --line-strong: #d3cce2;
-    --action: #7c3fd0;
-    --action-hover: #6a32b5;
+    --line: #e4e3f0;
+    --line-strong: #d1d0e3;
+    --action: #6461c9;
+    --action-hover: #5552b4;
     --success: #22744e;
     --warning: #a16415;
     --danger: #b84242;
     --font-sans:
-      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
-      -apple-system, BlinkMacSystemFont, sans-serif;
+      "MiSans VF", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+      "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   * {
@@ -102,20 +102,21 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    outline: 3px solid rgb(145 80 224 / 24%);
+    outline: 3px solid rgb(116 113 214 / 24%);
     outline-offset: 2px;
   }
 }
 
-/* Disabled gradient buttons fall back to their flat disabled colour. */
-.bg-brand-grad:disabled,
-.bg-candy-grad:disabled {
-  background-image: none;
-}
-
-/* Primary gradient buttons get the soft purple lift used in the user-end CTA. */
+/* Primary buttons: flat VI purple with a crisp sticker-style drop instead of a glow. */
 button.bg-brand-grad:not(:disabled) {
-  box-shadow: 0 6px 16px -8px rgb(124 63 208 / 55%);
+  box-shadow: 0 3px 0 0 var(--color-brand-800);
+}
+button.bg-brand-grad:not(:disabled):hover {
+  background-color: var(--color-brand-700);
+}
+button.bg-brand-grad:not(:disabled):active {
+  box-shadow: 0 1px 0 0 var(--color-brand-800);
+  transform: translateY(2px);
 }
 
 /* Soft lavender wash at the top of the workspace, echoing the user-end page headers. */
@@ -123,8 +124,8 @@ button.bg-brand-grad:not(:disabled) {
   background-color: var(--canvas);
   background-image: linear-gradient(
     180deg,
-    #efe6fb 0px,
-    rgb(247 246 251 / 0%) 260px
+    #ecebfd 0px,
+    rgb(246 246 251 / 0%) 260px
   );
   background-repeat: no-repeat;
 }
@@ -142,8 +143,8 @@ button.bg-brand-grad:not(:disabled) {
 }
 [data-active="true"] > .nav-icon-chip {
   color: #fff;
-  background-image: linear-gradient(135deg, #b46cf0 0%, #7c3fd0 100%);
-  box-shadow: 0 4px 10px -4px rgb(124 63 208 / 60%);
+  background-color: var(--color-brand-500);
+  box-shadow: 0 2px 0 0 var(--color-brand-800);
 }
 
 /* Quiet, document-led visual language for an operational platform. */
@@ -155,26 +156,77 @@ button.bg-brand-grad:not(:disabled) {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cdc3e0;
+  background: #c9c8e0;
   border-radius: 999px;
 }
 
-.login-scenic-background {
-  background-image: url("/manus-storage/quji-xinjiang-login-background_3120f429.webp");
-  background-size: cover;
-  background-position: center;
-  animation: login-scenic-drift 28s cubic-bezier(0.23, 1, 0.32, 1) infinite
-    alternate;
-  transform-origin: center;
+/* VI 物料：漫画速度线放射背景 + 网点（平板登录页） */
+.vi-speedlines {
+  background-color: var(--color-brand-500);
+  background-image:
+    radial-gradient(
+      circle at 50% 46%,
+      var(--color-brand-400) 0 16%,
+      transparent 46%
+    ),
+    repeating-conic-gradient(
+      from 0deg at 50% 46%,
+      rgb(255 255 255 / 0%) 0deg 3.2deg,
+      rgb(255 255 255 / 13%) 3.2deg 4deg,
+      rgb(255 255 255 / 0%) 4deg 7.4deg,
+      rgb(255 255 255 / 7%) 7.4deg 8deg
+    );
+}
+.vi-halftone {
+  background-image: radial-gradient(
+    rgb(255 255 255 / 30%) 1.3px,
+    transparent 1.6px
+  );
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(200deg, #000 0%, transparent 42%);
+  mask-image: linear-gradient(200deg, #000 0%, transparent 42%);
+}
+.vi-sparkle {
+  position: absolute;
+  width: var(--s, 18px);
+  height: var(--s, 18px);
+  background: #fff;
+  clip-path: polygon(
+    50% 0,
+    61% 39%,
+    100% 50%,
+    61% 61%,
+    50% 100%,
+    39% 61%,
+    0 50%,
+    39% 39%
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .vi-sparkle {
+    animation: vi-twinkle 3.2s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+    animation-delay: var(--d, 0s);
+  }
+}
+@keyframes vi-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
 }
 
-@keyframes login-scenic-drift {
-  from {
-    transform: scale(1.02) translate3d(-0.25%, -0.2%, 0);
-  }
-  to {
-    transform: scale(1.05) translate3d(0.3%, 0.25%, 0);
-  }
+/* Sticker surface: white card, VI-lavender hairline, short offset shadow like the VI stickers. */
+.vi-sticker {
+  background: #fff;
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 1px var(--color-brand-200),
+    0 6px 0 -1px rgb(67 47 108 / 22%);
 }
 
 /* Chinese names, dates, money and statuses are indivisible business tokens. */
@@ -221,9 +273,9 @@ button.bg-brand-grad:not(:disabled) {
   box-shadow: -18px 0 38px rgb(24 33 47 / 12%);
 }
 .task-step[data-active="true"] {
-  border-color: #9b5de5;
-  color: #6a32b5;
-  background: #f8f3fe;
+  border-color: #7471d6;
+  color: #5552b4;
+  background: #f5f5ff;
 }
 
 @media (max-width: 639px) {

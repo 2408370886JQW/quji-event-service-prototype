@@ -83,7 +83,7 @@ export function CaptchaDialog({
           event.preventDefault();
           inputRef.current?.focus();
         }}
-        className="max-w-[calc(100%-2rem)] gap-0 rounded-2xl border-slate-200 bg-white p-6 text-slate-900 shadow-[0_18px_48px_rgba(71,38,119,0.18)] sm:max-w-[400px]"
+        className="max-w-[calc(100%-2rem)] gap-0 rounded-2xl border-slate-200 bg-white p-6 text-slate-900 shadow-[0_18px_48px_rgba(67,47,108,0.18)] sm:max-w-[400px]"
       >
         <form
           noValidate

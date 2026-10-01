@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   Activity,
   AlertTriangle,
@@ -132,11 +138,15 @@ const RECORD_VISUALS = {
   costume: "/manus-storage/quji-costume-reference_610f2304.webp",
   prop: "/manus-storage/quji-prop-reference_ca4a00a7.webp",
 };
+/* 漫圈 VI 官方猫耳吉祥物与「趣集」贴纸字标（荆南俊俊体渲染） */
 export const MASCOT = {
-  avatar: "/manus-storage/quji-mascot-avatar_7ca13a7e.webp",
-  login: "/manus-storage/quji-mascot-login_78361119.webp",
-  empty: "/manus-storage/quji-mascot-empty_8b5e83fa.webp",
-  success: "/manus-storage/quji-mascot-success_3da8f21a.webp",
+  avatar: "/manus-storage/quji-mascot-avatar_d3fa95ab.webp",
+  logo: "/manus-storage/quji-logo_a6bcc69d.webp",
+  wordmark: "/manus-storage/quji-wordmark_b171b79d.webp",
+  wink: "/manus-storage/quji-mascot-wink_d015e555.webp",
+  surprised: "/manus-storage/quji-mascot-surprised_42519e8c.webp",
+  empty: "/manus-storage/quji-mascot-empty_583c36a9.webp",
+  success: "/manus-storage/quji-mascot-success_d70c4726.webp",
 };
 
 type EventStatus =
@@ -346,7 +356,7 @@ const ROLE_INFO: Record<
     name: "平台运营人员",
     note: "配置活动流程、账号权限与服务运营",
     icon: Settings2,
-    color: "bg-brand-grad",
+    color: "bg-brand-600",
     permissions: [
       "workspace",
       "admissions",
@@ -364,7 +374,7 @@ const ROLE_INFO: Record<
     name: "主办方活动运营人员",
     note: "维护活动资料、票务、现场与参与人员",
     icon: Building2,
-    color: "bg-candy-grad",
+    color: "bg-candy-600",
     permissions: [
       "workspace",
       "onboarding",
@@ -384,7 +394,7 @@ const ROLE_INFO: Record<
     name: "文旅业务指导人员",
     note: "查看活动电子档案、服务进度与汇总数据",
     icon: Building,
-    color: "bg-navy-700",
+    color: "bg-brand-900",
     permissions: [
       "workspace",
       "events",
@@ -488,22 +498,31 @@ const MATERIALS = [
 
 function Brand({ mini = false }: { mini?: boolean }) {
   return (
-    <div data-cy="brand-mark" className="flex items-center gap-2.5">
-      <div className="w-10 h-10 rounded-full bg-brand-100 ring-2 ring-white shadow-[0_4px_12px_-6px_rgba(124,63,208,0.6)] overflow-hidden shrink-0">
-        <img
-          src={MASCOT.avatar}
-          alt="趣集"
-          width={40}
-          height={40}
-          className="w-full h-full object-cover object-top"
-        />
-      </div>
+    <div
+      data-cy="brand-mark"
+      className="flex items-center gap-2"
+      aria-label="趣集 文化活动协同管理平台"
+    >
+      <img
+        src={MASCOT.avatar}
+        alt=""
+        aria-hidden="true"
+        width={40}
+        height={42}
+        className="h-[42px] w-10 shrink-0 select-none object-contain"
+      />
       {!mini && (
-        <div>
-          <div className="text-brand-grad text-[18px] leading-6 font-bold tracking-[-0.02em]">
-            趣集
+        <div className="min-w-0">
+          <img
+            src={MASCOT.wordmark}
+            alt="趣集"
+            width={55}
+            height={31}
+            className="block h-[31px] w-[55px] select-none"
+          />
+          <div className="mt-0.5 whitespace-nowrap text-[12px] leading-4 text-slate-500">
+            文化活动协同管理平台
           </div>
-          <div className="text-[12px] text-slate-500">文化活动协同管理平台</div>
         </div>
       )}
     </div>
@@ -595,7 +614,7 @@ function EmptyState({
           alt=""
           aria-hidden="true"
           width={120}
-          height={133}
+          height={121}
           className="w-[120px] h-auto select-none"
         />
         <span className="absolute -right-1 bottom-1 w-9 h-9 rounded-full bg-white text-brand-600 ring-1 ring-brand-200 flex items-center justify-center [&>svg]:w-[18px] [&>svg]:h-[18px]">
@@ -918,39 +937,56 @@ function Login({
     "h-11 w-full rounded-full border border-slate-200 bg-slate-50 ps-11 text-[14px] text-slate-800 outline-none transition-colors focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100";
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-[#f4effb]"
+      className="relative min-h-screen overflow-hidden bg-[#f2f2fc]"
       dir={locale === "ug" ? "rtl" : "ltr"}
     >
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="login-scenic-background absolute -inset-6" />
-        <div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/52 to-white/26" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_26%,rgba(255,255,255,0.78),transparent_28%)]" />
-      </div>
-      <header className="relative z-10 h-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between border-b border-white/60 bg-white/70 backdrop-blur-xl">
+      <header className="relative z-10 h-20 px-5 sm:px-8 lg:px-12 flex items-center justify-between border-b border-[#e7e6f4] bg-white">
         <Brand />
         <LocaleSwitch locale={locale} setLocale={setLocale} />
       </header>
-      <main className="relative z-10 mx-auto grid w-full max-w-[1180px] items-center gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-16 lg:py-12">
+      <main className="relative z-10 mx-auto grid w-full max-w-[1180px] items-stretch gap-6 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-10 lg:py-12">
         <section
           data-cy="login-intro"
-          className="relative order-2 w-full max-w-[520px] rounded-2xl border border-white/70 bg-white/65 p-6 shadow-[0_16px_50px_rgba(76,35,133,0.12)] backdrop-blur-md sm:p-8 lg:order-1"
+          className="vi-speedlines relative order-2 flex w-full flex-col overflow-hidden rounded-2xl p-6 text-white sm:p-8 lg:order-1"
         >
-          <img
-            src={MASCOT.login}
-            alt=""
+          <div
+            className="vi-halftone pointer-events-none absolute inset-0"
             aria-hidden="true"
-            width={132}
-            height={236}
-            data-cy="login-mascot"
-            className="pointer-events-none absolute -top-[150px] end-4 hidden h-auto w-[132px] select-none lg:block"
           />
-          <Pill tone="blue">新疆 · 多元文化活动协同</Pill>
-          <h1 className="mt-5 text-[38px] sm:text-[46px] leading-[1.12] font-semibold tracking-[-0.06em]">
+          <span
+            className="vi-sparkle end-[12%] top-[14%]"
+            style={{ "--s": "22px" } as CSSProperties}
+            aria-hidden="true"
+          />
+          <span
+            className="vi-sparkle end-[30%] top-[8%]"
+            style={{ "--s": "12px", "--d": "1.1s" } as CSSProperties}
+            aria-hidden="true"
+          />
+          <span
+            className="vi-sparkle start-[8%] bottom-[34%]"
+            style={{ "--s": "14px", "--d": "2s" } as CSSProperties}
+            aria-hidden="true"
+          />
+          <div className="relative flex items-start justify-between gap-4">
+            <span className="inline-flex whitespace-nowrap rounded-full bg-white px-3 py-1 text-[12px] font-semibold text-brand-700">
+              新疆 · 多元文化活动协同
+            </span>
+          </div>
+          <img
+            src={MASCOT.logo}
+            alt="趣集"
+            width={320}
+            height={128}
+            data-cy="login-mascot"
+            className="relative mt-6 h-auto w-[248px] select-none sm:w-[300px]"
+          />
+          <h1 className="relative mt-5 text-[32px] sm:text-[40px] leading-[1.15] font-semibold tracking-[-0.04em]">
             一场活动
             <br />
             一套完整数字档案
           </h1>
-          <p className="mt-4 text-[16px] leading-7 text-slate-700">
+          <p className="relative mt-4 text-[16px] leading-7 text-white/90">
             <span className="block">
               <PhraseLine parts={["以活动为核心对象", "连接主办方资料"]} />
             </span>
@@ -958,13 +994,16 @@ function Login({
               <PhraseLine parts={["参与人员 票务", "角色服装道具与归档"]} />
             </span>
           </p>
-          <ul className="mt-7 grid gap-3" data-cy="login-capabilities">
+          <ul
+            className="relative mt-auto grid gap-3 pt-7"
+            data-cy="login-capabilities"
+          >
             {LOGIN_CAPABILITIES.map(({ icon: Icon, title, text }) => (
               <li
                 key={title}
-                className="flex items-center gap-3 rounded-xl border border-white bg-white/85 px-4 py-3"
+                className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-slate-900 shadow-[0_4px_0_0_rgba(67,47,108,0.28)]"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-grad text-white shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
                   <Icon className="h-5 w-5" strokeWidth={1.9} />
                 </span>
                 <span className="min-w-0 text-start">
@@ -985,7 +1024,7 @@ function Login({
             event.preventDefault();
             submit();
           }}
-          className="order-1 w-full rounded-2xl border border-white bg-white/95 p-6 shadow-[0_22px_70px_rgba(76,35,133,0.16)] backdrop-blur-xl sm:p-8 lg:order-2"
+          className="order-1 w-full self-center rounded-2xl border border-[#e7e6f4] bg-white p-6 shadow-[0_6px_0_-1px_rgba(67,47,108,0.12)] sm:p-8 lg:order-2"
         >
           <div className="text-start">
             <div className="text-[13px] font-semibold text-brand-600">
@@ -1017,10 +1056,10 @@ function Login({
                       setRole(key);
                       setError("");
                     }}
-                    className={`role-login-card flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-start transition-colors ${selected ? "border-brand-400 bg-gradient-to-br from-brand-100 to-brand-50 ring-1 ring-brand-400" : "border-slate-200 bg-white hover:border-brand-300"}`}
+                    className={`role-login-card flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-start transition-colors ${selected ? "border-brand-400 bg-brand-100 ring-1 ring-brand-400" : "border-slate-200 bg-white hover:border-brand-300"}`}
                   >
                     <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${item.color} text-white shadow-[0_6px_14px_-8px_rgba(76,35,133,0.7)]`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${item.color} text-white`}
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.9} />
                     </span>
@@ -1167,7 +1206,7 @@ function LocaleSwitch({
   setLocale: (locale: Locale) => void;
 }) {
   return (
-    <div className="flex rounded-full p-1 bg-white border border-[#e6e2ef]">
+    <div className="flex rounded-full p-1 bg-white border border-[#e4e3f0]">
       <button
         onClick={() => setLocale("zh")}
         className={`h-7 px-2.5 text-[12px] whitespace-nowrap rounded-full ${locale === "zh" ? "bg-brand-grad text-white font-semibold" : "text-brand-700/80 hover:text-brand-700"}`}
@@ -1516,11 +1555,11 @@ export default function Home() {
       <div className="flex min-h-screen">
         <aside
           data-cy="desktop-sidebar"
-          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-[#ece7f4] flex-col sticky top-0 h-screen transition-[width] duration-200`}
+          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-[#e7e6f4] flex-col sticky top-0 h-screen transition-[width] duration-200`}
         >
           <div
             data-cy="sidebar-brand"
-            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-[#ece7f4]`}
+            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-[#e7e6f4]`}
           >
             <Brand mini={sidebarCollapsed} />
           </div>
@@ -1547,7 +1586,7 @@ export default function Home() {
                         data-active={active}
                         data-cy="sidebar-nav-item"
                         onClick={() => changePage(item.id)}
-                        className={`w-full h-11 mb-1 rounded-full flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-0" : "pl-1.5 pr-3 gap-2.5"} ${active ? (sidebarCollapsed ? "text-brand-700 font-semibold" : "bg-gradient-to-r from-brand-100 to-brand-50 text-brand-700 font-semibold") : "text-slate-700 hover:bg-brand-50/70"}`}
+                        className={`w-full h-11 mb-1 rounded-full flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-0" : "pl-1.5 pr-3 gap-2.5"} ${active ? (sidebarCollapsed ? "text-brand-700 font-semibold" : "bg-brand-100 text-brand-700 font-semibold") : "text-slate-700 hover:bg-brand-50/70"}`}
                       >
                         <span className="nav-icon-chip">
                           <Icon
@@ -1557,7 +1596,7 @@ export default function Home() {
                         </span>
                         {!sidebarCollapsed && <span>{item.label}</span>}
                         {!sidebarCollapsed && item.id === "costumes" && (
-                          <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-grad text-white">
+                          <span className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-600 text-white">
                             2
                           </span>
                         )}
@@ -1569,7 +1608,7 @@ export default function Home() {
             })}
           </nav>
           <div
-            className={`sidebar-footer shrink-0 border-t border-[#ece7f4] ${sidebarCollapsed ? "p-2" : "p-3"}`}
+            className={`sidebar-footer shrink-0 border-t border-[#e7e6f4] ${sidebarCollapsed ? "p-2" : "p-3"}`}
           >
             <div
               className={`flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "flex-col gap-1"}`}
@@ -1578,7 +1617,7 @@ export default function Home() {
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
                 aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                className={`sidebar-toggle h-8 rounded-full border border-[#e6e2ef] flex items-center justify-center text-navy-700 hover:text-brand-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
+                className={`sidebar-toggle h-8 rounded-full border border-[#e4e3f0] flex items-center justify-center text-navy-700 hover:text-brand-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
               >
                 <PanelLeftClose
                   className={`w-4 h-4 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
@@ -1646,11 +1685,13 @@ export default function Home() {
         <div className="flex-1 min-w-0">
           <header
             data-cy="workspace-topbar"
-            className="h-16 bg-white/90 backdrop-blur-md border-b border-[#ece7f4] px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
+            className="h-16 bg-white/90 backdrop-blur-md border-b border-[#e7e6f4] px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
           >
             <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={menuOpen ? "关闭菜单" : "打开菜单"}
+                aria-expanded={menuOpen}
                 className="lg:hidden w-10 h-10 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
               >
                 <Menu className="w-5 h-5" />
@@ -1827,7 +1868,7 @@ function MobileMenu({
   onNavigate: (page: Page) => void;
 }) {
   return (
-    <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-[#ece7f4] shadow-[0_18px_40px_-24px_rgba(76,35,133,0.45)] p-3 grid grid-cols-2 gap-2">
+    <div className="lg:hidden fixed inset-x-0 top-16 z-30 bg-white border-b border-[#e7e6f4] shadow-[0_18px_40px_-24px_rgba(67,47,108,0.45)] p-3 grid grid-cols-2 gap-2">
       {nav.map(item => {
         const Icon = item.icon;
         const active = page === item.id;
@@ -1836,7 +1877,7 @@ function MobileMenu({
             key={item.id}
             data-active={active}
             onClick={() => onNavigate(item.id)}
-            className={`h-11 rounded-full flex items-center gap-2 pl-1.5 pr-3 text-[14px] ${active ? "bg-gradient-to-r from-brand-100 to-brand-50 text-brand-700 font-semibold" : "bg-[#f7f6fb] text-slate-700"}`}
+            className={`h-11 rounded-full flex items-center gap-2 pl-1.5 pr-3 text-[14px] ${active ? "bg-brand-100 text-brand-700 font-semibold" : "bg-[#f6f6fb] text-slate-700"}`}
           >
             <span className="nav-icon-chip">
               <Icon className="w-4 h-4" strokeWidth={1.9} />
@@ -1911,7 +1952,7 @@ function Workspace({
                 className="w-full text-left p-5 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center shrink-0">
                     <CalendarDays className="w-5 h-5" strokeWidth={1.9} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -2098,10 +2139,9 @@ function TodayStat({
   link?: () => void;
 }) {
   const colors = {
-    blue: "bg-brand-grad text-white shadow-[0_6px_14px_-8px_rgba(124,63,208,0.8)]",
-    amber:
-      "bg-gradient-to-br from-[#ffc98a] to-[#f39a4a] text-white shadow-[0_6px_14px_-8px_rgba(226,128,40,0.8)]",
-    rose: "bg-candy-grad text-white shadow-[0_6px_14px_-8px_rgba(212,72,138,0.8)]",
+    blue: "bg-brand-500 text-white",
+    amber: "bg-sun-400 text-brand-900",
+    rose: "bg-candy-400 text-candy-700",
   }[tone];
   const inner = (
     <>
@@ -2124,7 +2164,7 @@ function TodayStat({
       </div>
     </>
   );
-  const classes = `metric-card bg-white border border-[#ece7f4] rounded-xl p-5 text-left ${link ? "hover:border-brand-300 hover:bg-brand-50/40" : ""}`;
+  const classes = `metric-card bg-white border border-[#e7e6f4] rounded-xl p-5 text-left ${link ? "hover:border-brand-300 hover:bg-brand-50/40" : ""}`;
   return link ? (
     <button onClick={link} className={classes}>
       {inner}
@@ -2147,8 +2187,8 @@ function QuickAction({
   onClick: () => void;
 }) {
   return (
-    <div className="bg-white border border-[#ece7f4] rounded-xl p-5">
-      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center">
+    <div className="bg-white border border-[#e7e6f4] rounded-xl p-5">
+      <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-600 ring-1 ring-brand-100 flex items-center justify-center">
         {icon}
       </div>
       <h3 className="mt-4 text-[17px] font-semibold">{title}</h3>
@@ -3217,7 +3257,7 @@ function TicketPage({
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3 justify-between">
           <div
-            className="grid grid-cols-2 gap-1 bg-white border border-[#e6e2ef] p-1 rounded-2xl sm:rounded-full sm:flex sm:w-fit"
+            className="grid grid-cols-2 gap-1 bg-white border border-[#e4e3f0] p-1 rounded-2xl sm:rounded-full sm:flex sm:w-fit"
             data-cy="ticket-tabs"
           >
             {(
@@ -3235,7 +3275,7 @@ function TicketPage({
                 key={id}
                 onClick={() => set(id)}
                 data-cy={`ticket-tab-${id}`}
-                className={`h-8 px-3 rounded-full text-[13px] font-semibold whitespace-nowrap ${selected === id ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(124,63,208,0.7)]" : "text-slate-600"}`}
+                className={`h-8 px-3 rounded-full text-[13px] font-semibold whitespace-nowrap ${selected === id ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(100,97,201,0.7)]" : "text-slate-600"}`}
               >
                 {label}
               </button>
@@ -4368,8 +4408,12 @@ function OnsitePage({
           }
         />
       )}
-      <section className="rounded-2xl p-5 sm:p-6 text-white bg-[linear-gradient(120deg,#6a5cc4_0%,#4b3a9e_55%,#34276f_100%)] shadow-[0_18px_40px_-24px_rgba(52,39,111,0.8)]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <section className="relative overflow-hidden rounded-2xl bg-brand-900 p-5 sm:p-6 text-white">
+        <div
+          className="vi-halftone pointer-events-none absolute inset-0 opacity-60"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
             <div className="text-[13px] text-brand-100">
               当前场次 · 2026 魔都动漫嘉年华
@@ -4381,13 +4425,13 @@ function OnsitePage({
           </div>
           <button
             onClick={() => setCheckins(checkins + 1)}
-            className="h-16 px-7 rounded-full bg-candy-grad hover:brightness-105 text-[18px] font-semibold flex items-center justify-center gap-3 shadow-[0_10px_24px_-12px_rgba(240,144,180,0.9)]"
+            className="h-16 px-7 rounded-full bg-sun-400 text-brand-900 hover:bg-[#ffd04d] text-[18px] font-semibold flex items-center justify-center gap-3 shadow-[0_4px_0_0_#2b2350] transition-transform active:translate-y-[2px] active:shadow-[0_2px_0_0_#2b2350]"
           >
             <ScanLine className="w-7 h-7" />
             扫码核验
           </button>
         </div>
-        <div className="onsite-stat-grid mt-6 grid grid-cols-1 min-[460px]:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="onsite-stat-grid relative mt-6 grid grid-cols-1 min-[460px]:grid-cols-2 lg:grid-cols-5 gap-3">
           <OnsiteStat label="已售票" value="4,662" />
           <OnsiteStat label="已实名" value="4,484" />
           <OnsiteStat label="已入场" value={totalIn.toLocaleString()} />
@@ -4500,7 +4544,7 @@ function OnsiteStat({
   danger?: boolean;
 }) {
   return (
-    <div className="bg-white/12 border border-white/15 rounded-xl p-3">
+    <div className="bg-white/10 border border-white/20 rounded-xl p-3">
       <div className="text-[12px] text-brand-100">{label}</div>
       <div
         className={`mt-1 text-[24px] leading-7 font-semibold ${danger ? "text-rose-300" : ""}`}

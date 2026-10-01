@@ -79,7 +79,7 @@ export function SessionFilter({
         场次日期
       </span>
       <div
-        className="grid grid-cols-3 gap-1 rounded-2xl sm:rounded-full bg-white border border-[#e6e2ef] p-1 sm:inline-grid sm:w-fit sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none"
+        className="grid grid-cols-3 gap-1 rounded-2xl sm:rounded-full bg-white border border-[#e4e3f0] p-1 sm:inline-grid sm:w-fit sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none"
         role="radiogroup"
         aria-label="场次日期"
       >
@@ -94,7 +94,7 @@ export function SessionFilter({
               data-cy="session-filter-option"
               data-value={option.value}
               onClick={() => onChange(option.value)}
-              className={`min-w-0 rounded-full px-3 py-1.5 text-center transition-colors sm:min-w-[118px] ${active ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(124,63,208,0.7)]" : "text-slate-600 hover:text-slate-900"}`}
+              className={`min-w-0 rounded-full px-3 py-1.5 text-center transition-colors sm:min-w-[118px] ${active ? "bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(100,97,201,0.7)]" : "text-slate-600 hover:text-slate-900"}`}
             >
               <span className="block text-[14px] font-semibold whitespace-nowrap">
                 {option.label}

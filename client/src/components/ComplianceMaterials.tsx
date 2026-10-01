@@ -267,7 +267,7 @@ function FileChoice({
   return (
     <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(124,63,208,0.7)]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-grad text-white shadow-[0_4px_10px_-5px_rgba(100,97,201,0.7)]">
           <Paperclip className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">

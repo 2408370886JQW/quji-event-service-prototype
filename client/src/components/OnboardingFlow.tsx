@@ -59,8 +59,8 @@ import {
   validateSessions,
   type TicketSession,
 } from "./ticketTypes";
-const MASCOT_SUCCESS = "/manus-storage/quji-mascot-success_3da8f21a.webp";
-const MASCOT_AVATAR = "/manus-storage/quji-mascot-avatar_7ca13a7e.webp";
+const MASCOT_SUCCESS = "/manus-storage/quji-mascot-success_d70c4726.webp";
+const MASCOT_AVATAR = "/manus-storage/quji-mascot-avatar_d3fa95ab.webp";
 
 export type AdmissionStatus =
   | "not_started"
@@ -575,7 +575,7 @@ export function OrganizerRegistration({
     ["填写本人实名信息", "主办方主体信息将在上传营业执照后自动关联"],
   ][step];
   return (
-    <div className="min-h-screen bg-[#f7f6fb] text-slate-900">
+    <div className="min-h-screen bg-[#f6f6fb] text-slate-900">
       <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
         <button
           type="button"
@@ -2108,14 +2108,14 @@ export function ActivityPublished({
   return (
     <div
       data-cy="activity-published"
-      className="mx-auto max-w-[720px] rounded-2xl border border-brand-100 bg-[linear-gradient(180deg,#f6effe_0%,#ffffff_55%)] px-6 py-12 text-center"
+      className="vi-sticker mx-auto max-w-[720px] rounded-2xl px-6 py-12 text-center"
     >
       <img
         src={MASCOT_SUCCESS}
         alt=""
         aria-hidden="true"
         width={150}
-        height={174}
+        height={158}
         className="mx-auto h-auto w-[150px] select-none"
       />
       <h1 className="mt-4 flex items-center justify-center gap-2 text-[24px] font-semibold">
@@ -2151,7 +2151,7 @@ export function OnboardingWorkspaceGate({
 }) {
   const [title, text] = statusCopy(state.status);
   return (
-    <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-200 bg-brand-100 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <img
           src={MASCOT_AVATAR}
@@ -2159,7 +2159,7 @@ export function OnboardingWorkspaceGate({
           aria-hidden="true"
           width={48}
           height={48}
-          className="h-12 w-12 shrink-0 rounded-full bg-white object-cover object-top ring-2 ring-white"
+          className="h-12 w-12 shrink-0 rounded-full bg-white object-contain p-0.5 ring-2 ring-white"
         />
         <UserCheck className="sr-only" />
         <div>
