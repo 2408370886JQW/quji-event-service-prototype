@@ -941,13 +941,18 @@ function MaterialDrawer({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div
+      className="q-modal-layer z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label={material.name}
+    >
       <button
         onClick={onClose}
         aria-label="关闭材料详情"
-        className="absolute inset-0 bg-black/25"
+        className="q-modal-mask"
       />
-      <aside className="relative flex h-full w-full max-w-[580px] flex-col bg-white shadow-xl">
+      <aside className="q-modal-panel max-w-[960px]">
         <header className="flex items-start justify-between border-b border-slate-200 p-5">
           <div>
             <div className="text-[13px] font-semibold text-slate-500">
@@ -962,24 +967,26 @@ function MaterialDrawer({
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="q-modal-body grid content-start gap-5 p-5 sm:px-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <MaterialPreview material={material} />
-          <div className="mt-5 rounded-md bg-brand-50 p-4 text-[14px] leading-6 text-brand-950">
-            <span className="block font-semibold">政府公开样例</span>
-            <span className="block">用于说明材料版式与上传范围</span>
-          </div>
-          <div className="mt-5 rounded-md border border-slate-200 p-4">
-            <div className="text-[14px] font-semibold">上传要求</div>
-            <div className="mt-2 text-[14px] leading-6 text-slate-600">
-              {guideLines(material.key).map(line => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
+          <div className="min-w-0 space-y-5">
+            <div className="rounded-md bg-brand-50 p-4 text-[14px] leading-6 text-brand-950">
+              <span className="block font-semibold">政府公开样例</span>
+              <span className="block">用于说明材料版式与上传范围</span>
+            </div>
+            <div className="rounded-md border border-slate-200 p-4">
+              <div className="text-[14px] font-semibold">上传要求</div>
+              <div className="mt-2 text-[14px] leading-6 text-slate-600">
+                {guideLines(material.key).map(line => (
+                  <span key={line} className="block">
+                    {line}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="h-10 rounded-full border border-brand-200 px-4 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"

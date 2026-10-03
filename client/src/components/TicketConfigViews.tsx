@@ -198,7 +198,7 @@ const inputFrom = (ticket: SessionTicket, date: string): TicketConfigInput => {
   };
 };
 
-/** 票种配置抽屉：按场次查看与修改一个票种 */
+/** 票种配置面板（居中横屏）：按场次查看与修改一个票种 */
 export function TicketConfigDrawer({
   role,
   ticketName,
@@ -301,17 +301,20 @@ export function TicketConfigDrawer({
     );
   };
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end">
+    <div className="q-modal-layer z-[60]">
       <button
         aria-label="关闭票种配置"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/30"
+        className="q-modal-mask"
       />
       <section
         data-cy="ticket-config-drawer"
-        className="relative flex h-full w-full max-w-[600px] flex-col bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`票种配置 ${ticketName}`}
+        className="q-modal-panel max-w-[1120px]"
       >
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <div className="text-[13px] text-slate-500">
               票种配置 · {editable ? "可修改" : "只读查看"}
@@ -328,233 +331,239 @@ export function TicketConfigDrawer({
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          <div>
-            <div className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
-              <CalendarDays className="h-4 w-4 text-brand-600" />
-              选择场次
-            </div>
-            <div
-              className="mt-2 flex flex-wrap gap-2"
-              data-cy="config-sessions"
-            >
-              {dates.map((item, index) => (
-                <button
-                  key={item}
-                  type="button"
-                  data-cy="config-session"
-                  data-value={item}
-                  aria-pressed={item === date}
-                  onClick={() => setDate(item)}
-                  className={`min-w-[132px] rounded-xl border px-3 py-2 text-left ${item === date ? "border-brand-500 bg-brand-50" : "border-slate-200 bg-white hover:border-brand-300"}`}
-                >
-                  <span className="block text-[14px] font-semibold whitespace-nowrap text-slate-900">
-                    {formatSessionDate(item)}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] whitespace-nowrap text-slate-500">
-                    第 {index + 1} 天 · 已售{" "}
-                    {formatCount(stockByDate[item]?.sold ?? 0)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <dl
-            data-cy="stock-detail"
-            className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 sm:grid-cols-3"
-          >
-            {(
-              [
-                ["库存", [`${formatCount(ticket.inventory)} 张`]],
-                ["已售", [`${formatCount(stock.sold)} 张`]],
-                ["已退款", [`${formatCount(stock.refunded)} 张`]],
-                ["剩余", [`${formatCount(remaining)} 张`]],
-                [
-                  "身份证限购",
-                  [`每个身份证 ${ticket.purchaseLimit} 张`, "多账号合并计算"],
-                ],
-                [
-                  "实名购票",
-                  ticket.realName ? ["需要实名", "一票一证"] : ["无需实名"],
-                ],
-                [
-                  "销售状态",
-                  [`${ticket.status} ·`, ...ticket.sales.split(/ (?=\S+$)/)],
-                ],
-                ["票价", [`¥${ticket.price}`]],
-                ["销售渠道", [ticket.channel]],
-              ] as [string, string[]][]
-            ).map(([label, parts], index, list) => (
+        <div className="q-modal-body grid content-start items-start gap-5 p-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:grid-rows-[auto_1fr] lg:gap-x-6">
+          <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1">
+            <div>
+              <div className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
+                <CalendarDays className="h-4 w-4 text-brand-600" />
+                选择场次
+              </div>
               <div
-                key={label}
-                className={`border-b border-r border-slate-200 px-3 py-2.5 ${index === list.length - 1 ? "col-span-2 sm:col-span-1" : ""}`}
+                className="mt-2 flex flex-wrap gap-2"
+                data-cy="config-sessions"
               >
-                <dt className="text-[12px] text-slate-500">{label}</dt>
-                <dd className="mt-0.5 text-[14px] leading-5 font-semibold text-slate-900">
-                  {parts.map((part, at) => (
-                    <span key={part}>
-                      {at > 0 && " "}
-                      <span className="inline-block whitespace-nowrap">
-                        {part}
+                {dates.map((item, index) => (
+                  <button
+                    key={item}
+                    type="button"
+                    data-cy="config-session"
+                    data-value={item}
+                    aria-pressed={item === date}
+                    onClick={() => setDate(item)}
+                    className={`min-w-[132px] rounded-xl border px-3 py-2 text-left ${item === date ? "border-brand-500 bg-brand-50" : "border-slate-200 bg-white hover:border-brand-300"}`}
+                  >
+                    <span className="block text-[14px] font-semibold whitespace-nowrap text-slate-900">
+                      {formatSessionDate(item)}
+                    </span>
+                    <span className="mt-0.5 block text-[12px] whitespace-nowrap text-slate-500">
+                      第 {index + 1} 天 · 已售{" "}
+                      {formatCount(stockByDate[item]?.sold ?? 0)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <dl
+              data-cy="stock-detail"
+              className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 sm:grid-cols-3"
+            >
+              {(
+                [
+                  ["库存", [`${formatCount(ticket.inventory)} 张`]],
+                  ["已售", [`${formatCount(stock.sold)} 张`]],
+                  ["已退款", [`${formatCount(stock.refunded)} 张`]],
+                  ["剩余", [`${formatCount(remaining)} 张`]],
+                  [
+                    "身份证限购",
+                    [`每个身份证 ${ticket.purchaseLimit} 张`, "多账号合并计算"],
+                  ],
+                  [
+                    "实名购票",
+                    ticket.realName ? ["需要实名", "一票一证"] : ["无需实名"],
+                  ],
+                  [
+                    "销售状态",
+                    [`${ticket.status} ·`, ...ticket.sales.split(/ (?=\S+$)/)],
+                  ],
+                  ["票价", [`¥${ticket.price}`]],
+                  ["销售渠道", [ticket.channel]],
+                ] as [string, string[]][]
+              ).map(([label, parts], index, list) => (
+                <div
+                  key={label}
+                  className={`border-b border-r border-slate-200 px-3 py-2.5 ${index === list.length - 1 ? "col-span-2 sm:col-span-1" : ""}`}
+                >
+                  <dt className="text-[12px] text-slate-500">{label}</dt>
+                  <dd className="mt-0.5 text-[14px] leading-5 font-semibold text-slate-900">
+                    {parts.map((part, at) => (
+                      <span key={part}>
+                        {at > 0 && " "}
+                        <span className="inline-block whitespace-nowrap">
+                          {part}
+                        </span>
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            {editable ? (
+              <section
+                className="space-y-4 rounded-lg border border-slate-200 p-4"
+                data-cy="config-form"
+              >
+                <h3 className="text-[16px] font-semibold text-slate-900">
+                  修改 {formatSessionDate(date)} 配置
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="票价（元）" error={errors.price}>
+                    <input
+                      data-cy="config-price"
+                      inputMode="decimal"
+                      value={form.price}
+                      onChange={event => set({ price: event.target.value })}
+                      className={`${fieldClass} ${errors.price ? "border-rose-400" : "border-slate-300"}`}
+                    />
+                  </Field>
+                  <Field
+                    label="本场次库存（张）"
+                    error={errors.inventory}
+                    hint={`已售出 ${formatCount(netSold[date] ?? 0)} 张 库存不能少于此数`}
+                  >
+                    <input
+                      data-cy="config-inventory"
+                      inputMode="numeric"
+                      value={form.inventory}
+                      onChange={event => set({ inventory: event.target.value })}
+                      className={`${fieldClass} ${errors.inventory ? "border-rose-400" : "border-slate-300"}`}
+                    />
+                  </Field>
+                  <Field
+                    label="每个身份证限购"
+                    error={errors.purchaseLimit}
+                    hint="同一场次同一票种 多账号合并计算"
+                  >
+                    <LimitStepper
+                      value={Number(form.purchaseLimit)}
+                      onChange={value => set({ purchaseLimit: value })}
+                    />
+                  </Field>
+                  <Field label="实名购票">
+                    <RealNameSwitch
+                      value={form.realName}
+                      onChange={value => set({ realName: value })}
+                    />
+                  </Field>
+                </div>
+                <Field label="销售状态" hint="停售后漫圈 App 不再展示购买入口">
+                  <StatusPicker
+                    value={form.status}
+                    onChange={value => set({ status: value })}
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="开售时间" error={errors.saleStart}>
+                    <input
+                      type="datetime-local"
+                      data-cy="config-sale-start"
+                      value={toLocal(form.saleStart)}
+                      onChange={event =>
+                        set({ saleStart: fromLocal(event.target.value) })
+                      }
+                      className={`${fieldClass} ${errors.saleStart ? "border-rose-400" : "border-slate-300"}`}
+                    />
+                  </Field>
+                  <Field label="停售时间" error={errors.saleEnd}>
+                    <input
+                      type="datetime-local"
+                      data-cy="config-sale-end"
+                      value={toLocal(form.saleEnd)}
+                      max={`${date}T23:59`}
+                      onChange={event =>
+                        set({ saleEnd: fromLocal(event.target.value) })
+                      }
+                      className={`${fieldClass} ${errors.saleEnd ? "border-rose-400" : "border-slate-300"}`}
+                    />
+                  </Field>
+                </div>
+                {dates.length > 1 && (
+                  <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-[14px] leading-6 text-slate-700">
+                    <input
+                      type="checkbox"
+                      data-cy="config-sync"
+                      checked={syncAll}
+                      onChange={event => {
+                        setSyncAll(event.target.checked);
+                        setSaved(false);
+                      }}
+                      className="mt-1 h-4 w-4 accent-brand-600"
+                    />
+                    <span>
+                      <span className="block font-semibold text-slate-900">
+                        同步到全部 {dates.length} 个场次
+                      </span>
+                      <span className="block text-[13px] text-slate-500">
+                        票价 库存 限购 实名和销售状态一起同步
+                      </span>
+                      <span className="block text-[13px] text-slate-500">
+                        开售停售时间按各场次保留
                       </span>
                     </span>
-                  ))}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          {editable ? (
-            <section
-              className="space-y-4 rounded-lg border border-slate-200 p-4"
-              data-cy="config-form"
-            >
-              <h3 className="text-[16px] font-semibold text-slate-900">
-                修改 {formatSessionDate(date)} 配置
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="票价（元）" error={errors.price}>
-                  <input
-                    data-cy="config-price"
-                    inputMode="decimal"
-                    value={form.price}
-                    onChange={event => set({ price: event.target.value })}
-                    className={`${fieldClass} ${errors.price ? "border-rose-400" : "border-slate-300"}`}
-                  />
-                </Field>
-                <Field
-                  label="本场次库存（张）"
-                  error={errors.inventory}
-                  hint={`已售出 ${formatCount(netSold[date] ?? 0)} 张 库存不能少于此数`}
-                >
-                  <input
-                    data-cy="config-inventory"
-                    inputMode="numeric"
-                    value={form.inventory}
-                    onChange={event => set({ inventory: event.target.value })}
-                    className={`${fieldClass} ${errors.inventory ? "border-rose-400" : "border-slate-300"}`}
-                  />
-                </Field>
-                <Field
-                  label="每个身份证限购"
-                  error={errors.purchaseLimit}
-                  hint="同一场次同一票种 多账号合并计算"
-                >
-                  <LimitStepper
-                    value={Number(form.purchaseLimit)}
-                    onChange={value => set({ purchaseLimit: value })}
-                  />
-                </Field>
-                <Field label="实名购票">
-                  <RealNameSwitch
-                    value={form.realName}
-                    onChange={value => set({ realName: value })}
-                  />
-                </Field>
-              </div>
-              <Field label="销售状态" hint="停售后漫圈 App 不再展示购买入口">
-                <StatusPicker
-                  value={form.status}
-                  onChange={value => set({ status: value })}
-                />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="开售时间" error={errors.saleStart}>
-                  <input
-                    type="datetime-local"
-                    data-cy="config-sale-start"
-                    value={toLocal(form.saleStart)}
-                    onChange={event =>
-                      set({ saleStart: fromLocal(event.target.value) })
-                    }
-                    className={`${fieldClass} ${errors.saleStart ? "border-rose-400" : "border-slate-300"}`}
-                  />
-                </Field>
-                <Field label="停售时间" error={errors.saleEnd}>
-                  <input
-                    type="datetime-local"
-                    data-cy="config-sale-end"
-                    value={toLocal(form.saleEnd)}
-                    max={`${date}T23:59`}
-                    onChange={event =>
-                      set({ saleEnd: fromLocal(event.target.value) })
-                    }
-                    className={`${fieldClass} ${errors.saleEnd ? "border-rose-400" : "border-slate-300"}`}
-                  />
-                </Field>
-              </div>
-              {dates.length > 1 && (
-                <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-[14px] leading-6 text-slate-700">
-                  <input
-                    type="checkbox"
-                    data-cy="config-sync"
-                    checked={syncAll}
-                    onChange={event => {
-                      setSyncAll(event.target.checked);
-                      setSaved(false);
-                    }}
-                    className="mt-1 h-4 w-4 accent-brand-600"
-                  />
-                  <span>
-                    <span className="block font-semibold text-slate-900">
-                      同步到全部 {dates.length} 个场次
-                    </span>
-                    <span className="block text-[13px] text-slate-500">
-                      票价 库存 限购 实名和销售状态一起同步
-                    </span>
-                    <span className="block text-[13px] text-slate-500">
-                      开售停售时间按各场次保留
-                    </span>
-                  </span>
-                </label>
-              )}
-              {saved && (
-                <div
-                  data-cy="config-saved"
-                  className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-[14px] font-semibold text-emerald-700"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  已保存 票种配置表与限购校验同步更新
-                </div>
-              )}
-            </section>
-          ) : (
-            <p className="rounded-lg bg-slate-50 p-3 text-[14px] leading-6 text-slate-600">
-              票种由主办方配置 平台运营人员可协助调整
-            </p>
-          )}
-          <section>
-            <h3 className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900">
-              <History className="h-4 w-4 text-brand-600" />
-              配置记录
-            </h3>
-            {logs.length ? (
-              <ol className="mt-3 space-y-3" data-cy="config-logs">
-                {logs.slice(0, 8).map(log => (
-                  <li
-                    key={log.id}
-                    data-cy="config-log"
-                    className="border-l-2 border-brand-200 pl-3"
+                  </label>
+                )}
+                {saved && (
+                  <div
+                    data-cy="config-saved"
+                    className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-[14px] font-semibold text-emerald-700"
                   >
-                    <strong className="block text-[14px] text-slate-900">
-                      {log.action} · {formatSessionDate(log.sessionDate)}
-                    </strong>
-                    <span className="mt-0.5 block text-[13px] leading-5 text-slate-600">
-                      {log.detail}
-                    </span>
-                    <span className="mt-0.5 block text-[12px] text-slate-500">
-                      {log.actorName} · {log.actorRole} · {log.occurredAt}
-                    </span>
-                  </li>
-                ))}
-              </ol>
+                    <CheckCircle2 className="h-4 w-4" />
+                    已保存 票种配置表与限购校验同步更新
+                  </div>
+                )}
+              </section>
             ) : (
-              <p className="mt-2 text-[14px] text-slate-500">
-                活动发布时创建 暂无修改记录
+              <p className="rounded-lg bg-slate-50 p-3 text-[14px] leading-6 text-slate-600">
+                票种由主办方配置 平台运营人员可协助调整
               </p>
             )}
-          </section>
+          </div>
+          <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+            <section>
+              <h3 className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900">
+                <History className="h-4 w-4 text-brand-600" />
+                配置记录
+              </h3>
+              {logs.length ? (
+                <ol className="mt-3 space-y-3" data-cy="config-logs">
+                  {logs.slice(0, 8).map(log => (
+                    <li
+                      key={log.id}
+                      data-cy="config-log"
+                      className="border-l-2 border-brand-200 pl-3"
+                    >
+                      <strong className="block text-[14px] text-slate-900">
+                        {log.action} · {formatSessionDate(log.sessionDate)}
+                      </strong>
+                      <span className="mt-0.5 block text-[13px] leading-5 text-slate-600">
+                        {log.detail}
+                      </span>
+                      <span className="mt-0.5 block text-[12px] text-slate-500">
+                        {log.actorName} · {log.actorRole} · {log.occurredAt}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-2 text-[14px] text-slate-500">
+                  活动发布时创建 暂无修改记录
+                </p>
+              )}
+            </section>
+          </div>
         </div>
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             type="button"
             className={outlineBtn}
@@ -580,7 +589,7 @@ export function TicketConfigDrawer({
   );
 }
 
-/** 新增票种抽屉 */
+/** 新增票种面板（居中横屏） */
 export function TicketCreateDrawer({
   role,
   onClose,
@@ -640,17 +649,20 @@ export function TicketCreateDrawer({
     onCreated(name.trim(), selected[0]);
   };
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end">
+    <div className="q-modal-layer z-[60]">
       <button
         aria-label="关闭新增票种"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/30"
+        className="q-modal-mask"
       />
       <section
         data-cy="ticket-create-drawer"
-        className="relative flex h-full w-full max-w-[600px] flex-col bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="新增票种"
+        className="q-modal-panel max-w-[960px]"
       >
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div>
             <div className="text-[13px] text-slate-500">
               票种配置 · 已有 {typeCount} 个 最多 {MAX_TICKET_TYPES} 个
@@ -667,8 +679,8 @@ export function TicketCreateDrawer({
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="q-modal-body space-y-5 p-5 sm:px-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="票种名称" error={errors.name}>
               <input
                 data-cy="create-name"
@@ -722,13 +734,13 @@ export function TicketCreateDrawer({
               />
             </Field>
           </div>
-          <Field label="销售状态">
-            <StatusPicker
-              value={form.status}
-              onChange={value => set({ status: value })}
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="销售状态">
+              <StatusPicker
+                value={form.status}
+                onChange={value => set({ status: value })}
+              />
+            </Field>
             <Field label="开售时间" error={errors.saleStart}>
               <input
                 type="datetime-local"
@@ -780,7 +792,7 @@ export function TicketCreateDrawer({
             </div>
           </Field>
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button type="button" className={outlineBtn} onClick={onClose}>
             取消
           </button>

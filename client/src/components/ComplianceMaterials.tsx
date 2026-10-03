@@ -224,16 +224,18 @@ function Drawer({
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end">
+    <div
+      className="q-modal-layer z-[70]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <button
         aria-label="关闭材料面板"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/25"
+        className="q-modal-mask"
       />
-      <aside
-        dir="ltr"
-        className="relative flex h-full w-full max-w-[640px] flex-col bg-white shadow-2xl"
-      >
+      <aside dir="ltr" className="q-modal-panel max-w-[960px]">
         <header className="flex items-start justify-between border-b border-slate-200 px-5 py-5 sm:px-6">
           <div className="min-w-0">
             <div className="text-[13px] font-semibold text-slate-500">
@@ -338,7 +340,7 @@ function MaterialUploadDrawer({
         labels={["选择材料", "上传文件", "确认提交"]}
         current={Math.min(step, 2)}
       />
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+      <div className="q-modal-body p-5 sm:p-6">
         {step === 0 && (
           <div className="space-y-5">
             <p className="text-[14px] leading-6 text-slate-600">
@@ -998,7 +1000,7 @@ function FilingDrawer({
         labels={["基础信息", "协作单位", "材料检查"]}
         current={Math.min(step, 2)}
       />
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+      <div className="q-modal-body p-5 sm:p-6">
         {step === 0 && (
           <div className="space-y-5">
             <p className="text-[14px] leading-6 text-slate-600">

@@ -229,6 +229,66 @@ button.bg-brand-grad:not(:disabled):active {
     0 6px 0 -1px rgb(67 47 108 / 22%);
 }
 
+/* Task panels open centred in a landscape frame so the operator reads straight ahead instead of at the screen edge. */
+.q-modal-layer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.q-modal-mask {
+  position: absolute;
+  inset: 0;
+  background: rgb(15 23 42 / 36%);
+}
+.q-modal-panel {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-height: min(880px, calc(100dvh - 48px));
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 64px -12px rgb(24 33 47 / 30%);
+}
+.q-modal-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 639px) {
+  .q-modal-layer {
+    align-items: flex-end;
+    padding: 12px 0 0;
+  }
+  .q-modal-panel {
+    max-height: calc(100dvh - 12px);
+    border-radius: 16px 16px 0 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .q-modal-mask {
+    animation: q-modal-fade 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .q-modal-panel {
+    animation: q-modal-rise 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+@keyframes q-modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes q-modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
 /* Chinese names, dates, money and statuses are indivisible business tokens. */
 .data-token,
 .status-token,

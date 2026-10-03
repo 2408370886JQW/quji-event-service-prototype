@@ -853,17 +853,20 @@ function ReviewDrawer({
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="q-modal-layer z-50">
       <button
         aria-label="关闭申报详情"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/30"
+        className="q-modal-mask"
       />
       <section
         data-cy="review-drawer"
-        className="relative w-full max-w-[600px] h-full bg-white shadow-2xl flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`申报详情 ${item.participant}`}
+        className="q-modal-panel max-w-[1120px]"
       >
-        <header className="shrink-0 px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3">
+        <header className="shrink-0 px-5 py-4 sm:px-6 border-b border-slate-200 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[13px] text-slate-500">
               参与者申报详情 ·{" "}
@@ -882,179 +885,188 @@ function ReviewDrawer({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <section
-            data-cy="review-status"
-            className={`rounded-lg p-4 ${STATUS_TONE[item.status]}`}
-          >
-            <strong className="block text-[16px]">
-              {SUBMISSION_STATUS_LABEL[item.status]}
-            </strong>
-            <span className="block mt-1 text-[14px] leading-6">
-              <Phrases parts={NEXT_STEP[item.status]} />
-            </span>
-          </section>
-
-          <ol className="grid grid-cols-4 gap-2">
-            {steps.map((step, index) => {
-              const done = index < stepIndex;
-              const current = index === stepIndex;
-              return (
-                <li key={step} className="min-w-0 text-center">
-                  <span
-                    className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold ${done ? "bg-emerald-500 text-white" : current ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500"}`}
-                  >
-                    {done ? <Check className="w-4 h-4" /> : index + 1}
-                  </span>
-                  <span
-                    className={`block mt-1.5 text-[12px] whitespace-nowrap ${current ? "font-semibold text-brand-700" : "text-slate-600"}`}
-                  >
-                    {step}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-
-          <section className="grid grid-cols-2 gap-3">
-            {[
-              ["参与人", item.participant],
-              ["作品来源", item.source],
-              ["提交时间", item.submittedAt],
-              ["风险提示", item.riskLabel],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg bg-slate-50 p-3">
-                <div className="text-[12px] font-semibold text-slate-500">
-                  {label}
-                </div>
-                <div
-                  className={`mt-1 text-[15px] font-semibold ${label === "风险提示" && item.riskLevel === "high" ? "text-rose-700" : ""}`}
-                >
-                  {value}
-                </div>
-              </div>
-            ))}
-          </section>
-
-          <section className="border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-[16px] font-semibold">角色 服装与道具</h3>
-              <span className="text-[13px] text-slate-500 whitespace-nowrap">
-                点击图片查看大图
+        <div className="q-modal-body grid content-start gap-5 p-5 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-6">
+          <div className="min-w-0 space-y-5">
+            <section
+              data-cy="review-status"
+              className={`rounded-lg p-4 ${STATUS_TONE[item.status]}`}
+            >
+              <strong className="block text-[16px]">
+                {SUBMISSION_STATUS_LABEL[item.status]}
+              </strong>
+              <span className="block mt-1 text-[14px] leading-6">
+                <Phrases parts={NEXT_STEP[item.status]} />
               </span>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {roleImages(item).map((material, index) => (
-                <Thumb
-                  key={material.type}
-                  size="lg"
-                  material={material}
-                  onOpen={() => onOpenImages(item, roleImages(item), index)}
-                />
-              ))}
-            </div>
-            <dl className="mt-4 grid gap-3">
-              <div>
-                <dt className="text-[13px] font-semibold text-slate-500">
-                  服装信息
-                </dt>
-                <dd className="mt-1 text-[15px] leading-6">
-                  <SlashPhrases text={item.costume} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[13px] font-semibold text-slate-500">
-                  道具信息
-                </dt>
-                <dd className="mt-1 text-[15px] leading-6">
-                  <SlashPhrases text={item.prop} />
-                </dd>
-              </div>
-            </dl>
-          </section>
+            </section>
 
-          <section className="border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-[16px] font-semibold">实名 身份证与人脸</h3>
-              <span className="text-[13px] font-semibold text-emerald-700 whitespace-nowrap">
-                核验已通过
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
+            <ol className="grid grid-cols-4 gap-2">
+              {steps.map((step, index) => {
+                const done = index < stepIndex;
+                const current = index === stepIndex;
+                return (
+                  <li key={step} className="min-w-0 text-center">
+                    <span
+                      className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold ${done ? "bg-emerald-500 text-white" : current ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500"}`}
+                    >
+                      {done ? <Check className="w-4 h-4" /> : index + 1}
+                    </span>
+                    <span
+                      className={`block mt-1.5 text-[12px] whitespace-nowrap ${current ? "font-semibold text-brand-700" : "text-slate-600"}`}
+                    >
+                      {step}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <section className="grid grid-cols-2 gap-3">
               {[
-                ["身份证号", item.identity.maskedIdNumber],
-                ["实名核验", "已通过"],
-                [
-                  "人脸比对",
-                  `${Math.round(item.identity.faceMatchScore * 100)}%`,
-                ],
+                ["参与人", item.participant],
+                ["作品来源", item.source],
+                ["提交时间", item.submittedAt],
+                ["风险提示", item.riskLabel],
               ].map(([label, value]) => (
-                <div key={label} className="min-w-0">
+                <div key={label} className="rounded-lg bg-slate-50 p-3">
                   <div className="text-[12px] font-semibold text-slate-500">
                     {label}
                   </div>
-                  <div className="mt-1 text-[14px] font-semibold break-all">
+                  <div
+                    className={`mt-1 text-[15px] font-semibold ${label === "风险提示" && item.riskLevel === "high" ? "text-rose-700" : ""}`}
+                  >
                     {value}
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {identityImages(item).map((material, index) => (
-                <button
-                  key={material.type}
-                  data-cy="review-figure"
-                  aria-label={`查看${material.name}大图`}
-                  onClick={() =>
-                    onOpenImages(item, identityImages(item), index)
-                  }
-                  className="group relative block rounded-lg overflow-hidden border border-slate-200 bg-slate-50 cursor-zoom-in text-left"
-                >
-                  <img
-                    src={material.url}
-                    alt={material.name}
-                    className="w-full aspect-[16/10] object-cover"
-                  />
-                  <span className="block px-2.5 py-2 text-[13px] font-medium text-slate-700">
-                    {material.name}
-                  </span>
-                  <span className="absolute right-2 top-2 h-7 px-2 rounded-full bg-white/95 text-brand-700 text-[12px] font-semibold inline-flex items-center gap-1 shadow">
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    大图
-                  </span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-[13px] text-slate-500">
-              <Phrases
-                parts={["身份证号默认脱敏", "原始材料仅在受权审核流程内查看"]}
-              />
-            </p>
-          </section>
+            </section>
 
-          <section className="border border-slate-200 rounded-lg p-4">
-            <h3 className="text-[16px] font-semibold">审核记录</h3>
-            <ol className="mt-3 space-y-3">
-              {item.logs.map(entry => (
-                <li key={entry.id} className="border-l-2 border-brand-200 pl-3">
-                  <strong className="block text-[14px]">{entry.action}</strong>
-                  <span className="block mt-0.5 text-[13px] text-slate-500">
-                    {entry.actorName} · {entry.actorRole} · {entry.occurredAt}
-                  </span>
-                  {entry.comment && (
-                    <small className="block mt-1 text-[13px] leading-5 text-slate-700">
-                      {entry.comment}
-                    </small>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </section>
+            <section className="border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-[16px] font-semibold">角色 服装与道具</h3>
+                <span className="text-[13px] text-slate-500 whitespace-nowrap">
+                  点击图片查看大图
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {roleImages(item).map((material, index) => (
+                  <Thumb
+                    key={material.type}
+                    size="lg"
+                    material={material}
+                    onOpen={() => onOpenImages(item, roleImages(item), index)}
+                  />
+                ))}
+              </div>
+              <dl className="mt-4 grid gap-3">
+                <div>
+                  <dt className="text-[13px] font-semibold text-slate-500">
+                    服装信息
+                  </dt>
+                  <dd className="mt-1 text-[15px] leading-6">
+                    <SlashPhrases text={item.costume} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[13px] font-semibold text-slate-500">
+                    道具信息
+                  </dt>
+                  <dd className="mt-1 text-[15px] leading-6">
+                    <SlashPhrases text={item.prop} />
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <div className="min-w-0 space-y-5">
+            <section className="border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-[16px] font-semibold">实名 身份证与人脸</h3>
+                <span className="text-[13px] font-semibold text-emerald-700 whitespace-nowrap">
+                  核验已通过
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {[
+                  ["身份证号", item.identity.maskedIdNumber],
+                  ["实名核验", "已通过"],
+                  [
+                    "人脸比对",
+                    `${Math.round(item.identity.faceMatchScore * 100)}%`,
+                  ],
+                ].map(([label, value]) => (
+                  <div key={label} className="min-w-0">
+                    <div className="text-[12px] font-semibold text-slate-500">
+                      {label}
+                    </div>
+                    <div className="mt-1 text-[14px] font-semibold break-all">
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {identityImages(item).map((material, index) => (
+                  <button
+                    key={material.type}
+                    data-cy="review-figure"
+                    aria-label={`查看${material.name}大图`}
+                    onClick={() =>
+                      onOpenImages(item, identityImages(item), index)
+                    }
+                    className="group relative block rounded-lg overflow-hidden border border-slate-200 bg-slate-50 cursor-zoom-in text-left"
+                  >
+                    <img
+                      src={material.url}
+                      alt={material.name}
+                      className="w-full aspect-[16/10] object-cover"
+                    />
+                    <span className="block px-2.5 py-2 text-[13px] font-medium text-slate-700">
+                      {material.name}
+                    </span>
+                    <span className="absolute right-2 top-2 h-7 px-2 rounded-full bg-white/95 text-brand-700 text-[12px] font-semibold inline-flex items-center gap-1 shadow">
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      大图
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-[13px] text-slate-500">
+                <Phrases
+                  parts={["身份证号默认脱敏", "原始材料仅在受权审核流程内查看"]}
+                />
+              </p>
+            </section>
+
+            <section className="border border-slate-200 rounded-lg p-4">
+              <h3 className="text-[16px] font-semibold">审核记录</h3>
+              <ol className="mt-3 space-y-3">
+                {item.logs.map(entry => (
+                  <li
+                    key={entry.id}
+                    className="border-l-2 border-brand-200 pl-3"
+                  >
+                    <strong className="block text-[14px]">
+                      {entry.action}
+                    </strong>
+                    <span className="block mt-0.5 text-[13px] text-slate-500">
+                      {entry.actorName} · {entry.actorRole} · {entry.occurredAt}
+                    </span>
+                    {entry.comment && (
+                      <small className="block mt-1 text-[13px] leading-5 text-slate-700">
+                        {entry.comment}
+                      </small>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </div>
         </div>
 
         <footer
           data-cy="review-actions"
-          className="shrink-0 border-t border-slate-200 bg-white px-5 py-4"
+          className="shrink-0 border-t border-slate-200 bg-white px-5 py-4 sm:px-6"
         >
           {error && (
             <div className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-[13px] text-rose-700">

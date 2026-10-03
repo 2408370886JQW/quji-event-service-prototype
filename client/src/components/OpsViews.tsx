@@ -174,7 +174,7 @@ function useEscape(onClose: () => void) {
   }, [onClose]);
 }
 
-/** 右侧抽屉 */
+/** 居中横屏任务面板（手机宽度贴底） */
 export function Sheet({
   title,
   eyebrow,
@@ -183,6 +183,7 @@ export function Sheet({
   footer,
   cy,
   wide = false,
+  narrow = false,
 }: {
   title: string;
   eyebrow?: string;
@@ -191,11 +192,12 @@ export function Sheet({
   footer?: ReactNode;
   cy?: string;
   wide?: boolean;
+  narrow?: boolean;
 }) {
   useEscape(onClose);
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-end"
+      className="q-modal-layer z-[60]"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -204,11 +206,11 @@ export function Sheet({
         type="button"
         aria-label="关闭面板"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/30"
+        className="q-modal-mask"
       />
       <aside
         data-cy={cy}
-        className={`relative flex h-full w-full ${wide ? "max-w-[760px]" : "max-w-[600px]"} flex-col bg-white shadow-2xl`}
+        className={`q-modal-panel ${wide ? "max-w-[1080px]" : narrow ? "max-w-[760px]" : "max-w-[960px]"}`}
       >
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -230,9 +232,7 @@ export function Sheet({
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-          {children}
-        </div>
+        <div className="q-modal-body px-5 py-5 sm:px-6">{children}</div>
         {footer && (
           <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
             {footer}
@@ -465,7 +465,16 @@ function InfoGrid({ items }: { items: { label: string; value: ReactNode }[] }) {
         <div key={item.label} className="min-w-0">
           <dt className="text-[13px] text-slate-500">{item.label}</dt>
           <dd className="mt-0.5 text-[15px] leading-6 font-semibold break-words text-slate-900">
-            {item.value}
+            {typeof item.value === "string"
+              ? item.value.split(" ").map((part, at) => (
+                  <span key={`${part}-${at}`}>
+                    {at > 0 && " "}
+                    <span className="inline-block max-w-full whitespace-nowrap">
+                      {part}
+                    </span>
+                  </span>
+                ))
+              : item.value}
           </dd>
         </div>
       ))}
@@ -1853,40 +1862,44 @@ export function IssueDrawer({
       onClose={onClose}
       cy="issue-drawer"
     >
-      <div className="space-y-5">
-        <div className="flex flex-wrap gap-2">
-          <Tag tone={LEVEL_TONE[issue.level]}>紧急程度 {issue.level}</Tag>
-          <span data-cy="issue-status">
-            <Tag tone={STATUS_TONE[issue.status]}>{issue.status}</Tag>
-          </span>
-        </div>
-        <InfoGrid
-          items={[
-            { label: "问题类型", value: issue.category },
-            { label: "责任方", value: issue.owner },
-            { label: "处理时限", value: issue.deadline },
-            { label: "关联对象", value: issue.related ?? "—" },
-            {
-              label: "登记",
-              value: `${issue.createdBy} ${issue.createdAt}`,
-            },
-          ]}
-        />
-        <div>
-          <h3 className="text-[15px] font-semibold">问题描述</h3>
-          <p className="mt-1.5 text-[15px] leading-7 text-slate-700">
-            {issue.detail}
-          </p>
-        </div>
-        <div>
-          <h3 className="mb-3 flex items-center gap-1.5 text-[15px] font-semibold">
-            <History className="h-4 w-4 text-brand-600" />
-            处理记录
-          </h3>
-          <Timeline logs={issue.logs} />
+      <div
+        className={`grid gap-5 ${canEdit ? "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-6" : ""}`}
+      >
+        <div className="min-w-0 space-y-5">
+          <div className="flex flex-wrap gap-2">
+            <Tag tone={LEVEL_TONE[issue.level]}>紧急程度 {issue.level}</Tag>
+            <span data-cy="issue-status">
+              <Tag tone={STATUS_TONE[issue.status]}>{issue.status}</Tag>
+            </span>
+          </div>
+          <InfoGrid
+            items={[
+              { label: "问题类型", value: issue.category },
+              { label: "责任方", value: issue.owner },
+              { label: "处理时限", value: issue.deadline },
+              { label: "关联对象", value: issue.related ?? "—" },
+              {
+                label: "登记",
+                value: `${issue.createdBy} ${issue.createdAt}`,
+              },
+            ]}
+          />
+          <div>
+            <h3 className="text-[15px] font-semibold">问题描述</h3>
+            <p className="mt-1.5 text-[15px] leading-7 text-slate-700">
+              {issue.detail}
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-3 flex items-center gap-1.5 text-[15px] font-semibold">
+              <History className="h-4 w-4 text-brand-600" />
+              处理记录
+            </h3>
+            <Timeline logs={issue.logs} />
+          </div>
         </div>
         {canEdit && (
-          <div className="space-y-4 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+          <div className="h-fit min-w-0 space-y-4 rounded-xl border border-brand-200 bg-brand-50/50 p-4 lg:sticky lg:top-0">
             <h3 className="text-[15px] font-semibold">
               {issue.status === "已完成" ? "重新打开" : "办理"}
             </h3>
@@ -4407,6 +4420,7 @@ export function NoticePanel({
       title="通知中心"
       eyebrow="活动待办与提醒"
       cy="notice-panel"
+      narrow
       onClose={onClose}
     >
       <div className="space-y-4">

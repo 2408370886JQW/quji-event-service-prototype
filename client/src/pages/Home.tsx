@@ -1512,6 +1512,9 @@ export default function Home() {
               <LocaleSwitch locale={locale} setLocale={setLocale} />
               <button
                 onClick={() => setNotificationOpen(true)}
+                aria-label="通知中心"
+                title="通知中心"
+                data-cy="notice-open"
                 className="relative w-9 h-9 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
               >
                 <Bell className="w-[18px] h-[18px]" />
@@ -3661,16 +3664,21 @@ function RefundTable({
       )}
 
       {detail && (
-        <div
-          className="fixed inset-0 z-[60] bg-slate-950/35 flex justify-end"
-          onClick={() => setDetailId(null)}
-        >
+        <div className="q-modal-layer z-[60]">
+          <button
+            type="button"
+            aria-label="关闭退款申请"
+            className="q-modal-mask"
+            onClick={() => setDetailId(null)}
+          />
           <aside
             data-cy="refund-drawer"
-            className="w-full max-w-[620px] h-full bg-white shadow-2xl flex flex-col"
-            onClick={event => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="退款申请详情"
+            className="q-modal-panel max-w-[1080px]"
           >
-            <header className="shrink-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between">
+            <header className="shrink-0 bg-white border-b border-slate-200 px-5 py-4 sm:px-6 flex items-start justify-between">
               <div>
                 <div className="text-[13px] text-slate-500">退款申请详情</div>
                 <h3 className="mt-1 text-[18px] font-semibold">
@@ -3685,115 +3693,119 @@ function RefundTable({
                 <X className="w-4 h-4" />
               </button>
             </header>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              <div
-                data-cy="refund-detail-status"
-                className={`rounded-lg p-4 flex items-center gap-3 ${tones[detail.status]}`}
-              >
-                {detail.status === "refunded" ? (
-                  <CheckCircle2 className="w-5 h-5" />
-                ) : detail.status === "rejected" ? (
-                  <XCircle className="w-5 h-5" />
-                ) : (
-                  <Clock3 className="w-5 h-5" />
-                )}
-                <div>
-                  <strong className="block text-[15px]">
-                    {labels[detail.status]}
-                  </strong>
-                  <small className="block mt-1 text-[13px]">
-                    {detail.processedBy
-                      ? `处理人 ${detail.processedBy} · ${detail.processedAt}`
-                      : canDecide
-                        ? "核对订单与规则后 在下方同意或驳回"
-                        : "等待平台运营人员审批"}
-                  </small>
+            <div className="q-modal-body grid content-start gap-4 p-5 sm:px-6 lg:grid-cols-2 lg:gap-5">
+              <div className="min-w-0 space-y-4">
+                <div
+                  data-cy="refund-detail-status"
+                  className={`rounded-lg p-4 flex items-center gap-3 ${tones[detail.status]}`}
+                >
+                  {detail.status === "refunded" ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : detail.status === "rejected" ? (
+                    <XCircle className="w-5 h-5" />
+                  ) : (
+                    <Clock3 className="w-5 h-5" />
+                  )}
+                  <div>
+                    <strong className="block text-[15px]">
+                      {labels[detail.status]}
+                    </strong>
+                    <small className="block mt-1 text-[13px]">
+                      {detail.processedBy
+                        ? `处理人 ${detail.processedBy} · ${detail.processedAt}`
+                        : canDecide
+                          ? "核对订单与规则后 在下方同意或驳回"
+                          : "等待平台运营人员审批"}
+                    </small>
+                  </div>
                 </div>
+
+                <RefundDetailSection
+                  title="用户退款申请"
+                  icon={<Smartphone className="w-4 h-4" />}
+                >
+                  <RefundDetailGrid
+                    items={[
+                      ["来源", "漫圈 App"],
+                      ["申请时间", detail.requestedAt],
+                      ["购票人", detail.buyerName],
+                      ["联系电话", detail.buyerPhone],
+                      ["退款原因", `${detail.reason} · ${detail.detail}`],
+                    ]}
+                  />
+                </RefundDetailSection>
+
+                <RefundDetailSection
+                  title="关联订单与退款金额"
+                  icon={<TicketCheck className="w-4 h-4" />}
+                >
+                  <RefundDetailGrid
+                    items={[
+                      ["订单号", detail.orderNo],
+                      ["电子票号", detail.ticketCode],
+                      ["票种", detail.ticketName],
+                      ["场次", formatSessionDate(refundSessionDate(detail))],
+                      ["退款金额", `¥${detail.amount.toFixed(2)}`],
+                      ["支付方式", "微信支付"],
+                      ["退款去向", "原支付账户"],
+                    ]}
+                  />
+                </RefundDetailSection>
               </div>
 
-              <RefundDetailSection
-                title="用户退款申请"
-                icon={<Smartphone className="w-4 h-4" />}
-              >
-                <RefundDetailGrid
-                  items={[
-                    ["来源", "漫圈 App"],
-                    ["申请时间", detail.requestedAt],
-                    ["购票人", detail.buyerName],
-                    ["联系电话", detail.buyerPhone],
-                    ["退款原因", `${detail.reason} · ${detail.detail}`],
-                  ]}
-                />
-              </RefundDetailSection>
+              <div className="min-w-0 space-y-4">
+                <RefundDetailSection
+                  title="退款规则校验"
+                  icon={<ListChecks className="w-4 h-4" />}
+                >
+                  <div className="grid gap-2">
+                    {refundChecks(detail).map(check => (
+                      <div
+                        key={check.label}
+                        className={`rounded-lg px-3 py-2.5 text-[13px] flex items-center gap-2 ${check.passed ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}
+                      >
+                        {check.passed ? (
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        ) : (
+                          <CircleAlert className="w-4 h-4 shrink-0" />
+                        )}
+                        <strong>{check.label}</strong>
+                        <span className="opacity-80">{check.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                </RefundDetailSection>
 
-              <RefundDetailSection
-                title="关联订单与退款金额"
-                icon={<TicketCheck className="w-4 h-4" />}
-              >
-                <RefundDetailGrid
-                  items={[
-                    ["订单号", detail.orderNo],
-                    ["电子票号", detail.ticketCode],
-                    ["票种", detail.ticketName],
-                    ["场次", formatSessionDate(refundSessionDate(detail))],
-                    ["退款金额", `¥${detail.amount.toFixed(2)}`],
-                    ["支付方式", "微信支付"],
-                    ["退款去向", "原支付账户"],
-                  ]}
-                />
-              </RefundDetailSection>
-
-              <RefundDetailSection
-                title="退款规则校验"
-                icon={<ListChecks className="w-4 h-4" />}
-              >
-                <div className="grid gap-2">
-                  {refundChecks(detail).map(check => (
-                    <div
-                      key={check.label}
-                      className={`rounded-lg px-3 py-2.5 text-[13px] flex items-center gap-2 ${check.passed ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}
-                    >
-                      {check.passed ? (
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      ) : (
-                        <CircleAlert className="w-4 h-4 shrink-0" />
-                      )}
-                      <strong>{check.label}</strong>
-                      <span className="opacity-80">{check.detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </RefundDetailSection>
-
-              <RefundDetailSection
-                title="处理记录"
-                icon={<FileText className="w-4 h-4" />}
-              >
-                <div className="space-y-3">
-                  {detail.logs.map((log, index) => (
-                    <div
-                      key={`${log.action}-${index}`}
-                      className="border-l-2 border-brand-200 pl-3"
-                    >
-                      <strong className="block text-[14px]">
-                        {log.action}
-                      </strong>
-                      <span className="block mt-1 text-[12px] text-slate-500">
-                        {log.actor} · {log.time}
-                      </span>
-                      {log.comment && (
-                        <small className="block mt-1 text-[12px] leading-5 text-slate-600">
-                          {log.comment}
-                        </small>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </RefundDetailSection>
+                <RefundDetailSection
+                  title="处理记录"
+                  icon={<FileText className="w-4 h-4" />}
+                >
+                  <div className="space-y-3">
+                    {detail.logs.map((log, index) => (
+                      <div
+                        key={`${log.action}-${index}`}
+                        className="border-l-2 border-brand-200 pl-3"
+                      >
+                        <strong className="block text-[14px]">
+                          {log.action}
+                        </strong>
+                        <span className="block mt-1 text-[12px] text-slate-500">
+                          {log.actor} · {log.time}
+                        </span>
+                        {log.comment && (
+                          <small className="block mt-1 text-[12px] leading-5 text-slate-600">
+                            {log.comment}
+                          </small>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </RefundDetailSection>
+              </div>
             </div>
             <footer
               data-cy="refund-actions"
-              className="shrink-0 bg-white border-t border-slate-200 px-5 py-4"
+              className="shrink-0 bg-white border-t border-slate-200 px-5 py-4 sm:px-6"
             >
               {detail.status === "pending_review" && canDecide ? (
                 <div className="grid grid-cols-2 gap-2">
@@ -4018,7 +4030,7 @@ function SettingsPanel({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-end"
+      className="q-modal-layer z-[60]"
       role="dialog"
       aria-modal="true"
       aria-label="系统设置"
@@ -4027,9 +4039,9 @@ function SettingsPanel({
         type="button"
         aria-label="关闭设置"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-950/30"
+        className="q-modal-mask"
       />
-      <aside className="relative flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl">
+      <aside className="q-modal-panel max-w-[720px]">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-5">
           <div>
             <h2 className="text-[20px] font-semibold">系统设置</h2>
@@ -4046,7 +4058,7 @@ function SettingsPanel({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        <div className="q-modal-body space-y-5 p-5 sm:px-6">
           <section className="rounded-xl border border-slate-200 p-4">
             <div className="text-[13px] font-semibold text-slate-500">
               当前登录账号
