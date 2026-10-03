@@ -111,12 +111,39 @@ import {
   useMyReviewCount,
 } from "@/components/CostumeReview";
 import {
+  ActiveFilterChips,
+  EMPTY_EVENT_FILTER,
+  EventFilterBar,
+  matchEventFilter,
+  type EventFilterValue,
+} from "@/components/EventFilters";
+import {
   PurchaseLimitPanel,
   SessionFilter,
   loadTicketSession,
   saveTicketSession,
 } from "@/components/TicketLimitViews";
 import { formatSessionDate } from "@/components/ticketTypes";
+import {
+  DEFAULT_REFUNDS,
+  loadRefundRecords,
+  saveRefundRecords,
+  type RefundRecord,
+  type RefundStatus,
+} from "@/components/refundData";
+import {
+  ActivityReportDialog,
+  ArchivePanel,
+  DataCenterPanel,
+  EventDataPanel,
+  IssuesPanel,
+  NoticePanel,
+  OnsiteWorkbench,
+  ParticipantsPanel,
+  useUnreadNoticeCount,
+  type OpsRole,
+} from "@/components/OpsViews";
+import type { ReportEventInput } from "@/components/activityReport";
 type Role = "platform" | "organizer" | "culture";
 type TicketMode = "all" | "orders" | "refunds" | "limits";
 type Page =
@@ -283,6 +310,10 @@ const STATUS_META: Record<
     step: 6,
   },
 };
+
+function toReportEvent(event: EventItem): ReportEventInput {
+  return { ...event, stageIndex: STATUS_META[event.status].step };
+}
 
 const PROGRESS = [
   "活动创建",
@@ -591,246 +622,14 @@ function EmptyState({
         {text}
       </p>
       <div className="mt-5 inline-flex">
-        <ActionButton
-          label={action}
-          className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold"
-          title={action}
-          description="可在此开始建立新的活动档案并补充基础资料。"
-        />
+        <span className="h-10 px-4 rounded-full bg-brand-100 text-brand-800 text-[14px] font-semibold inline-flex items-center">
+          {action}
+        </span>
       </div>
     </div>
   );
 }
 
-function ActionButton({
-  label,
-  className,
-  title,
-  description,
-  icon,
-}: {
-  label: string;
-  className: string;
-  title?: string;
-  description?: string;
-  icon?: ReactNode;
-}) {
-  const [state, setState] = useState<"view" | "edit" | "done" | null>(null);
-  const [note, setNote] = useState("");
-  const heading = title || label;
-  const exporting = label.includes("导出");
-  const reviewing = /查看|记录|资料/.test(label);
-  const secondStep = exporting
-    ? "选择范围"
-    : reviewing
-      ? "补充或更新"
-      : "确认处理";
-  const finalStep = exporting ? "生成文件" : "提交并写入记录";
-  const close = () => {
-    setState(null);
-    setNote("");
-  };
-  const meta = exporting
-    ? "当前活动 数据归集范围已加载"
-    : "当前活动 关联资料与操作记录已加载";
-  return (
-    <>
-      <button onClick={() => setState("view")} className={className}>
-        {icon}
-        {label}
-      </button>
-      {state && (
-        <div className="fixed inset-0 z-[60] flex justify-end">
-          <button
-            aria-label="关闭任务面板"
-            onClick={close}
-            className="absolute inset-0 bg-slate-950/20"
-          />
-          <aside
-            data-cy="task-drawer"
-            dir="ltr"
-            className="task-drawer relative h-full w-full max-w-[560px] bg-white flex flex-col text-left"
-          >
-            <header className="relative border-b border-slate-200 px-6 py-5 text-left">
-              <div
-                data-cy="task-heading"
-                className="w-full min-w-0 pr-12 text-left"
-              >
-                <div className="text-[13px] font-semibold text-slate-500">
-                  任务处理
-                </div>
-                <h2 className="mt-1 text-[22px] leading-7 font-semibold text-slate-900">
-                  {heading}
-                </h2>
-                <p className="mt-1 text-[14px] leading-6 text-slate-600">
-                  {meta}
-                </p>
-              </div>
-              <button
-                onClick={close}
-                aria-label="关闭"
-                className="absolute right-5 top-5 w-9 h-9 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </header>
-            <div className="px-6 py-4 border-b border-slate-200 grid grid-cols-3 gap-2">
-              {[
-                ["查看当前资料", "view"],
-                [secondStep, "edit"],
-                [finalStep, "done"],
-              ].map(([step, id], index) => (
-                <div
-                  key={id as string}
-                  data-active={state === id}
-                  className="task-step rounded-md border border-transparent px-3 py-2 min-w-0 text-left"
-                >
-                  <div className="text-[11px] font-semibold text-slate-500">
-                    0{index + 1}
-                  </div>
-                  <div className="mt-1 text-[13px] font-semibold whitespace-nowrap">
-                    {step}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              {state === "view" && (
-                <div className="space-y-5">
-                  <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
-                    <TaskField
-                      label="当前状态"
-                      value={
-                        exporting
-                          ? "数据已汇总 可按范围生成文件"
-                          : "资料已归集 可查看版本与处理记录"
-                      }
-                    />
-                    <TaskField
-                      label="关联内容"
-                      value={
-                        description?.replace(/[，。；、·]/g, " ") ||
-                        "当前活动关联材料 处理意见与操作时间"
-                      }
-                    />
-                    <TaskField
-                      label="最近更新"
-                      value="今天 10:36 主办方运营组"
-                    />
-                  </section>
-                  <section>
-                    <h3 className="text-[15px] font-semibold">操作记录</h3>
-                    <div className="mt-3 space-y-3">
-                      <TimelineRow
-                        text="已加载当前版本与关联记录"
-                        time="刚刚"
-                      />
-                      <TimelineRow
-                        text="主办方更新活动材料"
-                        time="今天 10:36"
-                      />
-                      <TimelineRow
-                        text="平台运营人员完成资料核验"
-                        time="昨天 16:30"
-                      />
-                    </div>
-                  </section>
-                </div>
-              )}
-              {state === "edit" && (
-                <div className="space-y-5">
-                  <section className="border border-slate-200 rounded-lg p-4">
-                    <h3 className="text-[15px] font-semibold">
-                      {exporting ? "导出范围" : "处理说明"}
-                    </h3>
-                    <p className="mt-1 text-[14px] leading-6 text-slate-600">
-                      {exporting
-                        ? "默认包含当前活动的已归集数据与操作记录"
-                        : "填写本次补充 修订或处理说明 提交后写入活动记录"}
-                    </p>
-                    <textarea
-                      value={note}
-                      onChange={e => setNote(e.target.value)}
-                      placeholder={
-                        exporting
-                          ? "例如 用于本周运营复盘"
-                          : "例如 已补充主体资质文件第 2 版"
-                      }
-                      className="mt-4 w-full min-h-28 resize-none rounded-md border border-slate-300 px-3 py-2 text-[14px] leading-6 outline-none focus:border-brand-500"
-                    />
-                  </section>
-                  <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-4 text-[14px] leading-6 text-slate-700">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="mt-1 w-4 h-4 accent-brand-600"
-                    />
-                    同步写入当前活动操作记录并保留本次处理时间与操作人
-                  </label>
-                </div>
-              )}
-              {state === "done" && (
-                <div className="py-12 text-center">
-                  <div className="mx-auto w-11 h-11 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <h3 className="mt-4 text-[20px] font-semibold">
-                    {exporting ? "活动文件已生成" : "任务已提交并登记"}
-                  </h3>
-                  <p className="mt-2 max-w-sm mx-auto text-[14px] leading-6 text-slate-600">
-                    {exporting
-                      ? "文件已按当前活动数据范围生成 可在活动档案中继续查看"
-                      : "本次处理已写入当前活动操作记录 可继续处理下一项待办"}
-                  </p>
-                </div>
-              )}
-            </div>
-            <footer className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
-              <button
-                onClick={close}
-                className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold text-slate-700 hover:bg-brand-50"
-              >
-                {state === "done" ? "返回列表" : "暂存并返回"}
-              </button>
-              {state !== "done" && (
-                <button
-                  onClick={() => setState(state === "view" ? "edit" : "done")}
-                  className="h-10 px-4 rounded-full bg-brand-grad hover:brightness-95 text-white text-[14px] font-semibold flex items-center gap-2"
-                >
-                  {state === "view" ? `下一步 ${secondStep}` : finalStep}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </footer>
-          </aside>
-        </div>
-      )}
-    </>
-  );
-}
-function TaskField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="task-field grid gap-1.5 px-4 py-3 text-left">
-      <div className="text-[12px] font-semibold text-slate-500">{label}</div>
-      <div className="task-field__value text-[14px] leading-6 text-slate-800 semantic-copy">
-        {value}
-      </div>
-    </div>
-  );
-}
-function TimelineRow({ text, time }: { text: string; time: string }) {
-  return (
-    <div className="timeline-row grid grid-cols-[8px_minmax(0,1fr)] items-start gap-3 text-left">
-      <div className="mt-2 w-2 h-2 rounded-full bg-brand-grad" />
-      <div className="min-w-0">
-        <div className="text-[14px] leading-6 text-slate-800">{text}</div>
-        <div className="mt-1 text-[12px] leading-5 tabular-nums text-slate-500">
-          {time}
-        </div>
-      </div>
-    </div>
-  );
-}
 const LOGIN_ROLE_LINES: Record<Role, [string, string]> = {
   platform: ["入驻审核", "流程配置与服务运营"],
   organizer: ["活动资料 票务", "参与人员与现场管理"],
@@ -1303,8 +1102,6 @@ export default function Home() {
   );
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [settingOpen, setSettingOpen] = useState(false);
-  const [checkins, setCheckins] = useState(0);
-  const [issueOpen, setIssueOpen] = useState(false);
   const [ticketMode, setTicketMode] = useState<TicketMode>(restored.ticketMode);
   const [registrationOpen, setRegistrationOpen] = useState(
     restored.registrationOpen
@@ -1474,6 +1271,9 @@ export default function Home() {
       : role === "culture"
         ? "王处长"
         : "周可";
+  const actor = { name: displayName, role: roleLabel };
+  const unreadNoticeCount = useUnreadNoticeCount(role as OpsRole, permissions);
+  const noticeBadge = unreadNoticeCount > 9 ? "9+" : String(unreadNoticeCount);
   if (registrationOpen)
     return (
       <OrganizerRegistration
@@ -1613,13 +1413,17 @@ export default function Home() {
               >
                 <span className="relative flex text-navy-700">
                   <Bell className="w-[18px] h-[18px]" />
-                  {sidebarCollapsed && (
-                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-candy-600" />
+                  {sidebarCollapsed && unreadNoticeCount > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
+                      {noticeBadge}
+                    </span>
                   )}
                 </span>
                 {!sidebarCollapsed && <span>通知中心</span>}
-                {!sidebarCollapsed && (
-                  <span className="ml-auto w-2 h-2 rounded-full bg-candy-600" />
+                {!sidebarCollapsed && unreadNoticeCount > 0 && (
+                  <span className="ml-auto min-w-5 h-5 px-1 inline-flex items-center justify-center rounded-full bg-candy-600 text-[11px] font-semibold text-white">
+                    {noticeBadge}
+                  </span>
                 )}
               </button>
               <button
@@ -1711,7 +1515,11 @@ export default function Home() {
                 className="relative w-9 h-9 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
               >
                 <Bell className="w-[18px] h-[18px]" />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-candy-600" />
+                {unreadNoticeCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
+                    {noticeBadge}
+                  </span>
+                )}
               </button>
             </div>
           </header>
@@ -1762,6 +1570,7 @@ export default function Home() {
                 setTab={setActivityTab}
                 onNavigate={changePage}
                 role={role}
+                actor={actor}
                 canEdit={role === "organizer" || role === "platform"}
               />
             )}
@@ -1774,20 +1583,31 @@ export default function Home() {
             )}
             {page === "costumes" && <CostumeReviewPage role={role} />}
             {page === "onsite" && (
-              <OnsitePage
-                checkins={checkins}
-                setCheckins={setCheckins}
-                issueOpen={issueOpen}
-                setIssueOpen={setIssueOpen}
+              <OnsiteWorkbench actor={actor} role={role as OpsRole} />
+            )}
+            {page === "archive" && (
+              <ArchivePanel
+                actor={actor}
+                role={role as OpsRole}
+                event={toReportEvent(selectedEvent)}
               />
             )}
-            {page === "archive" && <ArchivePage />}
             {page === "organizer" && (
               <OrganizerMaterials
                 canEdit={role === "organizer" || role === "platform"}
               />
             )}
-            {page === "data" && <DataCenter />}
+            {page === "data" && (
+              <DataCenterPanel
+                actor={actor}
+                role={role as OpsRole}
+                event={toReportEvent(selectedEvent)}
+                permissions={permissions}
+                onOpen={(next, tab) =>
+                  changePage(next as Page, tab as ActivityTab | undefined)
+                }
+              />
+            )}
             {page === "onboarding" && (
               <OrganizerOnboarding
                 state={admission}
@@ -1823,22 +1643,19 @@ export default function Home() {
         </div>
       </div>
       {notificationOpen && (
-        <NotificationPanel
+        <NoticePanel
+          role={role as OpsRole}
+          permissions={permissions}
           onClose={() => setNotificationOpen(false)}
-          onOpenCostume={() => {
-            setNotificationOpen(false);
-            setPage("costumes");
-          }}
+          onOpen={(next, tab) =>
+            changePage(next as Page, tab as ActivityTab | undefined)
+          }
         />
       )}
       {settingOpen && (
         <SettingsPanel
           role={role}
-          onRoleChange={next => {
-            setRole(next);
-            if (!ROLE_INFO[next].permissions.includes(page))
-              setPage("workspace");
-          }}
+          displayName={displayName}
           onClose={() => setSettingOpen(false)}
           onLogout={() => {
             setSettingOpen(false);
@@ -2216,12 +2033,22 @@ function EventsPage({
   onCreate?: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const results = events.filter(event =>
-    [event.name, event.subtitle, event.organizer]
-      .join(" ")
-      .toLowerCase()
-      .includes(query.toLowerCase())
+  const [filter, setFilter] = useState<EventFilterValue>(EMPTY_EVENT_FILTER);
+  const results = events.filter(
+    event =>
+      [event.name, event.subtitle, event.organizer, event.venue]
+        .join(" ")
+        .toLowerCase()
+        .includes(query.toLowerCase()) && matchEventFilter(event, filter)
   );
+  const statusOptions = (Object.keys(STATUS_META) as EventStatus[]).map(
+    status => ({
+      value: status,
+      label: STATUS_META[status].label,
+      count: events.filter(event => event.status === status).length,
+    })
+  );
+  const filtered = Boolean(query) || filter !== EMPTY_EVENT_FILTER;
   return (
     <div className="space-y-6">
       <ModuleTitle
@@ -2252,19 +2079,18 @@ function EventsPage({
               className="w-full h-11 pl-9 pr-3 border border-slate-300 rounded-lg text-[14px] outline-none focus:border-brand-500"
             />
           </div>
-          <div className="flex gap-2">
-            <ActionButton
-              label="状态筛选"
-              className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium"
-              description="可按活动创建、资料准备、信息核验、售票、进行中、结束和归档状态筛选。"
-            />
-            <ActionButton
-              label="时间范围"
-              className="h-10 px-3 rounded-lg border border-slate-300 text-[14px] font-medium"
-              description="可按活动时间、创建时间和更新时间筛选。"
-            />
-          </div>
+          <EventFilterBar
+            value={filter}
+            onChange={setFilter}
+            statusOptions={statusOptions}
+          />
         </div>
+        <ActiveFilterChips
+          value={filter}
+          onChange={setFilter}
+          statusLabel={status => STATUS_META[status as EventStatus].label}
+          resultCount={results.length}
+        />
         {results.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-[1040px] w-full text-left">
@@ -2344,15 +2170,23 @@ function EventsPage({
             />
             <h3 className="mt-4 text-[17px] font-semibold">未找到匹配活动</h3>
             <p className="mt-2 text-[14px] leading-6 text-slate-600">
-              <PhraseLine parts={["请调整搜索关键词", "或创建一场新的活动"]} />
+              <PhraseLine
+                parts={["请调整搜索关键词或筛选条件", "或创建一场新的活动"]}
+              />
             </p>
             <div className="mt-5 flex justify-center gap-2">
-              <button
-                onClick={() => setQuery("")}
-                className="h-10 px-4 rounded-full border border-brand-200 bg-white text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-              >
-                清除搜索
-              </button>
+              {filtered && (
+                <button
+                  data-cy="filter-reset"
+                  onClick={() => {
+                    setQuery("");
+                    setFilter(EMPTY_EVENT_FILTER);
+                  }}
+                  className="h-10 px-4 rounded-full border border-brand-200 bg-white text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
+                >
+                  清除搜索和筛选
+                </button>
+              )}
               {onCreate && (
                 <button
                   onClick={onCreate}
@@ -2376,6 +2210,7 @@ function ActivityRecord({
   setTab,
   onNavigate,
   role,
+  actor,
   canEdit,
 }: {
   event: EventItem;
@@ -2383,9 +2218,9 @@ function ActivityRecord({
   setTab: (tab: ActivityTab) => void;
   onNavigate: (page: Page, tab?: ActivityTab) => void;
   role: Role;
+  actor: { name: string; role: string };
   canEdit: boolean;
 }) {
-  const [tabCheckins, setTabCheckins] = useState(0);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const tabs: { id: ActivityTab; label: string; icon: typeof FileText }[] = [
     { id: "overview", label: "活动概况", icon: Grid2X2 },
@@ -2477,217 +2312,35 @@ function ActivityRecord({
       </div>
       {tab === "overview" && <ActivityOverview event={event} onTab={setTab} />}
       {tab === "materials" && <ActivityMaterials canEdit={canEdit} />}
-      {tab === "participants" && <Participants />}
+      {tab === "participants" && (
+        <ParticipantsPanel
+          actor={actor}
+          role={role as OpsRole}
+          onOpenReview={() => setTab("costumes")}
+        />
+      )}
       {tab === "tickets" && <TicketPage compact role={role} />}
       {tab === "costumes" && <CostumeReviewPage role={role} compact />}
       {tab === "onsite" && (
-        <OnsitePage
-          checkins={tabCheckins}
-          setCheckins={setTabCheckins}
-          issueOpen={false}
-          setIssueOpen={() => {}}
+        <OnsiteWorkbench actor={actor} role={role as OpsRole} compact />
+      )}
+      {tab === "data" && <EventDataPanel actor={actor} />}
+      {tab === "issues" && <IssuesPanel actor={actor} role={role as OpsRole} />}
+      {tab === "archive" && (
+        <ArchivePanel
+          actor={actor}
+          role={role as OpsRole}
+          event={toReportEvent(event)}
           compact
         />
       )}
-      {tab === "data" && <EventData />}
-      {tab === "issues" && <Issues />}
-      {tab === "archive" && <ArchivePage compact />}
       {summaryOpen && (
-        <ActivitySummaryReport
-          event={event}
+        <ActivityReportDialog
+          event={toReportEvent(event)}
+          actor={actor}
           onClose={() => setSummaryOpen(false)}
         />
       )}
-    </div>
-  );
-}
-function ActivitySummaryReport({
-  event,
-  onClose,
-}: {
-  event: EventItem;
-  onClose: () => void;
-}) {
-  const [downloaded, setDownloaded] = useState(false);
-  const download = () => {
-    const content = `活动摘要
-${event.name} ${event.subtitle}
-活动编号 ${event.id}
-活动阶段 售票中
-已售票 4,662 张
-实名完成 4,484 人
-角色服装道具 326 份申报 2 项协同核验
-异常核验 2 项
-待处理事项 角色道具初核 现场售票点库存 夜间值守联系人`;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${event.id}_活动摘要.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
-  };
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
-      />
-      <section className="relative w-full max-w-[900px] max-h-[88vh] overflow-y-auto bg-[#fbfcfe] rounded-xl shadow-2xl">
-        <div className="sticky top-0 z-10 p-5 bg-white/95 backdrop-blur border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <div className="text-[13px] text-slate-500">活动数字档案</div>
-            <h2 className="mt-1 text-[21px] font-semibold">活动摘要预览</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-5 sm:p-7 space-y-5">
-          <section className="bg-white border border-slate-200 rounded-xl p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Status status={event.status} />
-              <span className="text-[13px] text-slate-500">{event.id}</span>
-            </div>
-            <h3 className="mt-4 text-[24px] font-semibold">{event.name}</h3>
-            <p className="mt-1 text-[16px] text-slate-600">{event.subtitle}</p>
-            <div className="mt-4 grid sm:grid-cols-3 gap-3 text-[14px] text-slate-700">
-              <span className="flex items-center gap-1.5">
-                <Clock3 className="w-4 h-4 text-slate-500" />
-                <EventDate date={event.date} />
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-slate-500" />
-                {event.venue}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-slate-500" />
-                {event.organizer}
-              </span>
-            </div>
-          </section>
-          <section className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-3">
-            <ReportMetric label="已售票" value="4,662 张" />
-            <ReportMetric label="实名完成" value="4,484 人" />
-            <ReportMetric label="现场入场" value="3,218 人" />
-            <ReportMetric label="异常核验" value="2 项" tone="rose" />
-          </section>
-          <section className="grid lg:grid-cols-2 gap-5">
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <h3 className="text-[17px] font-semibold">活动生命周期</h3>
-              <div className="mt-4 space-y-3">
-                <ReportLine
-                  label="已完成"
-                  text="活动创建 资料准备 信息核验"
-                  tone="green"
-                />
-                <ReportLine
-                  label="当前阶段"
-                  text="售票中 票种与电子票已开放"
-                  tone="blue"
-                />
-                <ReportLine
-                  label="待处理"
-                  text="角色道具初核 现场售票点库存 夜间值守联系人"
-                  tone="amber"
-                />
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <h3 className="text-[17px] font-semibold">业务汇总</h3>
-              <div className="mt-4 space-y-3 text-[14px] leading-6">
-                <ReportList
-                  label="票务"
-                  text="普通观众票 3,548 张 Coser 专属票 326 张 学生早鸟票 788 张"
-                />
-                <ReportList
-                  label="角色服装道具"
-                  text="326 份申报 已通过 318 份 协同核验 2 份"
-                />
-                <ReportList
-                  label="资料与问题"
-                  text="活动资料 5 项 已完成 2 项异常核验均已登记"
-                />
-              </div>
-            </div>
-          </section>
-          {downloaded && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[14px] text-emerald-800">
-              活动摘要文件已下载到本地下载目录
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={onClose}
-              className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-            >
-              关闭
-            </button>
-            <button
-              onClick={download}
-              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
-            >
-              <Download className="w-4 h-4" />
-              下载活动摘要
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-function ReportMetric({
-  label,
-  value,
-  tone = "blue",
-}: {
-  label: string;
-  value: string;
-  tone?: "blue" | "rose";
-}) {
-  return (
-    <div
-      className={`rounded-lg border p-4 ${tone === "rose" ? "border-rose-200 bg-rose-50" : "border-brand-100 bg-brand-50"}`}
-    >
-      <div className="text-[13px] text-slate-600">{label}</div>
-      <div
-        className={`mt-2 text-[22px] font-semibold ${tone === "rose" ? "text-rose-700" : "text-brand-600"}`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-function ReportLine({
-  label,
-  text,
-  tone,
-}: {
-  label: string;
-  text: string;
-  tone: "green" | "blue" | "amber";
-}) {
-  const styles = {
-    green: "bg-emerald-50 text-emerald-800",
-    blue: "bg-brand-50 text-brand-800",
-    amber: "bg-amber-50 text-amber-800",
-  }[tone];
-  return (
-    <div className={`rounded-lg p-3 ${styles}`}>
-      <div className="text-[13px] font-semibold">{label}</div>
-      <div className="mt-1 text-[14px] leading-6">{text}</div>
-    </div>
-  );
-}
-function ReportList({ label, text }: { label: string; text: string }) {
-  return (
-    <div>
-      <div className="text-[13px] font-semibold text-slate-500">{label}</div>
-      <div className="mt-1">{text}</div>
     </div>
   );
 }
@@ -2976,216 +2629,6 @@ function LogLine({ time, text }: { time: string; text: string }) {
   );
 }
 
-function Participants() {
-  const people = [
-    {
-      name: "普通观众",
-      total: "4,536",
-      status: "实名完成 4,384",
-      action: "查看名单",
-    },
-    {
-      name: "Coser 参与者",
-      total: "326",
-      status: "角色提报 326",
-      action: "进入审核",
-    },
-    {
-      name: "参展商与工作人员",
-      total: "268",
-      status: "资料核验 255",
-      action: "查看资料",
-    },
-  ];
-  return (
-    <div className="space-y-5">
-      <ModuleTitle
-        title="参与人员"
-        description="统一查看普通观众、Coser、参展商与工作人员的报名、实名与入场状态。"
-        actions={
-          <ActionButton
-            label="导出脱敏名单"
-            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-            description="将按权限导出参与人员脱敏汇总，不包含原始敏感身份信息。"
-          />
-        }
-      />
-      <div className="grid md:grid-cols-3 gap-4">
-        {people.map(item => (
-          <div
-            key={item.name}
-            className="bg-white border border-slate-200 rounded-xl p-5"
-          >
-            <Users className="w-5 h-5 text-brand-600" />
-            <div className="mt-4 text-[16px] font-semibold">{item.name}</div>
-            <div className="mt-2 text-[28px] leading-8 font-semibold">
-              {item.total}
-            </div>
-            <div className="mt-2 text-[13px] text-slate-600">{item.status}</div>
-            <ActionButton
-              label={`${item.action} →`}
-              className="mt-5 text-[14px] font-semibold text-brand-600 text-left"
-              title={item.action}
-              description={`可按权限查阅${item.name}的实名、报名或资料核验明细。`}
-            />
-          </div>
-        ))}
-      </div>
-      <EmptyState
-        icon={<UserPlus className="w-5 h-5" />}
-        title="需要新增参与人员吗？"
-        text="可由主办方在活动内维护工作人员和参展主体信息，系统自动写入活动档案。"
-        action="新增工作人员"
-      />
-    </div>
-  );
-}
-
-type RefundStatus = "pending_review" | "refunded" | "rejected";
-type RefundRecord = {
-  id: string;
-  requestNo: string;
-  orderNo: string;
-  buyerName: string;
-  buyerPhone: string;
-  ticketName: string;
-  ticketCode: string;
-  amount: number;
-  reason: string;
-  detail: string;
-  requestedAt: string;
-  status: RefundStatus;
-  processedBy?: string;
-  processedAt?: string;
-  comment?: string;
-  logs: { action: string; actor: string; time: string; comment?: string }[];
-};
-
-const REFUND_STORAGE_KEY = "quji_preview_refund_requests_v3";
-const DEFAULT_REFUNDS: RefundRecord[] = [
-  {
-    id: "refund-20260929-001",
-    requestNo: "TK202609290001",
-    orderNo: "ORD1789301120316",
-    buyerName: "马晓彤",
-    buyerPhone: "138****9036",
-    ticketName: "普通观众票",
-    ticketCode: "QT-20260628-10316",
-    amount: 88,
-    reason: "重复购票",
-    detail:
-      "家人已经帮我购买同场次门票，本人购买的这张电子票尚未使用，申请原路退款。",
-    requestedAt: "2026-09-29 16:42",
-    status: "pending_review",
-    logs: [
-      {
-        action: "用户提交退款申请",
-        actor: "马晓彤 · 漫圈 App 用户",
-        time: "2026-09-29 16:42",
-        comment: "重复购票",
-      },
-    ],
-  },
-  {
-    id: "refund-20260929-004",
-    requestNo: "TK202609290004",
-    orderNo: "ORD1789301121958",
-    buyerName: "帕提古丽·吐尔逊",
-    buyerPhone: "159****2207",
-    ticketName: "学生早鸟票",
-    ticketCode: "QT-20260629-21958",
-    amount: 58,
-    reason: "活动时间冲突",
-    detail: "学校临时安排考试，6月29日无法到场，电子票尚未使用。",
-    requestedAt: "2026-09-29 09:30",
-    status: "pending_review",
-    logs: [
-      {
-        action: "用户提交退款申请",
-        actor: "帕提古丽·吐尔逊 · 漫圈 App 用户",
-        time: "2026-09-29 09:30",
-        comment: "活动时间冲突",
-      },
-    ],
-  },
-  {
-    id: "refund-20260928-002",
-    requestNo: "TK202609280002",
-    orderNo: "ORD1789301120762",
-    buyerName: "艾力江·买买提",
-    buyerPhone: "186****5218",
-    ticketName: "Coser 专属票",
-    ticketCode: "QT-20260629-20762",
-    amount: 68,
-    reason: "活动时间冲突",
-    detail: "临时有课程安排，无法按时参加活动。",
-    requestedAt: "2026-09-28 13:20",
-    status: "refunded",
-    processedBy: "周可",
-    processedAt: "2026-09-28 13:38",
-    comment: "符合活动退票规则，同意原路退回",
-    logs: [
-      {
-        action: "用户提交退款申请",
-        actor: "艾力江·买买提 · 漫圈 App 用户",
-        time: "2026-09-28 13:20",
-      },
-      {
-        action: "平台同意退款",
-        actor: "周可 · 平台运营人员",
-        time: "2026-09-28 13:38",
-        comment: "符合活动退票规则，同意原路退回",
-      },
-      {
-        action: "退款已提交原支付渠道",
-        actor: "系统 · 票务系统",
-        time: "2026-09-28 13:38",
-        comment: "预计 1—3 个工作日到账",
-      },
-    ],
-  },
-  {
-    id: "refund-20260927-003",
-    requestNo: "TK202609270003",
-    orderNo: "ORD1789301098175",
-    buyerName: "赵宁",
-    buyerPhone: "177****1182",
-    ticketName: "学生早鸟票",
-    ticketCode: "QT-20260628-98175",
-    amount: 58,
-    reason: "个人原因",
-    detail: "临时无法到场。",
-    requestedAt: "2026-09-27 19:05",
-    status: "rejected",
-    processedBy: "周可",
-    processedAt: "2026-09-27 19:18",
-    comment: "电子票已核验入场，当前订单不符合退款条件",
-    logs: [
-      {
-        action: "用户提交退款申请",
-        actor: "赵宁 · 漫圈 App 用户",
-        time: "2026-09-27 19:05",
-      },
-      {
-        action: "平台驳回退款申请",
-        actor: "周可 · 平台运营人员",
-        time: "2026-09-27 19:18",
-        comment: "电子票已核验入场，当前订单不符合退款条件",
-      },
-    ],
-  },
-];
-
-function loadRefundRecords() {
-  if (typeof window === "undefined") return DEFAULT_REFUNDS;
-  try {
-    const saved = window.localStorage.getItem(REFUND_STORAGE_KEY);
-    return saved ? (JSON.parse(saved) as RefundRecord[]) : DEFAULT_REFUNDS;
-  } catch {
-    return DEFAULT_REFUNDS;
-  }
-}
-
 function TicketPage({
   compact = false,
   role,
@@ -3347,7 +2790,7 @@ function TicketPage({
   };
   const updateRefund = (next: RefundRecord[]) => {
     setRefunds(next);
-    window.localStorage.setItem(REFUND_STORAGE_KEY, JSON.stringify(next));
+    saveRefundRecords(next);
   };
   const refundSteps: {
     icon: typeof Smartphone;
@@ -4562,870 +4005,63 @@ function SimpleTable({
   );
 }
 
-function OnsitePage({
-  checkins,
-  setCheckins,
-  issueOpen,
-  setIssueOpen,
-  compact = false,
-}: {
-  checkins: number;
-  setCheckins: (count: number) => void;
-  issueOpen: boolean;
-  setIssueOpen: (open: boolean) => void;
-  compact?: boolean;
-}) {
-  const totalIn = 3218 + checkins;
-  return (
-    <div className="space-y-5">
-      {!compact && (
-        <ModuleTitle
-          eyebrow="现场管理"
-          title="现场核验与入场运行"
-          description="统一处理电子票二维码、实名信息、角色服装和异常核验。"
-          actions={
-            <button
-              onClick={() => setIssueOpen(true)}
-              className="h-11 px-4 rounded-lg bg-rose-600 text-white text-[15px] font-semibold flex items-center gap-1.5"
-            >
-              <CircleAlert className="w-5 h-5" />
-              登记异常
-            </button>
-          }
-        />
-      )}
-      <section className="relative overflow-hidden rounded-2xl bg-brand-900 p-5 sm:p-6 text-white">
-        <div
-          className="vi-halftone pointer-events-none absolute inset-0 opacity-60"
-          aria-hidden="true"
-        />
-        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div>
-            <div className="text-[13px] text-brand-100">
-              当前场次 · 2026 魔都动漫嘉年华
-            </div>
-            <h2 className="mt-2 text-[26px] font-semibold">现场核验工作台</h2>
-            <p className="mt-2 text-[15px] text-white/85">
-              请扫描电子票二维码，系统将核对订单、实名状态与活动规则。
-            </p>
-          </div>
-          <button
-            onClick={() => setCheckins(checkins + 1)}
-            className="h-16 px-7 rounded-full bg-sun-400 text-brand-900 hover:bg-[#ffd04d] text-[18px] font-semibold flex items-center justify-center gap-3 shadow-[0_4px_0_0_#2b2350] transition-transform active:translate-y-[2px] active:shadow-[0_2px_0_0_#2b2350]"
-          >
-            <ScanLine className="w-7 h-7" />
-            扫码核验
-          </button>
-        </div>
-        <div className="onsite-stat-grid relative mt-6 grid grid-cols-1 min-[460px]:grid-cols-2 lg:grid-cols-5 gap-3">
-          <OnsiteStat label="已售票" value="4,662" />
-          <OnsiteStat label="已实名" value="4,484" />
-          <OnsiteStat label="已入场" value={totalIn.toLocaleString()} />
-          <OnsiteStat
-            label="当前场内"
-            value={(2945 + checkins).toLocaleString()}
-          />
-          <OnsiteStat label="异常核验" value="02" danger />
-        </div>
-      </section>
-      <section className="grid xl:grid-cols-[1.1fr_0.9fr] gap-5">
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-[18px] font-semibold">实时入场记录</h3>
-              <p className="mt-1 text-[14px] text-slate-600">
-                扫码后即时写入活动档案和现场统计。
-              </p>
-            </div>
-            <Pill tone="green">核验服务正常</Pill>
-          </div>
-          <div className="divide-y divide-slate-200">
-            <CheckinRow
-              name="张三"
-              ticket="Coser 专属票"
-              detail="实名通过 · 甘雨 · 无异常道具"
-              time="刚刚"
-              status="通过"
-            />
-            <CheckinRow
-              name="王小东"
-              ticket="普通观众票"
-              detail="实名通过 · 电子票有效"
-              time="2 分钟前"
-              status="通过"
-            />
-            <CheckinRow
-              name="李思远"
-              ticket="Coser 专属票"
-              detail="机甲重装佣兵 · 已转安保复验"
-              time="5 分钟前"
-              status="复验"
-            />
-          </div>
-        </div>
-        <div className="space-y-5">
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
-            <h3 className="text-[18px] font-semibold">进场速度</h3>
-            <div className="mt-4 flex items-end gap-2 h-28">
-              {[35, 48, 42, 72, 78, 63, 82, 66, 90, 76, 70, 84].map((v, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t bg-brand-grad"
-                  style={{ height: `${v}%` }}
-                />
-              ))}
-            </div>
-            <div className="mt-3 flex justify-between text-[13px] text-slate-500">
-              <span>08:30</span>
-              <span>10:00</span>
-              <span>11:30</span>
-            </div>
-            <div className="mt-3 text-[15px] font-semibold">
-              当前 118 人 / 10 分钟
-            </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
-            <h3 className="text-[18px] font-semibold">现场操作</h3>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <ActionButton
-                label="手动核验电子票"
-                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<QrCode className="mb-2 w-5 h-5 text-brand-600" />}
-                description="可输入订单号或电子票编号进行人工核验。"
-              />
-              <ActionButton
-                label="实名信息核对"
-                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<UserCheck className="mb-2 w-5 h-5 text-brand-600" />}
-                description="按授权范围核对订单关联的实名状态与核验结果。"
-              />
-              <button
-                onClick={() => setIssueOpen(true)}
-                className="min-h-[84px] rounded-lg border border-amber-200 bg-amber-50 text-[14px] font-semibold text-amber-800"
-              >
-                <CircleAlert className="mx-auto mb-2 w-5 h-5" />
-                异常核验登记
-              </button>
-              <ActionButton
-                label="导出现场交接表"
-                className="min-h-[84px] rounded-lg border border-slate-300 text-[14px] font-semibold hover:bg-slate-50 flex flex-col items-center justify-center"
-                icon={<Download className="mb-2 w-5 h-5 text-brand-600" />}
-                description="导出入场、异常核验和现场处置的交接汇总。"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-      {issueOpen && <IssueModal onClose={() => setIssueOpen(false)} />}
-    </div>
-  );
-}
-function OnsiteStat({
-  label,
-  value,
-  danger,
-}: {
-  label: string;
-  value: string;
-  danger?: boolean;
-}) {
-  return (
-    <div className="bg-white/10 border border-white/20 rounded-xl p-3">
-      <div className="text-[12px] text-brand-100">{label}</div>
-      <div
-        className={`mt-1 text-[24px] leading-7 font-semibold ${danger ? "text-rose-300" : ""}`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-function CheckinRow({
-  name,
-  ticket,
-  detail,
-  time,
-  status,
-}: {
-  name: string;
-  ticket: string;
-  detail: string;
-  time: string;
-  status: string;
-}) {
-  return (
-    <div className="p-4 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
-        <UserRound className="w-4 h-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[15px] font-semibold">
-          {name}
-          <span className="ml-2 text-[13px] font-normal text-slate-600">
-            {ticket}
-          </span>
-        </div>
-        <div className="mt-1 text-[13px] text-slate-600">{detail}</div>
-      </div>
-      <div className="text-right">
-        <Pill tone={status === "通过" ? "green" : "amber"}>{status}</Pill>
-        <div className="mt-1 text-[12px] text-slate-500">{time}</div>
-      </div>
-    </div>
-  );
-}
-function IssueModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4">
-      <div className="w-full max-w-[520px] bg-white rounded-lg shadow-2xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[21px] font-semibold">登记现场异常</h2>
-            <p className="mt-1 text-[14px] text-slate-600">
-              异常记录将自动写入本场活动数字档案。
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="mt-5 grid gap-4">
-          <Field
-            label="异常类型"
-            value="请选择：电子票异常 / 实名不一致 / 道具复验"
-          />
-          <Field
-            label="关联订单或参与人"
-            value="请输入订单号、姓名或扫码凭证"
-          />
-          <Field label="现场处置记录" value="请记录核验结果与处置方式" />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-          >
-            取消
-          </button>
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold"
-          >
-            保存异常记录
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EventData() {
-  return (
-    <div className="space-y-5">
-      <ModuleTitle
-        title="活动数据"
-        description="围绕售票、入场、退款、人员、客流、核验和异常数据提供活动运行分析。"
-        actions={
-          <ActionButton
-            label="导出活动数据"
-            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
-            icon={<Download className="w-4 h-4" />}
-            description="导出售票、入场、退款、人员、客流、核验和异常统计。"
-          />
-        }
-      />
-      <div className="metric-grid grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-4 gap-4">
-        <TodayStat
-          label="售票金额"
-          value="¥380,096"
-          sub="较昨日增长 12.4%"
-          icon={<WalletCards className="w-5 h-5" />}
-        />
-        <TodayStat
-          label="退款率"
-          value="0.39%"
-          sub="18 笔退款申请"
-          icon={<RefreshCcw className="w-5 h-5" />}
-          tone="amber"
-        />
-        <TodayStat
-          label="入场率"
-          value="96.8%"
-          sub="电子票核验通过率"
-          icon={<TicketCheck className="w-5 h-5" />}
-        />
-        <TodayStat
-          label="异常率"
-          value="0.04%"
-          sub="2 项异常核验"
-          icon={<CircleAlert className="w-5 h-5" />}
-          tone="rose"
-        />
-      </div>
-      <div className="grid grid-cols-1 min-[1080px]:grid-cols-[1.35fr_0.65fr] gap-5">
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="text-[18px] font-semibold">售票与入场趋势</h3>
-          <p className="mt-1 text-[14px] text-slate-600">
-            按活动日与时段汇总的票务、客流与核验数据。
-          </p>
-          <div className="mt-7 h-56 flex items-end gap-4 border-b border-slate-200 pb-6">
-            {[44, 62, 55, 74, 68, 88, 94, 82, 72, 64].map((v, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full max-w-[42px] bg-brand-grad rounded-t"
-                  style={{ height: `${v}%` }}
-                />
-                <span className="text-[12px] text-slate-500">{i + 8}:00</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="text-[18px] font-semibold">数据口径</h3>
-          <div className="mt-4 space-y-4">
-            <MiniMetric
-              label="售票"
-              value="订单支付成功"
-              sub="普通票、Coser票、学生票、现场票"
-            />
-            <MiniMetric
-              label="入场"
-              value="二维码核验通过"
-              sub="与订单、实名和现场记录关联"
-            />
-            <MiniMetric
-              label="异常"
-              value="已登记并处置"
-              sub="支持按活动形成问题与操作记录"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-function Issues() {
-  return (
-    <div className="space-y-5">
-      <ModuleTitle
-        title="问题记录"
-        description="记录活动准备、售票、现场服务与核验过程中发现的问题及处置过程。"
-        actions={
-          <ActionButton
-            label="登记问题"
-            className="h-10 px-4 rounded-lg bg-rose-600 text-white text-[14px] font-semibold flex items-center gap-1.5"
-            icon={<Plus className="w-4 h-4" />}
-            description="问题将关联活动阶段、处理责任人、时限和处置记录。"
-          />
-        }
-      />
-      <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-200">
-        <IssueRow
-          level="高"
-          title="仿真道具尺寸待复验"
-          detail="机甲重装佣兵 · 现场安保须在入场前核验重弩模型尺寸与材质"
-          status="处理中"
-          time="今天 11:50"
-        />
-        <IssueRow
-          level="中"
-          title="夜间值守联系人尚未补充"
-          detail="现场服务与应急联络表缺少 20:00 后场馆协调联系人"
-          status="待主办方处理"
-          time="今天 10:05"
-        />
-        <IssueRow
-          level="低"
-          title="学生早鸟票库存接近售罄"
-          detail="已售 788 / 800，建议在停售后同步更新活动首页说明"
-          status="已完成"
-          time="昨天 16:20"
-        />
-      </div>
-    </div>
-  );
-}
-function IssueRow({
-  level,
-  title,
-  detail,
-  status,
-  time,
-}: {
-  level: string;
-  title: string;
-  detail: string;
-  status: string;
-  time: string;
-}) {
-  return (
-    <div className="p-5 flex flex-col md:flex-row gap-4 md:items-center">
-      <div
-        className={`w-10 h-10 rounded-lg flex items-center justify-center ${level === "高" ? "bg-rose-50 text-rose-600" : level === "中" ? "bg-amber-50 text-amber-600" : "bg-brand-50 text-brand-600"}`}
-      >
-        <CircleAlert className="w-5 h-5" />
-      </div>
-      <div className="flex-1">
-        <div className="text-[16px] font-semibold">{title}</div>
-        <div className="mt-1 text-[14px] leading-6 text-slate-600">
-          {detail}
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <Pill
-          tone={
-            status === "已完成" ? "green" : level === "高" ? "rose" : "amber"
-          }
-        >
-          {status}
-        </Pill>
-        <div className="text-[13px] text-slate-500 whitespace-nowrap">
-          {time}
-        </div>
-        <ActionButton
-          label="处理记录"
-          className="text-[14px] font-semibold text-brand-600"
-          description="查看问题的登记、分派、处理与结项记录。"
-        />
-      </div>
-    </div>
-  );
-}
-
-function ArchivePage({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className="space-y-5">
-      {!compact && (
-        <ModuleTitle
-          eyebrow="数字档案"
-          title="活动结束与归档管理"
-          description="活动结束后汇集活动资料、票务、参与人员、现场核验、问题记录、数据汇总与操作日志，形成完整数字档案。"
-          actions={
-            <ActionButton
-              label="生成归档摘要"
-              className="h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold flex items-center gap-1.5"
-              icon={<FileArchive className="w-4 h-4" />}
-              description="将汇集资料、票务、现场、问题、数据和操作日志形成归档摘要。"
-            />
-          }
-        />
-      )}
-      <section className="grid md:grid-cols-3 gap-4">
-        <ArchiveCard
-          title="资料归集"
-          value="5 / 5"
-          text="活动基础资料、规则和现场保障材料"
-          state="已完成"
-        />
-        <ArchiveCard
-          title="运行数据"
-          value="8 / 8"
-          text="售票、退款、入场、客流、核验与异常数据"
-          state="已完成"
-        />
-        <ArchiveCard
-          title="结项归档"
-          value="待活动结束"
-          text="活动结束后自动生成归档清单与复盘摘要"
-          state="待进行"
-        />
-      </section>
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="p-5 border-b border-slate-200">
-          <h3 className="text-[18px] font-semibold">本场活动归档清单</h3>
-          <p className="mt-1 text-[14px] text-slate-600">
-            归档动作全程留痕，适用于活动运营复盘与服务资料整理。
-          </p>
-        </div>
-        <div className="divide-y divide-slate-200">
-          <ArchiveLine
-            icon={<FileText className="w-5 h-5" />}
-            title="活动资料与材料版本"
-            status="已归集"
-          />
-          <ArchiveLine
-            icon={<Ticket className="w-5 h-5" />}
-            title="票务、订单、退款与电子票核验汇总"
-            status="已归集"
-          />
-          <ArchiveLine
-            icon={<Users className="w-5 h-5" />}
-            title="参与人员脱敏汇总与现场入场记录"
-            status="已归集"
-          />
-          <ArchiveLine
-            icon={<CircleAlert className="w-5 h-5" />}
-            title="问题记录、异常核验与处置过程"
-            status="持续更新"
-          />
-          <ArchiveLine
-            icon={<ScrollText className="w-5 h-5" />}
-            title="活动复盘摘要与操作日志"
-            status="待生成"
-          />
-        </div>
-      </section>
-    </div>
-  );
-}
-function ArchiveCard({
-  title,
-  value,
-  text,
-  state,
-}: {
-  title: string;
-  value: string;
-  text: string;
-  state: string;
-}) {
-  return (
-    <div className="metric-card min-w-0 bg-white border border-slate-200 rounded-xl p-5">
-      <div className="text-[14px] text-slate-600 [word-break:keep-all]">
-        {title}
-      </div>
-      <div className="metric-value mt-2 text-[28px] leading-8 font-semibold">
-        {value}
-      </div>
-      <div className="metric-sub mt-2 text-[14px] leading-6 text-slate-600">
-        {text}
-      </div>
-      <div className="mt-4">
-        <Pill tone={state === "已完成" ? "green" : "amber"}>{state}</Pill>
-      </div>
-    </div>
-  );
-}
-function ArchiveLine({
-  icon,
-  title,
-  status,
-}: {
-  icon: ReactNode;
-  title: string;
-  status: string;
-}) {
-  return (
-    <div className="p-4 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-        {icon}
-      </div>
-      <div className="flex-1 text-[15px] font-semibold">{title}</div>
-      <Pill
-        tone={
-          status === "已归集"
-            ? "green"
-            : status === "持续更新"
-              ? "blue"
-              : "amber"
-        }
-      >
-        {status}
-      </Pill>
-      <ActionButton
-        label="查看"
-        className="text-[14px] font-semibold text-brand-600"
-        description="查看该归档事项关联的活动材料和操作记录。"
-      />
-    </div>
-  );
-}
-
-function DataCenter() {
-  return (
-    <div className="space-y-5">
-      <ModuleTitle
-        eyebrow="数据中心"
-        title="活动真实业务数据"
-        description="围绕售票、入场、退款、人员、客流、核验和异常数据形成运营复盘，不使用装饰性数据卡片替代业务内容。"
-        actions={
-          <ActionButton
-            label="导出活动复盘数据"
-            className="h-10 px-4 rounded-full border border-brand-200 text-[14px] font-semibold flex items-center gap-1.5 hover:bg-brand-50 text-brand-700"
-            icon={<Download className="w-4 h-4" />}
-            description="导出各活动的售票、入场、退款、人员、核验与异常数据。"
-          />
-        }
-      />
-      <section className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="min-w-[940px] w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-[13px] text-slate-600">
-              <th className="p-4 font-semibold">业务主题</th>
-              <th className="p-4 font-semibold">当前值</th>
-              <th className="p-4 font-semibold">统计口径</th>
-              <th className="p-4 font-semibold">关联模块</th>
-              <th className="p-4 font-semibold">更新频率</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            <DataRow
-              title="票务销售"
-              value="4,662 张 / ¥380,096"
-              definition="支付成功订单，按票种、渠道与时段统计"
-              module="票务管理"
-              update="实时"
-            />
-            <DataRow
-              title="人员与实名"
-              value="4,484 人完成实名认证"
-              definition="活动参与人员的实名状态汇总，不展示原始敏感身份影像"
-              module="参与人员"
-              update="实时"
-            />
-            <DataRow
-              title="入场与客流"
-              value="3,218 人已入场"
-              definition="电子票二维码核验通过与现场手工核验记录"
-              module="现场管理"
-              update="实时"
-            />
-            <DataRow
-              title="退款情况"
-              value="18 笔 / 0.38%"
-              definition="退款申请、处理状态与金额汇总"
-              module="票务管理"
-              update="每 10 分钟"
-            />
-            <DataRow
-              title="角色服装道具"
-              value="326 份申报 / 2 项协同核验"
-              definition="Coser 提交的角色、服装、道具信息和操作记录"
-              module="角色服装道具"
-              update="实时"
-            />
-            <DataRow
-              title="异常与问题"
-              value="2 项异常核验"
-              definition="活动准备与现场过程中登记的问题、处置过程和结果"
-              module="问题记录"
-              update="实时"
-            />
-          </tbody>
-        </table>
-      </section>
-      <section className="space-y-5">
-        <EventData />
-        <ArchivePage compact />
-      </section>
-    </div>
-  );
-}
-function DataRow({
-  title,
-  value,
-  definition,
-  module,
-  update,
-}: {
-  title: string;
-  value: string;
-  definition: string;
-  module: string;
-  update: string;
-}) {
-  return (
-    <tr>
-      <td className="p-4 text-[15px] font-semibold">{title}</td>
-      <td className="p-4 text-[15px] font-semibold text-brand-600">{value}</td>
-      <td className="p-4 text-[14px] leading-6 text-slate-600">{definition}</td>
-      <td className="p-4">
-        <Pill tone="blue">{module}</Pill>
-      </td>
-      <td className="p-4 text-[14px] text-slate-600">{update}</td>
-    </tr>
-  );
-}
-
-function NotificationPanel({
-  onClose,
-  onOpenCostume,
-}: {
-  onClose: () => void;
-  onOpenCostume: () => void;
-}) {
-  const [read, setRead] = useState(false);
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
-      <aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto">
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 className="text-[20px] font-semibold">通知中心</h2>
-            <p className="mt-1 text-[14px] text-slate-600">
-              活动待办、异常提醒与协同动态
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-5">
-          <button
-            onClick={() => setRead(true)}
-            className="w-full h-10 rounded-full border border-brand-200 text-[14px] font-semibold hover:bg-brand-50 text-brand-700"
-          >
-            {read ? "已全部标记为已读" : "全部标记为已读"}
-          </button>
-          <div className="mt-4 space-y-3">
-            <Notice
-              icon={<ShieldCheck className="w-5 h-5" />}
-              tone="rose"
-              title="高关注道具需现场复验"
-              text="机甲重装佣兵 · 仿真重弩模型待核对尺寸与材质"
-              time="12 分钟前"
-              unread={!read}
-              action="进入角色管理"
-              onClick={onOpenCostume}
-            />
-            <Notice
-              icon={<FileText className="w-5 h-5" />}
-              tone="amber"
-              title="活动资料待补充"
-              text="现场服务与应急联络表缺少夜间值守联系人"
-              time="1 小时前"
-              unread={!read}
-              action="查看活动资料"
-            />
-            <Notice
-              icon={<TicketCheck className="w-5 h-5" />}
-              tone="blue"
-              title="票务库存提示"
-              text="学生早鸟票剩余 12 张，建议准备停售说明"
-              time="今天 09:20"
-              unread={false}
-              action="进入票务管理"
-            />
-          </div>
-        </div>
-      </aside>
-    </div>
-  );
-}
-function Notice({
-  icon,
-  tone,
-  title,
-  text,
-  time,
-  unread,
-  action,
-  onClick,
-}: {
-  icon: ReactNode;
-  tone: "rose" | "amber" | "blue";
-  title: string;
-  text: string;
-  time: string;
-  unread: boolean;
-  action: string;
-  onClick?: () => void;
-}) {
-  const c = {
-    rose: "bg-rose-50 text-rose-600",
-    amber: "bg-amber-50 text-amber-600",
-    blue: "bg-brand-50 text-brand-600",
-  }[tone];
-  return (
-    <div className="p-4 border border-slate-200 rounded-lg">
-      <div className="flex gap-3">
-        <div
-          className={`w-9 h-9 rounded-md shrink-0 flex items-center justify-center ${c}`}
-        >
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex gap-2">
-            <div className="text-[15px] font-semibold flex-1">{title}</div>
-            {unread && (
-              <span className="mt-1.5 w-2 h-2 rounded-full bg-brand-grad" />
-            )}
-          </div>
-          <p className="semantic-copy mt-1 text-[14px] leading-6 text-slate-600">
-            {text}
-          </p>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[12px] text-slate-500">{time}</span>
-            {onClick ? (
-              <button
-                onClick={onClick}
-                className="text-[13px] font-semibold text-brand-600 hover:text-brand-700"
-              >
-                {action}
-              </button>
-            ) : (
-              <ActionButton
-                label={action}
-                title={title}
-                description={text}
-                className="text-[13px] font-semibold text-brand-600 hover:text-brand-700"
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 function SettingsPanel({
   role,
-  onRoleChange,
+  displayName,
   onClose,
   onLogout,
 }: {
   role: Role;
-  onRoleChange: (role: Role) => void;
+  displayName: string;
   onClose: () => void;
   onLogout: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button onClick={onClose} className="absolute inset-0 bg-black/25" />
-      <aside className="relative w-full task-drawer max-w-[460px] h-full bg-white overflow-y-auto">
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+    <div
+      className="fixed inset-0 z-[60] flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-label="系统设置"
+    >
+      <button
+        type="button"
+        aria-label="关闭设置"
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-950/30"
+      />
+      <aside className="relative flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-5">
           <div>
             <h2 className="text-[20px] font-semibold">系统设置</h2>
             <p className="mt-1 text-[14px] text-slate-600">
-              当前工作身份与显示偏好
+              当前账号与提醒偏好
             </p>
           </div>
           <button
+            type="button"
+            aria-label="关闭"
             onClick={onClose}
-            className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center"
+            className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-5 space-y-5">
-          <section className="border border-slate-200 rounded-lg p-4">
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          <section className="rounded-xl border border-slate-200 p-4">
             <div className="text-[13px] font-semibold text-slate-500">
-              当前工作身份
+              当前登录账号
             </div>
-            <div className="mt-3 text-[17px] font-semibold">
+            <div className="mt-3 text-[18px] font-semibold text-slate-900">
+              {displayName}
+            </div>
+            <div className="mt-1 text-[14px] leading-6 text-slate-600">
               {ROLE_INFO[role].name}
             </div>
-            <div className="mt-1 text-[14px] text-slate-600">
-              {ROLE_INFO[role].note}
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-2">
-              {(Object.keys(ROLE_INFO) as Role[]).map(item => (
-                <button
-                  key={item}
-                  onClick={() => onRoleChange(item)}
-                  className={`h-10 px-3 text-left rounded-full border text-[13px] font-semibold whitespace-nowrap ${item === role ? "border-brand-500 bg-brand-50 text-brand-700" : "border-brand-200 hover:bg-brand-50"}`}
-                >
-                  {ROLE_INFO[item].name}
-                </button>
-              ))}
-            </div>
+            <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[13px] leading-5 text-brand-800">
+              登录身份与可见范围由账号权限决定。如需查看其他身份内容，请退出后使用对应账号登录。
+            </p>
           </section>
-          <section className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+          <section className="overflow-hidden rounded-xl border border-slate-200 divide-y divide-slate-200">
             <SettingRow
               title="审核待办提醒"
               text="有新的角色服装道具申报时显示待办角标"
@@ -5442,12 +4078,13 @@ function SettingsPanel({
               active
             />
           </section>
-          <section className="p-4 rounded-lg bg-brand-50 border border-brand-100 text-[14px] leading-6 text-brand-900">
+          <section className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-[14px] leading-6 text-brand-900">
             账号权限和可见数据范围由平台管理员统一配置。系统用于活动服务协同与资料归集，不替代相关行政审批、监管执法或其他已有业务系统。
           </section>
           <button
+            type="button"
             onClick={onLogout}
-            className="w-full h-11 rounded-lg border border-rose-200 text-rose-700 bg-rose-50 text-[14px] font-semibold"
+            className="h-11 w-full rounded-full border border-rose-200 bg-rose-50 text-[14px] font-semibold text-rose-700 hover:bg-rose-100"
           >
             退出登录
           </button>
@@ -5467,17 +4104,19 @@ function SettingRow({
 }) {
   const [on, setOn] = useState(active);
   return (
-    <div className="p-4 flex items-center gap-3">
+    <div className="flex items-center gap-3 p-4">
       <div className="flex-1">
         <div className="text-[15px] font-semibold">{title}</div>
         <div className="mt-1 text-[13px] leading-5 text-slate-600">{text}</div>
       </div>
       <button
+        type="button"
+        aria-pressed={on}
         onClick={() => setOn(!on)}
-        className={`w-11 h-6 rounded-full p-0.5 ${on ? "bg-brand-grad" : "bg-slate-300"}`}
+        className={`h-6 w-11 rounded-full p-0.5 ${on ? "bg-brand-500" : "bg-slate-300"}`}
       >
         <span
-          className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`}
+          className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : ""}`}
         />
       </button>
     </div>
