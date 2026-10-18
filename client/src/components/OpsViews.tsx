@@ -86,6 +86,7 @@ import {
   type StaffErrors,
   type StaffInput,
   type VerifyOutcome,
+  type ActivityOpsState,
 } from "./activityOpsCore";
 import { getActivityOps, updateOps, useActivityOps } from "./activityOps";
 import {
@@ -94,14 +95,70 @@ import {
   type ActivityReport,
   type ReportEventInput,
 } from "./activityReport";
-import { useRefundRecords } from "./refundData";
+import {
+  isConfirmedRefund,
+  useRefundRecords,
+  type RefundRecord,
+} from "./refundData";
 import { useTicketConfig } from "./ticketConfig";
 import { buildSessionStock } from "./ticketStats";
 import { SUBMISSION_STATUS_LABEL, useSubmissions } from "./submissionReview";
 import { useMyReviewCount } from "./CostumeReview";
 import { downloadCsv } from "./TicketConfigViews";
+import { useActivityEventId } from "./ActivityScopeContext";
+import { assertPrototypeWriteAllowed } from "@/lib/api";
+import { refundStatusPresentation } from "./activityScope";
 
 export type OpsRole = "platform" | "organizer" | "culture";
+
+const useOpsForEvent = useActivityOps as (
+  eventId?: string
+) => ReturnType<typeof useActivityOps>;
+const useRefundsForEvent = useRefundRecords as (
+  eventId?: string
+) => ReturnType<typeof useRefundRecords>;
+const useConfigForEvent = useTicketConfig as (
+  eventId?: string
+) => ReturnType<typeof useTicketConfig>;
+const useSubmissionsForEvent = useSubmissions as (
+  eventId?: string
+) => ReturnType<typeof useSubmissions>;
+const useReviewCountForEvent = useMyReviewCount as (
+  role: OpsRole,
+  eventId: string
+) => number;
+const updateOpsForEvent = updateOps as (
+  fn: (current: ActivityOpsState) => ActivityOpsState,
+  eventId?: string
+) => void;
+const getOpsForEvent = getActivityOps as (eventId?: string) => ActivityOpsState;
+
+function useScopedActivityOps() {
+  return useOpsForEvent(useActivityEventId());
+}
+function useScopedRefundRecords() {
+  return useRefundsForEvent(useActivityEventId());
+}
+function useScopedTicketConfig() {
+  return useConfigForEvent(useActivityEventId());
+}
+function useScopedSubmissions() {
+  return useSubmissionsForEvent(useActivityEventId());
+}
+function useScopedReviewCount(role: OpsRole) {
+  return useReviewCountForEvent(role, useActivityEventId());
+}
+function useScopedOpsActions() {
+  const eventId = useActivityEventId();
+  return {
+    eventId,
+    update: (fn: (current: ActivityOpsState) => ActivityOpsState) => {
+      assertPrototypeWriteAllowed("现场/运营操作");
+      updateOpsForEvent(fn, eventId);
+    },
+    get: () => getOpsForEvent(eventId),
+  };
+}
 
 /* ---------------- 通用样式与组件 ---------------- */
 
@@ -120,6 +177,23 @@ const areaClass =
 
 const n = (value: number) => value.toLocaleString("zh-CN");
 const money = (value: number) => `¥${value.toLocaleString("zh-CN")}`;
+
+function refundPresentation(
+  record: Pick<
+    RefundRecord,
+    "status" | "ticketId" | "ticketCode" | "amount" | "channelConfirmedAt"
+  >
+) {
+  return record.status === "refunded" && !isConfirmedRefund(record)
+    ? refundStatusPresentation("unknown")
+    : refundStatusPresentation(record.status);
+}
+
+function refundStatusWithoutReceipt(status: string) {
+  return status === "refunded"
+    ? refundStatusPresentation("unknown")
+    : refundStatusPresentation(status);
+}
 
 /** 语义短语：每个短语整体不拆行，短语之间允许换行 */
 export function Phrases({
@@ -528,7 +602,7 @@ const RESULT_TONE = {
 } as const;
 
 function useRefundMap(): RefundStateMap {
-  const refunds = useRefundRecords();
+  const refunds = useScopedRefundRecords();
   return useMemo(
     () =>
       Object.fromEntries(
@@ -539,7 +613,7 @@ function useRefundMap(): RefundStateMap {
 }
 
 function useSessionSold() {
-  const config = useTicketConfig();
+  const config = useScopedTicketConfig();
   return (date: string) =>
     config.sessions
       .find(session => session.date === date)
@@ -561,10 +635,14 @@ export function OnsiteWorkbench({
   exceptionOpen?: boolean;
   setExceptionOpen?: (open: boolean) => void;
 }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   const refundMap = useRefundMap();
+  const config = useScopedTicketConfig();
+  const sessions = config.sessions.map(item => item.date);
   const soldOf = useSessionSold();
-  const [session, setSession] = useState<string>(OPS_SESSIONS[0]);
+  const [session, setSession] = useState<string>(sessions[0] ?? "");
+  useEffect(() => setSession(sessions[0] ?? ""), [eventId, sessions[0]]);
   const [dialog, setDialog] = useState<"scan" | "manual" | "realname" | null>(
     null
   );
@@ -646,7 +724,7 @@ export function OnsiteWorkbench({
       `现场交接表_${sessionLabel(session)}_${opsNow().slice(0, 10)}.csv`,
       rows
     );
-    updateOps(state =>
+    update(state =>
       recordExport(
         state,
         actor,
@@ -700,7 +778,7 @@ export function OnsiteWorkbench({
                 2026 魔都动漫嘉年华 · 当前场次
               </span>
               <div className="inline-flex rounded-full bg-white/10 p-1">
-                {OPS_SESSIONS.map(date => (
+                {sessions.map(date => (
                   <button
                     key={date}
                     type="button"
@@ -808,7 +886,7 @@ export function OnsiteWorkbench({
             title="分时入场"
             description={`${sessionLabel(session)} 每小时入场人数`}
           >
-            {session === OPS_SESSIONS[0] ? (
+            {eventId === PRIMARY_EVENT_ID && session === OPS_SESSIONS[0] ? (
               <div className="px-3 pt-4 pb-2" data-cy="onsite-entry-chart">
                 <div className="h-[180px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1168,6 +1246,8 @@ function ScanDialog({
   onClose: () => void;
   onException: (related: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
+  const submissions = useScopedSubmissions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [gate, setGate] = useState(GATES[0]);
@@ -1185,14 +1265,17 @@ function ScanDialog({
       inputRef.current?.focus();
       return;
     }
-    const result = verifyTicket(getActivityOps(), value, {
+    const result = verifyTicket(get(), value, {
+      eventId,
+      submissions,
+      eligibility: [], // 尚无服务端资格结果，不由客户端伪造通过。
       session,
       refunds: refundMap,
       method: "扫码核验",
       operator: actor.name,
       gate,
     });
-    updateOps(state => addCheckin(state, result.record));
+    update(state => addCheckin(state, result.record));
     setOutcome({ ...result, code: value.trim().toUpperCase() });
     setCount(current => current + 1);
     setValue("");
@@ -1312,18 +1395,23 @@ function ManualDialog({
   onClose: () => void;
   onException: (related: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
+  const submissions = useScopedSubmissions();
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [why, setWhy] = useState(MANUAL_REASONS[0]);
   const [error, setError] = useState("");
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
-  const results = searchTickets(keyword, 8);
+  const results = searchTickets(keyword, 8, eventId);
   const confirm = () => {
     if (!selected) {
       setError("请先查找并选择要核验的电子票");
       return;
     }
-    const result = verifyTicket(getActivityOps(), selected, {
+    const result = verifyTicket(get(), selected, {
+      eventId,
+      submissions,
+      eligibility: [],
       session,
       refunds: refundMap,
       method: "手动核验",
@@ -1331,7 +1419,7 @@ function ManualDialog({
       gate: "人工核验台",
     });
     const record = { ...result.record, reason: `${result.reason}（${why}）` };
-    updateOps(state => addCheckin(state, record));
+    update(state => addCheckin(state, record));
     setOutcome(result);
     setError("");
   };
@@ -1478,6 +1566,7 @@ function RealNameDialog({
   onClose: () => void;
   onException: (related: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const [form, setForm] = useState({ code: "", name: "", idTail: "" });
   const [errors, setErrors] = useState<
     Partial<Record<keyof typeof form, string>>
@@ -1501,7 +1590,7 @@ function RealNameDialog({
       return;
     }
     const record = result.record;
-    if (record) updateOps(state => addCheckin(state, record));
+    if (record) update(state => addCheckin(state, record));
     setOutcome(result);
   };
   return (
@@ -1638,6 +1727,7 @@ function ExceptionDialog({
   onClose: () => void;
   onDone: (issueId: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const [form, setForm] = useState<ExceptionInput>({
     type: "",
     related: prefill,
@@ -1657,8 +1747,8 @@ function ExceptionDialog({
     const next = validateException(form);
     setErrors(next);
     if (Object.keys(next).length) return;
-    updateOps(state => addException(state, form, actor));
-    const created = getActivityOps().issues[0];
+    update(state => addException(state, form, actor));
+    const created = get().issues[0];
     toast.success(`已登记现场异常 ${created.no} 并同步到问题记录`);
     onDone(created.id);
   };
@@ -1826,7 +1916,8 @@ export function IssueDrawer({
   canEdit: boolean;
   onClose: () => void;
 }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   const issue = ops.issues.find(item => item.id === issueId);
   const [comment, setComment] = useState("");
   const [owner, setOwner] = useState(issue?.owner ?? ISSUE_OWNERS[0]);
@@ -1841,7 +1932,7 @@ export function IssueDrawer({
       setError("请选择新的责任方");
       return;
     }
-    updateOps(state =>
+    update(state =>
       updateIssue(state, issue.id, action, { comment, owner }, actor)
     );
     setComment("");
@@ -2090,7 +2181,8 @@ export function IssuesPanel({
   actor: OpsActor;
   role: OpsRole;
 }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   const canEdit = role !== "culture";
   const [filter, setFilter] = useState<IssueFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -2138,7 +2230,7 @@ export function IssuesPanel({
           .join(" / "),
       ]),
     ]);
-    updateOps(state =>
+    update(state =>
       recordExport(state, actor, "导出问题记录", `共 ${state.issues.length} 条`)
     );
     toast.success(`已导出问题记录 共 ${ops.issues.length} 条`);
@@ -2250,6 +2342,7 @@ function IssueCreateDialog({
   onClose: () => void;
   onDone: (id: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const [form, setForm] = useState<IssueInput>({
     title: "",
     detail: "",
@@ -2268,8 +2361,8 @@ function IssueCreateDialog({
     const next = validateIssue(form);
     setErrors(next);
     if (Object.keys(next).length) return;
-    updateOps(state => addIssue(state, form, actor));
-    const created = getActivityOps().issues[0];
+    update(state => addIssue(state, form, actor));
+    const created = get().issues[0];
     toast.success(`已登记问题 ${created.no} 已通知${created.owner}`);
     onDone(created.id);
   };
@@ -2395,9 +2488,9 @@ function IssueCreateDialog({
 /* ---------- 参与人员 ---------- */
 
 function useParticipantFigures() {
-  const config = useTicketConfig();
-  const ops = useActivityOps();
-  const submissions = useSubmissions();
+  const config = useScopedTicketConfig();
+  const ops = useScopedActivityOps();
+  const submissions = useScopedSubmissions();
   const byName = (name: string) =>
     config.sessions.reduce(
       (sum, session) =>
@@ -2445,7 +2538,8 @@ export function ParticipantsPanel({
   role: OpsRole;
   onOpenReview: () => void;
 }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   const figures = useParticipantFigures();
   const canEdit = role !== "culture";
   const [sheet, setSheet] = useState<"audience" | "staff" | null>(null);
@@ -2485,7 +2579,7 @@ export function ParticipantsPanel({
         item.area,
       ]),
     ]);
-    updateOps(state =>
+    update(state =>
       recordExport(
         state,
         actor,
@@ -2649,7 +2743,8 @@ export function ParticipantsPanel({
 }
 
 function StaffList({ actor, canEdit }: { actor: OpsActor; canEdit: boolean }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   if (!ops.staff.length) return <EmptyBlock title="还没有登记工作人员" />;
   return (
     <div className="divide-y divide-slate-200">
@@ -2687,7 +2782,7 @@ function StaffList({ actor, canEdit }: { actor: OpsActor; canEdit: boolean }) {
                 type="button"
                 data-cy="staff-verify"
                 onClick={() => {
-                  updateOps(state => verifyStaff(state, item.id, actor));
+                  update(state => verifyStaff(state, item.id, actor));
                   toast.success(`${item.name} 资料已核验`);
                 }}
                 className={linkBtn}
@@ -2706,7 +2801,7 @@ function StaffList({ actor, canEdit }: { actor: OpsActor; canEdit: boolean }) {
 type AudienceFilter = "all" | (typeof OPS_SESSIONS)[number];
 
 function AudienceSheet({ onClose }: { onClose: () => void }) {
-  const ops = useActivityOps();
+  const ops = useScopedActivityOps();
   const refundMap = useRefundMap();
   const [keyword, setKeyword] = useState("");
   const [session, setSession] = useState<AudienceFilter>("all");
@@ -2798,8 +2893,8 @@ function AudienceSheet({ onClose }: { onClose: () => void }) {
                       {ticket.realName ? "已实名" : "未实名"}
                     </Tag>
                     {refund && (
-                      <Tag tone={refund === "refunded" ? "slate" : "amber"}>
-                        {REFUND_TEXT[refund]}
+                      <Tag tone="amber">
+                        {refundStatusWithoutReceipt(refund).label}
                       </Tag>
                     )}
                     <Tag tone={checkin ? "blue" : "slate"}>
@@ -2844,7 +2939,7 @@ function StaffSheet({
   onClose: () => void;
   onCreate: () => void;
 }) {
-  const ops = useActivityOps();
+  const ops = useScopedActivityOps();
   return (
     <Sheet
       title="参展商与工作人员资料"
@@ -2918,7 +3013,8 @@ function StaffCreateDialog({
   actor: OpsActor;
   onClose: () => void;
 }) {
-  const ops = useActivityOps();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
   const [form, setForm] = useState<StaffInput>({
     name: "",
     unit: "",
@@ -2936,7 +3032,7 @@ function StaffCreateDialog({
     const next = validateStaff(form);
     setErrors(next);
     if (Object.keys(next).length) return;
-    updateOps(state => addStaff(state, form, actor));
+    update(state => addStaff(state, form, actor));
     toast.success(`已新增工作人员 ${form.name.trim()} 待资料核验`);
     onClose();
   };
@@ -3035,29 +3131,33 @@ function StaffCreateDialog({
 /* ---------- 活动数据 ---------- */
 
 function useEventFigures() {
-  const config = useTicketConfig();
-  const refunds = useRefundRecords();
-  const ops = useActivityOps();
+  const eventId = useActivityEventId();
+  const config = useScopedTicketConfig();
+  const refunds = useScopedRefundRecords();
+  const ops = useScopedActivityOps();
   return useMemo(() => {
-    const sessions = OPS_SESSIONS.map(date => {
-      const rows = buildSessionStock(config.sessions, refunds, date);
+    const sessions = config.sessions.map(({ date }) => {
+      const rows = buildSessionStock(config.sessions, refunds, date, eventId);
       const sold = rows.reduce((sum, row) => sum + row.sold, 0);
       const refunded = rows.reduce((sum, row) => sum + row.refunded, 0);
       const revenue = rows.reduce(
         (sum, row) => sum + row.sold * row.ticket.price - row.refundedAmount,
         0
       );
-      const onsite = onsiteStats(ops, date);
+      const onsite =
+        eventId === PRIMARY_EVENT_ID
+          ? onsiteStats(ops, date)
+          : { entered: 0, inVenue: 0, realName: 0, blocked: 0, exceptions: 0 };
       return { date, sold, refunded, revenue, ...onsite };
     });
     const sold = sessions.reduce((sum, item) => sum + item.sold, 0);
     const revenue = sessions.reduce((sum, item) => sum + item.revenue, 0);
-    const refundedCount = refunds.filter(
-      item => item.status === "refunded"
-    ).length;
-    const refundedAmount = refunds
-      .filter(item => item.status === "refunded")
-      .reduce((sum, item) => sum + item.amount, 0);
+    const confirmedRefunds = refunds.filter(isConfirmedRefund);
+    const refundedCount = confirmedRefunds.length;
+    const refundedAmount = confirmedRefunds.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
     const pendingRefunds = refunds.filter(
       item => item.status === "pending_review"
     ).length;
@@ -3082,7 +3182,7 @@ function useEventFigures() {
       entered: sessions.reduce((sum, item) => sum + item.entered, 0),
       inVenue: sessions.reduce((sum, item) => sum + item.inVenue, 0),
     };
-  }, [config, refunds, ops]);
+  }, [eventId, config, refunds, ops]);
 }
 
 const pctText = (part: number, total: number) =>
@@ -3091,12 +3191,18 @@ const pctText = (part: number, total: number) =>
 type ChartMode = "sales" | "entries";
 
 export function EventDataPanel({ actor }: { actor: OpsActor }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const figures = useEventFigures();
   const [mode, setMode] = useState<ChartMode>("sales");
   const chartData =
-    mode === "sales"
-      ? DAILY_SALES.map(item => ({ label: item.day, value: item.sold }))
-      : HOURLY_ENTRIES.map(item => ({ label: item.hour, value: item.entered }));
+    eventId !== PRIMARY_EVENT_ID
+      ? []
+      : mode === "sales"
+        ? DAILY_SALES.map(item => ({ label: item.day, value: item.sold }))
+        : HOURLY_ENTRIES.map(item => ({
+            label: item.hour,
+            value: item.entered,
+          }));
   const chartTotal = chartData.reduce((sum, item) => sum + item.value, 0);
   const exportData = () => {
     downloadCsv(`活动数据_${todayDate()}.csv`, [
@@ -3122,10 +3228,7 @@ export function EventDataPanel({ actor }: { actor: OpsActor }) {
       ]),
       [],
       ["售票周期", "售出张数"],
-      ...DAILY_SALES.map(item => [item.day, item.sold]),
-      [],
-      ["6月28日入场时段", "入场人数"],
-      ...HOURLY_ENTRIES.map(item => [item.hour, item.entered]),
+      ...chartData.map(item => [item.label, item.value]),
       [],
       [
         "退款已完成",
@@ -3144,7 +3247,7 @@ export function EventDataPanel({ actor }: { actor: OpsActor }) {
         figures.openIssues.length,
       ],
     ]);
-    updateOps(state =>
+    update(state =>
       recordExport(
         state,
         actor,
@@ -3188,7 +3291,7 @@ export function EventDataPanel({ actor }: { actor: OpsActor }) {
         />
         <StatCard
           cy="data-refund"
-          label="退款"
+          label="退款已到账"
           value={`${figures.refundedCount} 笔`}
           tone="amber"
           icon={<History className="h-5 w-5" />}
@@ -3203,14 +3306,14 @@ export function EventDataPanel({ actor }: { actor: OpsActor }) {
         />
         <StatCard
           cy="data-entry"
-          label="6月28日入场率"
-          value={pctText(figures.first.entered, figures.first.sold)}
+          label="当前首场入场率"
+          value={pctText(figures.first?.entered ?? 0, figures.first?.sold ?? 0)}
           icon={<ScanLine className="h-5 w-5" />}
           sub={
             <Phrases
               parts={[
-                `已入场 ${n(figures.first.entered)}`,
-                `已售 ${n(figures.first.sold)}`,
+                `已入场 ${n(figures.first?.entered ?? 0)}`,
+                `已售 ${n(figures.first?.sold ?? 0)}`,
               ]}
             />
           }
@@ -3318,7 +3421,7 @@ export function EventDataPanel({ actor }: { actor: OpsActor }) {
           <dl className="mt-4 space-y-4">
             {[
               ["售票", "支付成功的订单", "按场次与票种统计 含现场售票"],
-              ["退款", "平台同意并原路退款", "退款完成后释放库存与限购额度"],
+              ["退款", "渠道确认已到账", "确认到账后释放库存与限购额度"],
               ["入场", "电子票核验通过", "含扫码核验与手动核验 复验计入"],
               ["问题", "登记问题与现场异常", "处置完成后不再计入未完成"],
             ].map(([label, value, sub]) => (
@@ -3406,58 +3509,61 @@ export function useActivityReportInput(
   event: ReportEventInput,
   actor: OpsActor
 ) {
-  const ops = useActivityOps();
-  const config = useTicketConfig();
-  const refunds = useRefundRecords();
-  const submissions = useSubmissions();
+  const eventId = useActivityEventId();
+  const ops = useScopedActivityOps();
+  const config = useScopedTicketConfig();
+  const refunds = useScopedRefundRecords();
+  const submissions = useScopedSubmissions();
   return useMemo(() => {
-    const primary = event.id === PRIMARY_EVENT_ID;
+    const primary =
+      config.sessions.length > 0 ||
+      refunds.length > 0 ||
+      submissions.length > 0;
     return {
       event,
       primary,
-      stock: primary
-        ? config.sessions.map(session => ({
-            session: session.date,
-            rows: buildSessionStock(config.sessions, refunds, session.date).map(
-              row => ({
-                name: row.ticket.name,
-                price: row.ticket.price,
-                inventory: row.ticket.inventory,
-                sold: row.sold,
-                refunded: row.refunded,
-                remaining: row.remaining,
-                status: row.ticket.status,
-                purchaseLimit: row.ticket.purchaseLimit,
-                realName: row.ticket.realName,
-              })
-            ),
-          }))
-        : [],
-      refunds: primary
-        ? refunds.map(item => ({
-            requestNo: item.requestNo,
-            buyerName: item.buyerName,
-            ticketName: item.ticketName,
-            ticketCode: item.ticketCode,
-            amount: item.amount,
-            reason: item.reason,
-            status: item.status,
-            processedBy: item.processedBy,
-          }))
-        : [],
-      submissions: primary
-        ? submissions.map(item => ({
-            participant: item.participant,
-            role: item.role,
-            source: item.source,
-            riskLabel: item.riskLabel,
-            statusLabel: SUBMISSION_STATUS_LABEL[item.status],
-          }))
-        : [],
+      stock: config.sessions.map(session => ({
+        session: session.date,
+        rows: buildSessionStock(
+          config.sessions,
+          refunds,
+          session.date,
+          eventId
+        ).map(row => ({
+          name: row.ticket.name,
+          price: row.ticket.price,
+          inventory: row.ticket.inventory,
+          sold: row.sold,
+          refunded: row.refunded,
+          remaining: row.remaining,
+          status: row.ticket.status,
+          purchaseLimit: row.ticket.purchaseLimit,
+          realName: row.ticket.realName,
+        })),
+      })),
+      refunds: refunds.map(item => ({
+        requestNo: item.requestNo,
+        buyerName: item.buyerName,
+        ticketName: item.ticketName,
+        ticketId: item.ticketId,
+        ticketCode: item.ticketCode,
+        amount: item.amount,
+        reason: item.reason,
+        status: item.status,
+        channelConfirmedAt: item.channelConfirmedAt,
+        processedBy: item.processedBy,
+      })),
+      submissions: submissions.map(item => ({
+        participant: item.participant,
+        role: item.role,
+        source: item.source,
+        riskLabel: item.riskLabel,
+        statusLabel: SUBMISSION_STATUS_LABEL[item.status],
+      })),
       ops,
       actor,
     };
-  }, [event, actor, ops, config, refunds, submissions]);
+  }, [event, actor, eventId, ops, config, refunds, submissions]);
 }
 
 async function downloadReport(report: ActivityReport) {
@@ -3479,6 +3585,7 @@ export function ActivityReportDialog({
   actor: OpsActor;
   onClose: () => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const input = useActivityReportInput(event, actor);
   const report = useMemo(() => buildActivityReport(input), [input]);
   const [busy, setBusy] = useState(false);
@@ -3487,7 +3594,7 @@ export function ActivityReportDialog({
     const ok = await downloadReport(report);
     setBusy(false);
     if (!ok) return;
-    updateOps(state =>
+    update(state =>
       recordExport(state, actor, "导出活动摘要", report.fileName)
     );
     toast.success(`已下载 ${report.fileName}`);
@@ -3677,8 +3784,9 @@ export function ArchivePanel({
   event: ReportEventInput;
   compact?: boolean;
 }) {
-  const ops = useActivityOps();
-  const refunds = useRefundRecords();
+  const { eventId, update, get } = useScopedOpsActions();
+  const ops = useScopedActivityOps();
+  const refunds = useScopedRefundRecords();
   const input = useActivityReportInput(event, actor);
   const canEdit = role !== "culture";
   const [open, setOpen] = useState<ArchiveKey | null>(null);
@@ -3699,7 +3807,7 @@ export function ArchivePanel({
     const ok = await downloadReport(report);
     setBusy(false);
     if (!ok) return;
-    updateOps(state =>
+    update(state =>
       canEdit
         ? markArchiveSummary(state, actor)
         : recordExport(state, actor, "下载活动摘要", report.fileName)
@@ -3904,9 +4012,10 @@ function ArchiveSheet({
   onGenerate: () => void;
   onClose: () => void;
 }) {
-  const ops = useActivityOps();
-  const refunds = useRefundRecords();
-  const config = useTicketConfig();
+  const eventId = useActivityEventId();
+  const ops = useScopedActivityOps();
+  const refunds = useScopedRefundRecords();
+  const config = useScopedTicketConfig();
   const figures = useParticipantFigures();
   const [issueId, setIssueId] = useState<string | null>(null);
   let body: ReactNode = null;
@@ -3966,7 +4075,8 @@ function ArchiveSheet({
           const rows = buildSessionStock(
             config.sessions,
             refunds,
-            session.date
+            session.date,
+            eventId
           );
           return (
             <div key={session.date}>
@@ -4030,22 +4140,8 @@ function ArchiveSheet({
                     {item.requestNo} {money(item.amount)}
                   </span>
                 </div>
-                <Tag
-                  tone={
-                    item.status === "refunded"
-                      ? "green"
-                      : item.status === "rejected"
-                        ? "slate"
-                        : "amber"
-                  }
-                >
-                  {
-                    {
-                      pending_review: "待平台审批",
-                      refunded: "已同意并退款",
-                      rejected: "已驳回",
-                    }[item.status]
-                  }
+                <Tag tone={isConfirmedRefund(item) ? "green" : "amber"}>
+                  {refundPresentation(item).label}
                 </Tag>
               </div>
             ))}
@@ -4197,6 +4293,7 @@ export function DataCenterPanel({
   permissions: string[];
   onOpen: (page: string, tab?: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const figures = useEventFigures();
   const people = useParticipantFigures();
   const security = people.submissions.filter(
@@ -4273,7 +4370,7 @@ export function DataCenterPanel({
         pctText(item.entered, item.sold),
       ]),
     ]);
-    updateOps(state =>
+    update(state =>
       recordExport(
         state,
         actor,
@@ -4356,9 +4453,9 @@ export function DataCenterPanel({
 /* ---------- 通知中心 ---------- */
 
 function useNotices(role: OpsRole, permissions: string[]) {
-  const ops = useActivityOps();
-  const refunds = useRefundRecords();
-  const myReviews = useMyReviewCount(role);
+  const ops = useScopedActivityOps();
+  const refunds = useScopedRefundRecords();
+  const myReviews = useScopedReviewCount(role);
   const pendingRefunds = refunds.filter(
     item => item.status === "pending_review"
   ).length;
@@ -4377,8 +4474,22 @@ function useNotices(role: OpsRole, permissions: string[]) {
   return { notices, unread };
 }
 
-export function useUnreadNoticeCount(role: OpsRole, permissions: string[]) {
-  return useNotices(role, permissions).unread.length;
+export function useUnreadNoticeCount(
+  role: OpsRole,
+  permissions: string[],
+  eventId: string
+) {
+  const ops = useOpsForEvent(eventId);
+  const refunds = useRefundsForEvent(eventId);
+  const myReviews = useReviewCountForEvent(role, eventId);
+  const pendingRefunds = refunds.filter(
+    item => item.status === "pending_review"
+  ).length;
+  return unreadNotices(
+    buildNotices({ role, permissions, state: ops, pendingRefunds, myReviews }),
+    ops,
+    role
+  ).length;
 }
 
 const NOTICE_TONE = {
@@ -4398,10 +4509,11 @@ export function NoticePanel({
   onClose: () => void;
   onOpen: (page: string, tab?: string) => void;
 }) {
+  const { eventId, update, get } = useScopedOpsActions();
   const { notices, unread } = useNotices(role, permissions);
   const unreadIds = new Set(unread.map(item => item.id));
   const markAll = () => {
-    updateOps(state =>
+    update(state =>
       markNoticeRead(
         state,
         role,
@@ -4411,7 +4523,7 @@ export function NoticePanel({
     toast.success("已全部标记为已读");
   };
   const openNotice = (item: NoticeItem) => {
-    updateOps(state => markNoticeRead(state, role, [item.id]));
+    update(state => markNoticeRead(state, role, [item.id]));
     onClose();
     onOpen(item.page, item.tab);
   };

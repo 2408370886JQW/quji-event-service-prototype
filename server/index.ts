@@ -10,6 +10,20 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", service: "quji-frontend" });
+  });
+
+  // 本仓库只提供现有前端；不存在的业务接口不得落入 SPA 并返回成功 HTML。
+  // 真实 App API 应由团队后端实现，或通过 VITE_API_BASE_URL 指向已部署服务。
+  app.use("/api", (_req, res) => {
+    res.status(501).json({
+      code: "API_NOT_CONNECTED",
+      message: "业务接口尚未接入，请连接趣集后端服务",
+      data: null,
+    });
+  });
+
   // Serve static files from dist/public in production
   const staticPath =
     process.env.NODE_ENV === "production"

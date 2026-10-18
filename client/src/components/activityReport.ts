@@ -10,6 +10,8 @@ import {
   type ActivityOpsState,
   type OpsActor,
 } from "./activityOpsCore";
+import { refundStatusPresentation } from "./activityScope";
+import { isConfirmedRefund } from "./refundData";
 
 export const LIFECYCLE = [
   "活动创建",
@@ -48,10 +50,12 @@ export interface ReportRefund {
   requestNo: string;
   buyerName: string;
   ticketName: string;
+  ticketId?: string;
   ticketCode: string;
   amount: number;
   reason: string;
-  status: "pending_review" | "refunded" | "rejected";
+  status: string;
+  channelConfirmedAt?: string;
   processedBy?: string;
 }
 export interface ReportSubmission {
@@ -110,11 +114,10 @@ const n = (value: number) => value.toLocaleString("zh-CN");
 const money = (value: number) => `¥${value.toLocaleString("zh-CN")}`;
 const pct = (part: number, total: number) =>
   total ? `${((part / total) * 100).toFixed(1)}%` : "—";
-const REFUND_LABEL = {
-  pending_review: "待平台审批",
-  refunded: "已同意并退款",
-  rejected: "已驳回",
-} as const;
+const refundLabel = (refund: ReportRefund) =>
+  refund.status === "refunded" && !isConfirmedRefund(refund)
+    ? refundStatusPresentation("unknown").label
+    : refundStatusPresentation(refund.status).label;
 
 export function buildActivityReport(input: ReportInput): ActivityReport {
   const { event, ops, primary } = input;
@@ -124,7 +127,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
   const sold = allRows.reduce((sum, row) => sum + row.sold, 0);
   const revenue = allRows.reduce((sum, row) => sum + row.sold * row.price, 0);
   const inventory = allRows.reduce((sum, row) => sum + row.inventory, 0);
-  const refunded = input.refunds.filter(item => item.status === "refunded");
+  const refunded = input.refunds.filter(isConfirmedRefund);
   const refundPending = input.refunds.filter(
     item => item.status === "pending_review"
   );
@@ -279,7 +282,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
     id: "refunds",
     title: "四 退款处理",
     intro: primary
-      ? `退款申请 ${input.refunds.length} 笔 已同意并退款 ${refunded.length} 笔 ${money(refundAmount)} 待平台审批 ${refundPending.length} 笔`
+      ? `退款申请 ${input.refunds.length} 笔 渠道确认到账 ${refunded.length} 笔 ${money(refundAmount)} 待平台审批 ${refundPending.length} 笔`
       : undefined,
     table:
       primary && input.refunds.length
@@ -300,8 +303,8 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
               money(item.amount),
               item.reason,
               item.processedBy
-                ? `${REFUND_LABEL[item.status]} ${item.processedBy}`
-                : REFUND_LABEL[item.status],
+                ? `${refundLabel(item)} ${item.processedBy}`
+                : refundLabel(item),
             ]),
           }
         : undefined,
@@ -463,7 +466,7 @@ export function buildActivityReport(input: ReportInput): ActivityReport {
     id: "notes",
     title: "数据口径说明",
     bullets: [
-      "已售为支付成功张数 已退款为平台同意并原路退款的张数 剩余等于库存减已售加已退款",
+      "已售为支付成功张数 已退款为渠道确认到账的张数 剩余等于库存减已售加已退款",
       "入场人数按电子票首次核验通过计算 重复核验与拦截不计入",
       "报告中的个人信息已脱敏 完整实名信息仅在授权页面按需查看",
       "本报告为活动协同记录 不代表行政机关审批结论",

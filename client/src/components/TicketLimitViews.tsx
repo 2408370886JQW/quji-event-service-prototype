@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -19,20 +19,24 @@ import {
 import {
   DEFAULT_LIMIT_LOGS,
   PURCHASE_RECORDS,
-  SESSION_DATES,
   type LimitCheckLog,
 } from "./ticketSamples";
 import { configuredLimit, useTicketConfig } from "./ticketConfig";
 import { ALL_SESSIONS } from "./ticketStats";
+import { PRIMARY_EVENT_ID } from "./activityOpsCore";
 import { formatSessionDate } from "./ticketTypes";
+import { isApiDataMode } from "@/lib/api";
 
 const SESSION_KEY = "quji_ticket_session";
 const LIMIT_LOG_KEY = "quji_preview_limit_logs_v1";
+const useScopedTicketConfig = useTicketConfig as (
+  eventId?: string
+) => ReturnType<typeof useTicketConfig>;
 
-export function loadTicketSession() {
+export function loadTicketSession(dates: string[]) {
   try {
     const saved = window.sessionStorage.getItem(SESSION_KEY);
-    return saved && (saved === ALL_SESSIONS || SESSION_DATES.includes(saved))
+    return saved && (saved === ALL_SESSIONS || dates.includes(saved))
       ? saved
       : ALL_SESSIONS;
   } catch {
@@ -52,17 +56,19 @@ export function saveTicketSession(value: string) {
 export function SessionFilter({
   value,
   onChange,
+  dates,
 }: {
   value: string;
   onChange: (value: string) => void;
+  dates: string[];
 }) {
   const options = [
     {
       value: ALL_SESSIONS,
       label: "全部场次",
-      sub: `${SESSION_DATES.length} 天合计`,
+      sub: `${dates.length} 天合计`,
     },
-    ...SESSION_DATES.map((date, index) => ({
+    ...dates.map((date, index) => ({
       value: date,
       label: formatSessionDate(date),
       sub: `第 ${index + 1} 天`,
@@ -111,12 +117,17 @@ export function SessionFilter({
   );
 }
 
-function loadLogs(): LimitCheckLog[] {
+function loadLogs(eventId: string): LimitCheckLog[] {
+  if (isApiDataMode()) return [];
   try {
-    const saved = window.localStorage.getItem(LIMIT_LOG_KEY);
-    return saved ? (JSON.parse(saved) as LimitCheckLog[]) : DEFAULT_LIMIT_LOGS;
+    const saved = window.localStorage.getItem(`${LIMIT_LOG_KEY}:${eventId}`);
+    return saved
+      ? (JSON.parse(saved) as LimitCheckLog[])
+      : eventId === PRIMARY_EVENT_ID
+        ? DEFAULT_LIMIT_LOGS
+        : [];
   } catch {
-    return DEFAULT_LIMIT_LOGS;
+    return eventId === PRIMARY_EVENT_ID ? DEFAULT_LIMIT_LOGS : [];
   }
 }
 
@@ -167,22 +178,49 @@ const statusText = {
 } as const;
 
 /** 票务管理 · 身份证限购校验 */
-export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
+export function PurchaseLimitPanel({
+  refunds,
+  eventId,
+}: {
+  refunds: RefundLink[];
+  /** Selected activity ID; legacy samples never appear for another activity. */
+  eventId: string;
+}) {
+  const isPrimarySample = eventId === PRIMARY_EVENT_ID;
   const records = useMemo(
-    () => resolvePurchaseStatus(PURCHASE_RECORDS, refunds),
-    [refunds]
+    () =>
+      resolvePurchaseStatus(isPrimarySample ? PURCHASE_RECORDS : [], refunds),
+    [isPrimarySample, refunds]
   );
-  const [logs, setLogs] = useState<LimitCheckLog[]>(loadLogs);
+  const config = useScopedTicketConfig(eventId);
+  const sessionDates = config.sessions.map(session => session.date);
+  const [logs, setLogs] = useState<LimitCheckLog[]>(() => loadLogs(eventId));
   const [idCard, setIdCard] = useState("");
-  const [sessionDate, setSessionDate] = useState(SESSION_DATES[0]);
-  const config = useTicketConfig();
+  const [sessionDate, setSessionDate] = useState(() => sessionDates[0] ?? "");
   const sessionTickets =
-    config.sessions.find(item => item.date === sessionDate)?.tickets ??
-    config.sessions[0].tickets;
+    config.sessions.find(item => item.date === sessionDate)?.tickets ?? [];
   const TICKET_NAMES = sessionTickets.map(ticket => ticket.name);
   const ticketLimit = (name: string) =>
     configuredLimit(config, sessionDate, name);
-  const [ticketName, setTicketName] = useState(TICKET_NAMES[0]);
+  const [ticketName, setTicketName] = useState(TICKET_NAMES[0] ?? "");
+  useEffect(() => {
+    const firstSession = config.sessions[0];
+    if (!firstSession) {
+      setSessionDate("");
+      return;
+    }
+    if (!config.sessions.some(item => item.date === sessionDate))
+      setSessionDate(firstSession.date);
+  }, [config.sessions, sessionDate]);
+  useEffect(() => {
+    if (
+      !ticketName ||
+      sessionTickets.some(ticket => ticket.name === ticketName)
+    )
+      return;
+    setTicketName(sessionTickets[0]?.name ?? "");
+  }, [sessionTickets, ticketName]);
+  useEffect(() => setLogs(loadLogs(eventId)), [eventId]);
   const [quantity, setQuantity] = useState("1");
   const [result, setResult] = useState<LimitCheckResult | null>(null);
   const limit = ticketLimit(ticketName);
@@ -199,9 +237,13 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
     : [];
 
   const persist = (next: LimitCheckLog[]) => {
+    if (isApiDataMode()) return;
     setLogs(next);
     try {
-      window.localStorage.setItem(LIMIT_LOG_KEY, JSON.stringify(next));
+      window.localStorage.setItem(
+        `${LIMIT_LOG_KEY}:${eventId}`,
+        JSON.stringify(next)
+      );
     } catch {
       /* 忽略存储失败 */
     }
@@ -254,15 +296,25 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
     setTicketName(log.ticketName);
     setQuantity(String(log.quantity));
     setResult(null);
-    document
-      .querySelector('[data-cy="limit-form"]')
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // The selected record is restored into the existing form without changing
+    // outer-frame scroll position.
   };
 
   const blocked = logs.filter(log => !log.allowed).length;
 
+  if (config.sessions.length === 0)
+    return (
+      <div
+        data-cy="limit-panel"
+        data-event-id={eventId}
+        className="px-6 py-12 text-center text-[14px] text-slate-600"
+      >
+        当前活动暂无已配置票务与限购数据
+      </div>
+    );
+
   return (
-    <div data-cy="limit-panel">
+    <div data-cy="limit-panel" data-event-id={eventId}>
       <div className="grid gap-4 border-b border-slate-200 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <section className="rounded-lg border border-slate-200 p-4 lg:self-start">
           <h3 className="flex items-center gap-2 text-[16px] font-semibold text-slate-900">
@@ -328,7 +380,7 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
                 setSessionDate(value);
                 setResult(null);
               }}
-              options={SESSION_DATES.map(date => ({
+              options={sessionDates.map(date => ({
                 value: date,
                 label: formatSessionDate(date),
               }))}
@@ -445,7 +497,10 @@ export function PurchaseLimitPanel({ refunds }: { refunds: RefundLink[] }) {
                               {record.orderNo}
                             </span>
                             <span className="whitespace-nowrap text-slate-600">
-                              {record.quantity} 张 · {statusText[record.status]}
+                              {record.quantity} 张 ·{" "}
+                              {statusText[
+                                record.status as keyof typeof statusText
+                              ] ?? "状态待核对"}
                             </span>
                           </div>
                           <div className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-slate-500">

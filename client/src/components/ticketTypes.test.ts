@@ -251,7 +251,13 @@ describe("票务管理按票种统计", () => {
   ];
   const refunds = [
     { ticketName: "普通观众票", status: "pending_review" as const, amount: 88 },
-    { ticketName: "Coser 专属票", status: "refunded" as const, amount: 68 },
+    {
+      ticketName: "Coser 专属票",
+      ticketId: "test-coser-ticket",
+      status: "refunded" as const,
+      amount: 68,
+      channelConfirmedAt: "2026-10-19T07:00:00Z",
+    },
     { ticketName: "学生早鸟票", status: "rejected" as const, amount: 58 },
   ];
 
@@ -273,13 +279,38 @@ describe("票务管理按票种统计", () => {
     });
   });
 
-  it("平台同意退款后对应票种已退款和剩余同时增加", () => {
+  it("平台同意退款仅进入处理中 不释放库存", () => {
     const approved = refunds.map(item =>
       item.ticketName === "普通观众票"
-        ? { ...item, status: "refunded" as const }
+        ? { ...item, status: "processing" as const }
         : item
     );
     const row = buildTicketStock(tickets, approved)[0];
+    expect(row).toMatchObject({ refunded: 0, pending: 1, remaining: 2452 });
+  });
+
+  it("渠道确认退款成功才释放对应票种库存", () => {
+    const settled = refunds.map(item =>
+      item.ticketName === "普通观众票"
+        ? {
+            ...item,
+            ticketId: "test-ordinary-ticket",
+            status: "refunded" as const,
+            channelConfirmedAt: "2026-10-19T07:00:00Z",
+          }
+        : item
+    );
+    const row = buildTicketStock(tickets, settled)[0];
     expect(row).toMatchObject({ refunded: 1, pending: 0, remaining: 2453 });
+  });
+
+  it("相同电子票重复渠道回执只释放一次库存", () => {
+    const done = refunds[1];
+    const rows = buildTicketStock(tickets, [done, { ...done }]);
+    expect(rows[1]).toMatchObject({
+      refunded: 1,
+      refundedAmount: 68,
+      remaining: 175,
+    });
   });
 });

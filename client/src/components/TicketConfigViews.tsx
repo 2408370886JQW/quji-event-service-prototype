@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { assertPrototypeWriteAllowed } from "@/lib/api";
 import {
   CalendarDays,
   CheckCircle2,
@@ -40,6 +41,14 @@ export const TICKET_ACTOR: Record<TicketEditorRole, TicketActor> = {
 };
 
 export const canEditTickets = (role: TicketEditorRole) => role !== "culture";
+
+const useScopedTicketConfig = useTicketConfig as (
+  eventId?: string
+) => ReturnType<typeof useTicketConfig>;
+const commitScopedTicketConfig = commitTicketConfig as (
+  next: ReturnType<typeof useTicketConfig>,
+  eventId?: string
+) => void;
 
 const primaryBtn =
   "h-10 px-4 rounded-full bg-brand-grad text-white text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-60";
@@ -201,6 +210,7 @@ const inputFrom = (ticket: SessionTicket, date: string): TicketConfigInput => {
 /** 票种配置面板（居中横屏）：按场次查看与修改一个票种 */
 export function TicketConfigDrawer({
   role,
+  eventId,
   ticketName,
   initialDate,
   refunds,
@@ -208,13 +218,14 @@ export function TicketConfigDrawer({
   onViewOrders,
 }: {
   role: TicketEditorRole;
+  eventId: string;
   ticketName: string;
   initialDate: string;
   refunds: RefundSource[];
   onClose: () => void;
   onViewOrders: (date: string) => void;
 }) {
-  const config = useTicketConfig();
+  const config = useScopedTicketConfig(eventId);
   const editable = canEditTickets(role);
   const dates = config.sessions
     .filter(session => session.tickets.some(item => item.name === ticketName))
@@ -250,12 +261,13 @@ export function TicketConfigDrawer({
       const row = buildSessionStock(
         config.sessions,
         refunds,
-        session.date
+        session.date,
+        eventId
       ).find(item => item.ticket.name === ticketName);
       if (row) map[session.date] = { sold: row.sold, refunded: row.refunded };
     });
     return map;
-  }, [config, refunds, ticketName]);
+  }, [config, refunds, ticketName, eventId]);
   const netSold = Object.fromEntries(
     Object.entries(stockByDate).map(([key, value]) => [
       key,
@@ -291,7 +303,8 @@ export function TicketConfigDrawer({
       setErrors(result.errors);
       return;
     }
-    commitTicketConfig(result.state);
+    assertPrototypeWriteAllowed("票务配置保存");
+    commitScopedTicketConfig(result.state, eventId);
     setErrors({});
     setSaved(true);
     toast.success(
@@ -592,15 +605,18 @@ export function TicketConfigDrawer({
 /** 新增票种面板（居中横屏） */
 export function TicketCreateDrawer({
   role,
+  eventId,
   onClose,
   onCreated,
 }: {
   role: TicketEditorRole;
+  eventId: string;
   onClose: () => void;
   onCreated: (name: string, date: string) => void;
 }) {
-  const config = useTicketConfig();
+  const config = useScopedTicketConfig(eventId);
   const dates = config.sessions.map(session => session.date);
+  const initialSessionDate = dates[0] ?? new Date().toISOString().slice(0, 10);
   const typeCount = new Set(
     config.sessions.flatMap(session => session.tickets.map(item => item.name))
   ).size;
@@ -614,7 +630,7 @@ export function TicketCreateDrawer({
     realName: true,
     status: "待开售",
     saleStart: "2026-06-20 10:00",
-    saleEnd: `${dates[0]} 17:00`,
+    saleEnd: `${initialSessionDate} 17:00`,
   });
   const [errors, setErrors] = useState<TicketConfigErrors>({});
   useEffect(() => {
@@ -638,15 +654,18 @@ export function TicketCreateDrawer({
     const result = addTicketType(
       config,
       { ...form, name, channel, dates: selected },
-      TICKET_ACTOR[role]
+      TICKET_ACTOR[role],
+      undefined,
+      eventId
     );
     if (!result.ok) {
       setErrors(result.errors);
       return;
     }
-    commitTicketConfig(result.state);
-    toast.success(`已新增票种 ${name.trim()} · ${selected.length} 个场次`);
-    onCreated(name.trim(), selected[0]);
+    assertPrototypeWriteAllowed("票务配置保存");
+    commitScopedTicketConfig(result.state, eventId);
+    toast.success(`已新增票种 ${name.trim()} · ${selected.length || 1} 个场次`);
+    onCreated(name.trim(), selected[0] ?? form.saleEnd.slice(0, 10));
   };
   return (
     <div className="q-modal-layer z-[60]">
@@ -766,7 +785,13 @@ export function TicketCreateDrawer({
               />
             </Field>
           </div>
-          <Field label="适用场次" error={errors.dates}>
+          <Field
+            label="适用场次"
+            error={errors.dates}
+            hint={
+              dates.length ? undefined : "首次配置会按停售日期创建当前活动场次"
+            }
+          >
             <div className="flex flex-wrap gap-2" data-cy="create-dates">
               {dates.map(item => {
                 const on = selected.includes(item);

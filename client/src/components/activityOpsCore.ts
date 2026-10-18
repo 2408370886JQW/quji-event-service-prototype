@@ -1,3 +1,9 @@
+import type { PurchaseStatus } from "./purchaseLimit";
+import type { RefundStatus } from "./refundData";
+import type { ParticipantSubmission } from "./submissionReview";
+import { PRIMARY_EVENT_ID } from "./eventScope";
+export { PRIMARY_EVENT_ID } from "./eventScope";
+
 /**
  * 活动运营核心逻辑（React 与 Vue3 工程共用同一份规则）
  * 现场核验 · 现场异常 · 问题记录 · 参展商与工作人员 · 活动资料版本 · 通知已读 · 归档摘要
@@ -5,7 +11,6 @@
  */
 
 export const ACTIVITY_OPS_KEY = "quji_activity_ops_v1";
-export const PRIMARY_EVENT_ID = "EVT-2026-0628";
 export const OPS_SESSIONS = ["2026-06-28", "2026-06-29"] as const;
 
 /** 现场基线：按场次统计的已入场 当前场内与已实名人数（不含本次登录后新增核验） */
@@ -36,6 +41,8 @@ export const sessionLabel = (date: string) => {
 /* ---------------- 电子票与现场核验 ---------------- */
 
 export interface ETicket {
+  eventId: string;
+  ticketId: string;
   code: string;
   orderNo: string;
   holder: string;
@@ -43,12 +50,29 @@ export interface ETicket {
   ticketName: string;
   sessionDate: string;
   realName: boolean;
+  /** Display-only context; never qualification evidence. */
   role?: string;
   securityReview?: boolean;
   refundId?: string;
+  paymentStatus: PurchaseStatus;
+  userId: string;
+  attendeeId: string;
+  submissionId: string;
+  ruleVersion: string;
 }
 
-export const E_TICKETS: ETicket[] = [
+const PRIMARY_TICKETS: Array<
+  Omit<
+    ETicket,
+    | "eventId"
+    | "ticketId"
+    | "paymentStatus"
+    | "userId"
+    | "attendeeId"
+    | "submissionId"
+    | "ruleVersion"
+  >
+> = [
   {
     code: "QT-20260628-48305",
     orderNo: "ORD1789301148305",
@@ -159,6 +183,77 @@ export const E_TICKETS: ETicket[] = [
   },
 ];
 
+const TICKET_IDENTITIES: Record<
+  string,
+  Pick<ETicket, "userId" | "attendeeId" | "submissionId">
+> = {
+  "QT-20260628-48305": {
+    userId: "user-zhang-san",
+    attendeeId: "attendee-zhang-san",
+    submissionId: "sub-001",
+  },
+  "QT-20260628-49112": {
+    userId: "user-gulimi",
+    attendeeId: "attendee-gulimi",
+    submissionId: "sub-002",
+  },
+  "QT-20260628-47720": {
+    userId: "user-lisiyuan",
+    attendeeId: "attendee-lisiyuan",
+    submissionId: "sub-003",
+  },
+  "QT-20260628-52044": {
+    userId: "user-wangxiaodong",
+    attendeeId: "attendee-wangxiaodong",
+    submissionId: "sub-ordinary-wangxiaodong",
+  },
+  "QT-20260628-10316": {
+    userId: "user-maxiaotong",
+    attendeeId: "attendee-maxiaotong",
+    submissionId: "sub-ordinary-maxiaotong",
+  },
+  "QT-20260628-20588": {
+    userId: "user-maxiaotong",
+    attendeeId: "attendee-maxiaotong",
+    submissionId: "sub-ordinary-maxiaotong",
+  },
+  "QT-20260628-98175": {
+    userId: "user-zhaoning",
+    attendeeId: "attendee-zhaoning",
+    submissionId: "sub-ordinary-zhaoning",
+  },
+  "QT-20260628-60218": {
+    userId: "user-wangyutong",
+    attendeeId: "attendee-wangyutong",
+    submissionId: "sub-005",
+  },
+  "QT-20260629-51870": {
+    userId: "user-hexiaochen",
+    attendeeId: "attendee-hexiaochen",
+    submissionId: "sub-004",
+  },
+  "QT-20260629-20762": {
+    userId: "user-ailijiang",
+    attendeeId: "attendee-ailijiang",
+    submissionId: "sub-ailijiang",
+  },
+  "QT-20260629-21958": {
+    userId: "user-patigu",
+    attendeeId: "attendee-patigu",
+    submissionId: "sub-ordinary-patigu",
+  },
+};
+
+/** Primary-only prototype sample. Other activities must use their own data source. */
+export const E_TICKETS: ETicket[] = PRIMARY_TICKETS.map(ticket => ({
+  ...ticket,
+  eventId: PRIMARY_EVENT_ID,
+  ticketId: ticket.code,
+  paymentStatus: "paid",
+  ruleVersion: "RULE-2026-06-v1",
+  ...TICKET_IDENTITIES[ticket.code],
+}));
+
 export type CheckinResult = "通过" | "复验" | "拦截";
 export type CheckinMethod = "扫码核验" | "手动核验" | "实名核对";
 export interface CheckinRecord {
@@ -175,28 +270,63 @@ export interface CheckinRecord {
   time: string;
 }
 
-export type RefundStateMap = Record<
-  string,
-  "pending_review" | "refunded" | "rejected"
->;
+export type RefundStateMap = Record<string, RefundStatus | undefined>;
 
-export function findTicket(input: string) {
+export interface TicketEligibility {
+  eventId: string;
+  userId?: string;
+  attendeeId?: string;
+  submissionId: string;
+  ruleVersion: string;
+  /** Only `valid` represents a query confirmed by the authoritative eligibility service. */
+  status: "valid" | "revoked" | "expired" | "changed" | "unknown";
+  /** ISO timestamp from the authoritative eligibility service. */
+  validUntil?: string;
+  /** Any revocation blocks admission even if an old status was cached as valid. */
+  revokedAt?: string;
+  verifiedAt?: string;
+  attire: "costume" | "ordinary";
+  undertakingAccepted?: boolean;
+}
+
+export interface TicketVerificationOptions {
+  session: string;
+  refunds: RefundStateMap;
+  method: Exclude<CheckinMethod, "实名核对">;
+  operator: string;
+  gate?: string;
+  now?: string;
+  /** Required at runtime. Optional typing preserves existing callers until their UI is migrated. */
+  eventId?: string;
+  /** Required at runtime; missing data is denied rather than inferred from role/name. */
+  submissions?: ParticipantSubmission[];
+  eligibility?: TicketEligibility[];
+}
+
+export function findTicket(input: string, eventId = PRIMARY_EVENT_ID) {
   const key = input.trim().toUpperCase();
   if (!key) return undefined;
   return E_TICKETS.find(
-    item => item.code.toUpperCase() === key || item.orderNo === key
+    item =>
+      item.eventId === eventId &&
+      (item.code.toUpperCase() === key || item.orderNo === key)
   );
 }
 
-/** 按姓名 票码 订单号查找本场电子票 */
-export function searchTickets(keyword: string, limit = 6) {
+/** Search is scoped by activity and only assists manual selection; it never authorizes admission. */
+export function searchTickets(
+  keyword: string,
+  limit = 6,
+  eventId = PRIMARY_EVENT_ID
+) {
   const key = keyword.trim().toUpperCase();
   if (!key) return [];
   return E_TICKETS.filter(
     item =>
-      item.holder.toUpperCase().includes(key) ||
-      item.code.toUpperCase().includes(key) ||
-      item.orderNo.includes(key)
+      item.eventId === eventId &&
+      (item.holder.toUpperCase().includes(key) ||
+        item.code.toUpperCase().includes(key) ||
+        item.orderNo.includes(key))
   ).slice(0, limit);
 }
 
@@ -207,27 +337,101 @@ export interface VerifyOutcome {
   record: CheckinRecord;
 }
 
-/** 电子票核验规则：票码存在 → 场次一致 → 退款状态 → 重复入场 → 实名 → 安保复验 */
+const identityMatches = (
+  candidate: {
+    eventId: string;
+    userId?: string;
+    attendeeId?: string;
+    submissionId?: string;
+    id?: string;
+    ruleVersion: string;
+  },
+  ticket: ETicket
+) =>
+  candidate.eventId === ticket.eventId &&
+  candidate.userId === ticket.userId &&
+  candidate.attendeeId === ticket.attendeeId &&
+  (candidate.submissionId ?? candidate.id) === ticket.submissionId;
+
+function submissionTimestamp(submission: ParticipantSubmission) {
+  return submission.logs.at(-1)?.occurredAt ?? submission.submittedAt;
+}
+
+function hasFinalEligibility(
+  ticket: ETicket,
+  options: TicketVerificationOptions,
+  now: string
+) {
+  if (
+    !ticket.userId ||
+    !ticket.attendeeId ||
+    !ticket.submissionId ||
+    !ticket.ruleVersion
+  )
+    return false;
+  const submissions = (options.submissions ?? [])
+    .filter(item => identityMatches(item, ticket))
+    .sort((a, b) =>
+      submissionTimestamp(b).localeCompare(submissionTimestamp(a))
+    );
+  const eligibility = (options.eligibility ?? [])
+    .filter(item => identityMatches(item, ticket))
+    .sort((a, b) => (b.verifiedAt ?? "").localeCompare(a.verifiedAt ?? ""))[0];
+  const submission = submissions[0];
+  if (
+    !submission ||
+    submission.status !== "approved" ||
+    submission.ruleVersion !== ticket.ruleVersion
+  )
+    return false;
+  const expiry =
+    eligibility?.validUntil === undefined
+      ? undefined
+      : Date.parse(eligibility.validUntil);
+  const currentTime = Date.parse(now);
+  if (
+    !eligibility ||
+    eligibility.ruleVersion !== ticket.ruleVersion ||
+    eligibility.status !== "valid" ||
+    !!eligibility.revokedAt ||
+    (expiry !== undefined &&
+      (!Number.isFinite(expiry) ||
+        !Number.isFinite(currentTime) ||
+        expiry <= currentTime))
+  )
+    return false;
+  const ordinary =
+    submission.attire === "ordinary" || eligibility.attire === "ordinary";
+  return (
+    !ordinary ||
+    (!!submission.undertakingAccepted && !!eligibility.undertakingAccepted)
+  );
+}
+
+/**
+ * Admission is deliberately fail-closed: paid ticket + exact scoped identity +
+ * exact frozen rule version + explicit final eligibility are all mandatory.
+ */
 export function verifyTicket(
   state: ActivityOpsState,
   input: string,
-  options: {
-    session: string;
-    refunds: RefundStateMap;
-    method: Exclude<CheckinMethod, "实名核对">;
-    operator: string;
-    gate?: string;
-    now?: string;
-  }
+  options: TicketVerificationOptions
 ): VerifyOutcome {
-  const ticket = findTicket(input);
   const time = options.now ?? opsNow();
+  const eventId = options.eventId?.trim();
+  const ticket = eventId ? findTicket(input, eventId) : undefined;
   let result: CheckinResult = "拦截";
   let reason = "";
-  if (!ticket) {
-    reason = "未查询到该电子票 请核对票码或订单号";
+  if (!eventId) {
+    reason = "缺少活动标识，无法进行核验";
+  } else if (!ticket) {
+    reason = "未查询到该活动的电子票 请核对票码或订单号";
   } else if (ticket.sessionDate !== options.session) {
     reason = `该票为 ${sessionLabel(ticket.sessionDate)} 场次 当前核验场次为 ${sessionLabel(options.session)}`;
+  } else if (ticket.paymentStatus !== "paid") {
+    reason = "支付状态未确认，禁止核验入场";
+  } else if (ticket.refundId && !options.refunds[ticket.refundId]) {
+    reason = "退款状态未知，禁止核验入场";
   } else if (
     ticket.refundId &&
     options.refunds[ticket.refundId] === "refunded"
@@ -235,25 +439,29 @@ export function verifyTicket(
     reason = "该票已退款 电子票已作废";
   } else if (
     ticket.refundId &&
-    options.refunds[ticket.refundId] === "pending_review"
+    options.refunds[ticket.refundId] !== "rejected"
   ) {
-    reason = "该票有待审批的退款申请 请联系平台运营人员处理后再入场";
+    const status = options.refunds[ticket.refundId];
+    reason =
+      status === "pending_review"
+        ? "该票有待审批的退款申请 请联系平台运营人员处理后再入场"
+        : "该票退款状态未最终确认，禁止核验入场";
   } else {
     const entered = state.checkins.find(
       item => item.code === ticket.code && item.result !== "拦截"
     );
-    if (entered) {
+    if (entered)
       reason = `该票已于 ${entered.time.slice(11)} 入场 请勿重复核验`;
-    } else if (!ticket.realName) {
+    else if (!ticket.realName)
       reason = "实名认证未完成 请引导购票人在漫圈 App 完成实名";
-    } else if (ticket.securityReview) {
+    else if (!hasFinalEligibility(ticket, options, time))
+      reason = "资格查询无明确有效结果，禁止核验入场";
+    else if (ticket.securityReview) {
       result = "复验";
-      reason = `实名通过 ${ticket.role ?? "角色"}道具需安保复验 请引导至复验区`;
+      reason = "实名与最终资格已确认，道具需安保复验 请引导至复验区";
     } else {
       result = "通过";
-      reason = ticket.role
-        ? `实名通过 ${ticket.role} 角色申报已通过`
-        : "实名通过 电子票有效";
+      reason = "实名、支付与最终资格均已确认，电子票有效";
     }
   }
   const record: CheckinRecord = {
@@ -281,9 +489,9 @@ export interface RealNameOutcome {
 /** 实名核对：票码或订单号 + 姓名 + 证件号后 4 位 */
 export function checkRealName(
   input: { code: string; name: string; idTail: string },
-  options: { session: string; operator: string; now?: string }
+  options: { session: string; operator: string; now?: string; eventId?: string }
 ): RealNameOutcome {
-  const ticket = findTicket(input.code);
+  const ticket = findTicket(input.code, options.eventId ?? PRIMARY_EVENT_ID);
   if (!ticket)
     return { match: false, reason: "未查询到该电子票 请核对票码或订单号" };
   const nameOk = ticket.holder === input.name.trim();
@@ -872,213 +1080,252 @@ export interface ActivityOpsState {
   logs: OpsLog[];
 }
 
-export const createActivityOps = (): ActivityOpsState => ({
+export const createActivityOps = (
+  eventId = PRIMARY_EVENT_ID
+): ActivityOpsState => {
+  if (eventId !== PRIMARY_EVENT_ID) return createEmptyActivityOps();
+  return {
+    version: 1,
+    checkins: [
+      {
+        id: "ck-seed-3",
+        code: "QT-20260628-52044",
+        holder: "王小东",
+        ticketName: "普通观众票",
+        sessionDate: "2026-06-28",
+        result: "通过",
+        reason: "实名通过 电子票有效",
+        method: "扫码核验",
+        gate: "1号入口",
+        operator: "林洁",
+        time: "2026-06-28 10:18",
+        seeded: true,
+      },
+      {
+        id: "ck-seed-2",
+        code: "QT-20260628-98175",
+        holder: "赵宁",
+        ticketName: "学生早鸟票",
+        sessionDate: "2026-06-28",
+        result: "通过",
+        reason: "实名通过 电子票有效",
+        method: "扫码核验",
+        gate: "2号入口",
+        operator: "林洁",
+        time: "2026-06-28 09:12",
+        seeded: true,
+      },
+    ],
+    issues: [
+      {
+        id: "issue-001",
+        no: "WT-0628-001",
+        level: "高",
+        title: "仿真道具尺寸待复验",
+        detail: "机甲重装佣兵 现场安保须在入场前核验重弩模型尺寸与材质",
+        category: "角色服装道具",
+        source: "现场异常",
+        owner: "安保单位",
+        deadline: "2026-06-28",
+        status: "处理中",
+        related: "李思远 QT-20260628-47720",
+        createdAt: "2026-06-28 11:50",
+        createdBy: "林洁",
+        logs: [
+          {
+            action: "登记现场异常",
+            actor: "林洁 · 主办方活动运营人员",
+            time: "2026-06-28 11:50",
+            comment: "道具复验 重弩模型长度约 1.4 米",
+          },
+          {
+            action: "分派给 安保单位",
+            actor: "林洁 · 主办方活动运营人员",
+            time: "2026-06-28 11:52",
+          },
+        ],
+      },
+      {
+        id: "issue-002",
+        no: "WT-0628-002",
+        level: "中",
+        title: "电子票重复核验",
+        detail:
+          "学生早鸟票 QT-20260628-98175 已于 09:12 入场 10:40 在 2号入口再次出示",
+        category: "票务",
+        source: "现场异常",
+        owner: "主办方运营组",
+        deadline: "2026-06-28",
+        status: "处理中",
+        related: "赵宁 QT-20260628-98175",
+        createdAt: "2026-06-28 10:40",
+        createdBy: "林洁",
+        logs: [
+          {
+            action: "登记现场异常",
+            actor: "林洁 · 主办方活动运营人员",
+            time: "2026-06-28 10:40",
+            comment: "电子票异常 已拦截并核对入场记录",
+          },
+        ],
+      },
+      {
+        id: "issue-003",
+        no: "WT-0627-003",
+        level: "中",
+        title: "夜间值守联系人尚未补充",
+        detail: "现场服务与应急联络表缺少 20:00 后场馆协调联系人",
+        category: "活动资料",
+        source: "登记问题",
+        owner: "主办方运营组",
+        deadline: "2026-06-27",
+        status: "待处理",
+        createdAt: "2026-06-26 10:05",
+        createdBy: "周可",
+        logs: [
+          {
+            action: "登记问题",
+            actor: "周可 · 平台运营人员",
+            time: "2026-06-26 10:05",
+          },
+          {
+            action: "分派给 主办方运营组",
+            actor: "周可 · 平台运营人员",
+            time: "2026-06-26 10:06",
+          },
+        ],
+      },
+      {
+        id: "issue-004",
+        no: "WT-0625-004",
+        level: "低",
+        title: "学生早鸟票库存接近售罄",
+        detail: "已售 788 / 800 停售后同步更新活动首页说明",
+        category: "票务",
+        source: "登记问题",
+        owner: "主办方运营组",
+        deadline: "2026-06-25",
+        status: "已完成",
+        createdAt: "2026-06-24 16:20",
+        createdBy: "林洁",
+        logs: [
+          {
+            action: "登记问题",
+            actor: "林洁 · 主办方活动运营人员",
+            time: "2026-06-24 16:20",
+          },
+          {
+            action: "处置完成",
+            actor: "林洁 · 主办方活动运营人员",
+            time: "2026-06-25 09:30",
+            comment: "已停售并更新活动首页说明",
+          },
+        ],
+      },
+    ],
+    units: [
+      {
+        name: "新疆星河文化传媒有限公司",
+        type: "主办方工作人员",
+        count: 46,
+        verified: 46,
+      },
+      {
+        name: "天山安保服务有限公司",
+        type: "安保人员",
+        count: 120,
+        verified: 120,
+      },
+      {
+        name: "新疆国际会展中心",
+        type: "场馆工作人员",
+        count: 38,
+        verified: 38,
+      },
+      { name: "参展商（32 家）", type: "参展商人员", count: 64, verified: 51 },
+    ],
+    staff: [
+      {
+        id: "st-1",
+        name: "阿迪力·热合曼",
+        unit: "天山安保服务有限公司",
+        post: "安保队长",
+        phone: "139****6610",
+        idTail: "2215",
+        area: "1号入口",
+        status: "资料已核验",
+        addedAt: "2026-06-20 10:00",
+        addedBy: "林洁",
+      },
+      {
+        id: "st-2",
+        name: "陈思雨",
+        unit: "新疆星河文化传媒有限公司",
+        post: "现场执行",
+        phone: "136****1029",
+        idTail: "0428",
+        area: "主舞台",
+        status: "资料已核验",
+        addedAt: "2026-06-20 10:05",
+        addedBy: "林洁",
+      },
+      {
+        id: "st-3",
+        name: "马俊",
+        unit: "新疆国际会展中心",
+        post: "场馆协调",
+        phone: "151****7302",
+        idTail: "6631",
+        area: "展区巡场",
+        status: "资料已核验",
+        addedAt: "2026-06-21 14:20",
+        addedBy: "林洁",
+      },
+      {
+        id: "st-4",
+        name: "努尔古丽·艾山",
+        unit: "参展商（32 家）",
+        post: "展位负责人",
+        phone: "188****4476",
+        idTail: "1840",
+        area: "展区巡场",
+        status: "待资料核验",
+        addedAt: "2026-06-25 16:40",
+        addedBy: "林洁",
+      },
+    ],
+    materials: createActivityMaterials(),
+    filing: createFiling(),
+    noticeRead: {},
+    archive: {},
+    logs: [],
+  };
+};
+
+/** Empty activity state: never reuse the primary event fixture for a different event. */
+export const createEmptyActivityOps = (): ActivityOpsState => ({
   version: 1,
-  checkins: [
-    {
-      id: "ck-seed-3",
-      code: "QT-20260628-52044",
-      holder: "王小东",
-      ticketName: "普通观众票",
-      sessionDate: "2026-06-28",
-      result: "通过",
-      reason: "实名通过 电子票有效",
-      method: "扫码核验",
-      gate: "1号入口",
-      operator: "林洁",
-      time: "2026-06-28 10:18",
-      seeded: true,
-    },
-    {
-      id: "ck-seed-2",
-      code: "QT-20260628-98175",
-      holder: "赵宁",
-      ticketName: "学生早鸟票",
-      sessionDate: "2026-06-28",
-      result: "通过",
-      reason: "实名通过 电子票有效",
-      method: "扫码核验",
-      gate: "2号入口",
-      operator: "林洁",
-      time: "2026-06-28 09:12",
-      seeded: true,
-    },
-  ],
-  issues: [
-    {
-      id: "issue-001",
-      no: "WT-0628-001",
-      level: "高",
-      title: "仿真道具尺寸待复验",
-      detail: "机甲重装佣兵 现场安保须在入场前核验重弩模型尺寸与材质",
-      category: "角色服装道具",
-      source: "现场异常",
-      owner: "安保单位",
-      deadline: "2026-06-28",
-      status: "处理中",
-      related: "李思远 QT-20260628-47720",
-      createdAt: "2026-06-28 11:50",
-      createdBy: "林洁",
-      logs: [
-        {
-          action: "登记现场异常",
-          actor: "林洁 · 主办方活动运营人员",
-          time: "2026-06-28 11:50",
-          comment: "道具复验 重弩模型长度约 1.4 米",
-        },
-        {
-          action: "分派给 安保单位",
-          actor: "林洁 · 主办方活动运营人员",
-          time: "2026-06-28 11:52",
-        },
-      ],
-    },
-    {
-      id: "issue-002",
-      no: "WT-0628-002",
-      level: "中",
-      title: "电子票重复核验",
-      detail:
-        "学生早鸟票 QT-20260628-98175 已于 09:12 入场 10:40 在 2号入口再次出示",
-      category: "票务",
-      source: "现场异常",
-      owner: "主办方运营组",
-      deadline: "2026-06-28",
-      status: "处理中",
-      related: "赵宁 QT-20260628-98175",
-      createdAt: "2026-06-28 10:40",
-      createdBy: "林洁",
-      logs: [
-        {
-          action: "登记现场异常",
-          actor: "林洁 · 主办方活动运营人员",
-          time: "2026-06-28 10:40",
-          comment: "电子票异常 已拦截并核对入场记录",
-        },
-      ],
-    },
-    {
-      id: "issue-003",
-      no: "WT-0627-003",
-      level: "中",
-      title: "夜间值守联系人尚未补充",
-      detail: "现场服务与应急联络表缺少 20:00 后场馆协调联系人",
-      category: "活动资料",
-      source: "登记问题",
-      owner: "主办方运营组",
-      deadline: "2026-06-27",
-      status: "待处理",
-      createdAt: "2026-06-26 10:05",
-      createdBy: "周可",
-      logs: [
-        {
-          action: "登记问题",
-          actor: "周可 · 平台运营人员",
-          time: "2026-06-26 10:05",
-        },
-        {
-          action: "分派给 主办方运营组",
-          actor: "周可 · 平台运营人员",
-          time: "2026-06-26 10:06",
-        },
-      ],
-    },
-    {
-      id: "issue-004",
-      no: "WT-0625-004",
-      level: "低",
-      title: "学生早鸟票库存接近售罄",
-      detail: "已售 788 / 800 停售后同步更新活动首页说明",
-      category: "票务",
-      source: "登记问题",
-      owner: "主办方运营组",
-      deadline: "2026-06-25",
-      status: "已完成",
-      createdAt: "2026-06-24 16:20",
-      createdBy: "林洁",
-      logs: [
-        {
-          action: "登记问题",
-          actor: "林洁 · 主办方活动运营人员",
-          time: "2026-06-24 16:20",
-        },
-        {
-          action: "处置完成",
-          actor: "林洁 · 主办方活动运营人员",
-          time: "2026-06-25 09:30",
-          comment: "已停售并更新活动首页说明",
-        },
-      ],
-    },
-  ],
-  units: [
-    {
-      name: "新疆星河文化传媒有限公司",
-      type: "主办方工作人员",
-      count: 46,
-      verified: 46,
-    },
-    {
-      name: "天山安保服务有限公司",
-      type: "安保人员",
-      count: 120,
-      verified: 120,
-    },
-    { name: "新疆国际会展中心", type: "场馆工作人员", count: 38, verified: 38 },
-    { name: "参展商（32 家）", type: "参展商人员", count: 64, verified: 51 },
-  ],
-  staff: [
-    {
-      id: "st-1",
-      name: "阿迪力·热合曼",
-      unit: "天山安保服务有限公司",
-      post: "安保队长",
-      phone: "139****6610",
-      idTail: "2215",
-      area: "1号入口",
-      status: "资料已核验",
-      addedAt: "2026-06-20 10:00",
-      addedBy: "林洁",
-    },
-    {
-      id: "st-2",
-      name: "陈思雨",
-      unit: "新疆星河文化传媒有限公司",
-      post: "现场执行",
-      phone: "136****1029",
-      idTail: "0428",
-      area: "主舞台",
-      status: "资料已核验",
-      addedAt: "2026-06-20 10:05",
-      addedBy: "林洁",
-    },
-    {
-      id: "st-3",
-      name: "马俊",
-      unit: "新疆国际会展中心",
-      post: "场馆协调",
-      phone: "151****7302",
-      idTail: "6631",
-      area: "展区巡场",
-      status: "资料已核验",
-      addedAt: "2026-06-21 14:20",
-      addedBy: "林洁",
-    },
-    {
-      id: "st-4",
-      name: "努尔古丽·艾山",
-      unit: "参展商（32 家）",
-      post: "展位负责人",
-      phone: "188****4476",
-      idTail: "1840",
-      area: "展区巡场",
-      status: "待资料核验",
-      addedAt: "2026-06-25 16:40",
-      addedBy: "林洁",
-    },
-  ],
-  materials: createActivityMaterials(),
-  filing: createFiling(),
+  checkins: [],
+  issues: [],
+  units: [],
+  staff: [],
+  materials: [],
+  filing: {
+    name: "",
+    appliedAt: "",
+    period: "",
+    venue: "",
+    capacity: "",
+    expected: "",
+    content: "",
+    organizer: "",
+    venueManager: "",
+    security: "",
+    builder: "",
+    contact: "",
+    updatedAt: "",
+    updatedBy: "",
+  },
   noticeRead: {},
   archive: {},
   logs: [],
@@ -1422,8 +1669,14 @@ export function recordExport(
 }
 
 /** 读取本地保存的状态，字段缺失时以初始数据补齐 */
-export function restoreActivityOps(raw: string | null): ActivityOpsState {
-  const base = createActivityOps();
+export function restoreActivityOps(
+  raw: string | null,
+  eventId = PRIMARY_EVENT_ID
+): ActivityOpsState {
+  const base =
+    eventId === PRIMARY_EVENT_ID
+      ? createActivityOps()
+      : createEmptyActivityOps();
   if (!raw) return base;
   try {
     const saved = JSON.parse(raw) as Partial<ActivityOpsState>;

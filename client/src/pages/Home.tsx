@@ -100,6 +100,19 @@ import {
 } from "@/components/ticketStats";
 import { type SessionTicket } from "@/components/ticketSamples";
 import { useTicketConfig } from "@/components/ticketConfig";
+import { PRIMARY_EVENT_ID } from "@/components/activityOpsCore";
+import { ActivityScopeProvider } from "@/components/ActivityScopeContext";
+import {
+  canApproveRefund,
+  refundRuleChecks,
+  refundStatusPresentation,
+  visibleEventsForRole,
+} from "@/components/activityScope";
+import {
+  API_NOT_CONNECTED_MESSAGE,
+  assertPrototypeWriteAllowed,
+  isApiDataMode,
+} from "@/lib/api";
 import {
   TicketConfigDrawer,
   TicketCreateDrawer,
@@ -125,11 +138,10 @@ import {
 } from "@/components/TicketLimitViews";
 import { formatSessionDate } from "@/components/ticketTypes";
 import {
-  DEFAULT_REFUNDS,
-  loadRefundRecords,
+  isConfirmedRefund,
   saveRefundRecords,
+  useRefundRecords,
   type RefundRecord,
-  type RefundStatus,
 } from "@/components/refundData";
 import {
   ActivityReportDialog,
@@ -685,7 +697,12 @@ function Login({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const roles = Object.entries(ROLE_INFO) as [Role, (typeof ROLE_INFO)[Role]][];
+  const apiMode = isApiDataMode();
   const submit = () => {
+    if (apiMode) {
+      setError(API_NOT_CONNECTED_MESSAGE);
+      return;
+    }
     if (!account.trim() || !password.trim()) {
       setError("请输入账号和密码");
       return;
@@ -816,6 +833,7 @@ function Login({
                     aria-checked={selected}
                     key={key}
                     data-cy={`login-role-${key}`}
+                    disabled={apiMode}
                     onClick={() => {
                       setRole(key);
                       setError("");
@@ -857,6 +875,7 @@ function Login({
                 <UserRound className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={account}
+                  disabled={apiMode}
                   onChange={e => setAccount(e.target.value)}
                   autoComplete="username"
                   data-cy="login-account"
@@ -872,6 +891,7 @@ function Login({
                 <LockKeyhole className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={password}
+                  disabled={apiMode}
                   onChange={e => setPassword(e.target.value)}
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
@@ -881,6 +901,7 @@ function Login({
                 <button
                   type="button"
                   onClick={() => setShowPassword(value => !value)}
+                  disabled={apiMode}
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                   data-cy="login-password-toggle"
                   className="absolute end-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-brand-50 hover:text-brand-700"
@@ -910,12 +931,21 @@ function Login({
           <button
             type="submit"
             data-cy="login-submit"
+            disabled={apiMode}
             className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-grad text-[15px] font-semibold text-white hover:brightness-95"
           >
             {t.enter}
             <ArrowRight className="h-4 w-4 rtl:rotate-180" />
           </button>
-          {role === "organizer" ? (
+          {apiMode ? (
+            <p
+              data-cy="api-mode-login-blocked"
+              className="mt-5 rounded-lg bg-amber-50 px-3 py-2 text-center text-[12px] leading-5 text-amber-800"
+            >
+              API
+              模式不会使用预置账号或角色。请连接已部署的趣集认证与业务接口后登录。
+            </p>
+          ) : role === "organizer" ? (
             <div className="mt-5" data-cy="login-register-block">
               <div className="flex items-center gap-3 text-[12px] text-slate-500">
                 <span className="h-px flex-1 bg-slate-200" />
@@ -1090,9 +1120,14 @@ export default function Home() {
   const [role, setRole] = useState<Role>(restored.role);
   const [locale, setLocale] = useState<Locale>(restored.locale);
   const [page, setPage] = useState<Page>(restored.page);
-  const [selectedEvent, setSelectedEvent] = useState<EventItem>(
+  const [selectedEventRecord, setSelectedEvent] = useState<EventItem>(
     () => EVENTS.find(item => item.id === restored.eventId) || EVENTS[0]
   );
+  const visibleEvents = visibleEventsForRole(role, EVENTS);
+  const selectedEvent =
+    visibleEvents.find(item => item.id === selectedEventRecord.id) ??
+    visibleEvents[0] ??
+    EVENTS[0];
   const [activityTab, setActivityTab] = useState<ActivityTab>(
     restored.activityTab
   );
@@ -1250,7 +1285,7 @@ export default function Home() {
         ? "新建文化活动"
         : t.activity);
   const [createFrom, setCreateFrom] = useState<Page>("workspace");
-  const reviewBadge = useMyReviewCount(role);
+  const reviewBadge = useMyReviewCount(role, selectedEvent.id);
   const createActivity =
     role === "organizer"
       ? () => {
@@ -1272,8 +1307,30 @@ export default function Home() {
         ? "王处长"
         : "周可";
   const actor = { name: displayName, role: roleLabel };
-  const unreadNoticeCount = useUnreadNoticeCount(role as OpsRole, permissions);
+  const unreadNoticeCount = useUnreadNoticeCount(
+    role as OpsRole,
+    permissions,
+    selectedEvent.id
+  );
   const noticeBadge = unreadNoticeCount > 9 ? "9+" : String(unreadNoticeCount);
+  if (isApiDataMode())
+    return (
+      <main
+        data-cy="api-mode-blocked"
+        className="min-h-screen bg-slate-50 px-5 py-16 text-slate-900"
+      >
+        <section className="mx-auto max-w-xl rounded-xl border border-amber-200 bg-white p-6 shadow-sm">
+          <h1 className="text-[22px] font-semibold">业务接口尚未接入</h1>
+          <p className="mt-3 text-[15px] leading-7 text-slate-600">
+            API 模式已关闭预置账号、角色、前端样例数据和本地写入。请配置
+            VITE_API_BASE_URL 并接入趣集认证、活动、支付、退款和核销服务后重试。
+          </p>
+          <p className="mt-3 text-[13px] text-amber-800">
+            {API_NOT_CONNECTED_MESSAGE}
+          </p>
+        </section>
+      </main>
+    );
   if (registrationOpen)
     return (
       <OrganizerRegistration
@@ -1320,353 +1377,360 @@ export default function Home() {
       />
     );
   return (
-    <div
-      className="workspace-canvas min-h-screen text-slate-900"
-      dir={locale === "ug" ? "rtl" : "ltr"}
-    >
-      <div className="flex min-h-screen">
-        <aside
-          data-cy="desktop-sidebar"
-          className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-[#e7e6f4] flex-col sticky top-0 h-screen transition-[width] duration-200`}
-        >
-          <div
-            data-cy="sidebar-brand"
-            className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-[#e7e6f4]`}
-          >
-            <Brand mini={sidebarCollapsed} />
-          </div>
-          <nav className="p-3 flex-1 overflow-y-auto">
-            {["账号与主体", "工作协同", "活动运营", "资料与复盘"].map(group => {
-              const items = nav.filter(item => item.group === group);
-              if (!items.length) return null;
-              return (
-                <div key={group} className="mb-6">
-                  <div
-                    className={`px-3 mb-2 text-[12px] font-semibold tracking-wide text-slate-500 ${sidebarCollapsed ? "hidden" : ""}`}
-                  >
-                    {group}
-                  </div>
-                  {items.map(item => {
-                    const Icon = item.icon;
-                    const active =
-                      page === item.id ||
-                      ([
-                        "activity",
-                        "activity-create",
-                        "activity-published",
-                      ].includes(page) &&
-                        item.id === "events");
-                    return (
-                      <button
-                        key={item.id}
-                        title={item.label}
-                        data-active={active}
-                        data-cy="sidebar-nav-item"
-                        onClick={() => changePage(item.id)}
-                        className={`w-full h-11 mb-1 rounded-full flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-0" : "pl-1.5 pr-3 gap-2.5"} ${active ? (sidebarCollapsed ? "text-brand-700 font-semibold" : "bg-brand-100 text-brand-700 font-semibold") : "text-slate-700 hover:bg-brand-50/70"}`}
-                      >
-                        <span className="nav-icon-chip">
-                          <Icon
-                            className="w-[18px] h-[18px]"
-                            strokeWidth={1.9}
-                          />
-                        </span>
-                        {!sidebarCollapsed && <span>{item.label}</span>}
-                        {!sidebarCollapsed &&
-                          item.id === "costumes" &&
-                          reviewBadge > 0 && (
-                            <span
-                              data-cy="costume-badge"
-                              className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-600 text-white"
-                            >
-                              {reviewBadge}
-                            </span>
-                          )}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </nav>
-          <div
-            className={`sidebar-footer shrink-0 border-t border-[#e7e6f4] ${sidebarCollapsed ? "p-2" : "p-3"}`}
+    <ActivityScopeProvider eventId={selectedEvent.id}>
+      <div
+        className="workspace-canvas min-h-screen text-slate-900"
+        dir={locale === "ug" ? "rtl" : "ltr"}
+      >
+        <div className="flex min-h-screen">
+          <aside
+            data-cy="desktop-sidebar"
+            className={`hidden lg:flex ${sidebarCollapsed ? "w-[64px]" : "w-[232px]"} shrink-0 bg-white border-r border-[#e7e6f4] flex-col sticky top-0 h-screen transition-[width] duration-200`}
           >
             <div
-              className={`flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "flex-col gap-1"}`}
+              data-cy="sidebar-brand"
+              className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-5"} flex items-center border-b border-[#e7e6f4]`}
             >
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                className={`sidebar-toggle h-8 rounded-full border border-[#e4e3f0] flex items-center justify-center text-navy-700 hover:text-brand-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
+              <Brand mini={sidebarCollapsed} />
+            </div>
+            <nav className="p-3 flex-1 overflow-y-auto">
+              {["账号与主体", "工作协同", "活动运营", "资料与复盘"].map(
+                group => {
+                  const items = nav.filter(item => item.group === group);
+                  if (!items.length) return null;
+                  return (
+                    <div key={group} className="mb-6">
+                      <div
+                        className={`px-3 mb-2 text-[12px] font-semibold tracking-wide text-slate-500 ${sidebarCollapsed ? "hidden" : ""}`}
+                      >
+                        {group}
+                      </div>
+                      {items.map(item => {
+                        const Icon = item.icon;
+                        const active =
+                          page === item.id ||
+                          ([
+                            "activity",
+                            "activity-create",
+                            "activity-published",
+                          ].includes(page) &&
+                            item.id === "events");
+                        return (
+                          <button
+                            key={item.id}
+                            title={item.label}
+                            data-active={active}
+                            data-cy="sidebar-nav-item"
+                            onClick={() => changePage(item.id)}
+                            className={`w-full h-11 mb-1 rounded-full flex items-center text-[14px] transition-colors ${sidebarCollapsed ? "justify-center px-0" : "pl-1.5 pr-3 gap-2.5"} ${active ? (sidebarCollapsed ? "text-brand-700 font-semibold" : "bg-brand-100 text-brand-700 font-semibold") : "text-slate-700 hover:bg-brand-50/70"}`}
+                          >
+                            <span className="nav-icon-chip">
+                              <Icon
+                                className="w-[18px] h-[18px]"
+                                strokeWidth={1.9}
+                              />
+                            </span>
+                            {!sidebarCollapsed && <span>{item.label}</span>}
+                            {!sidebarCollapsed &&
+                              item.id === "costumes" &&
+                              reviewBadge > 0 && (
+                                <span
+                                  data-cy="costume-badge"
+                                  className="ml-auto min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-candy-600 text-white"
+                                >
+                                  {reviewBadge}
+                                </span>
+                              )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+              )}
+            </nav>
+            <div
+              className={`sidebar-footer shrink-0 border-t border-[#e7e6f4] ${sidebarCollapsed ? "p-2" : "p-3"}`}
+            >
+              <div
+                className={`flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "flex-col gap-1"}`}
               >
-                <PanelLeftClose
-                  className={`w-4 h-4 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
-                />
-              </button>
-              <button
-                onClick={() => setNotificationOpen(true)}
-                title="通知中心"
-                aria-label="通知中心"
-                className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
-              >
-                <span className="relative flex text-navy-700">
-                  <Bell className="w-[18px] h-[18px]" />
-                  {sidebarCollapsed && unreadNoticeCount > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                  aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                  className={`sidebar-toggle h-8 rounded-full border border-[#e4e3f0] flex items-center justify-center text-navy-700 hover:text-brand-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8" : "w-8 mb-1"}`}
+                >
+                  <PanelLeftClose
+                    className={`w-4 h-4 transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <button
+                  onClick={() => setNotificationOpen(true)}
+                  title="通知中心"
+                  aria-label="通知中心"
+                  className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+                >
+                  <span className="relative flex text-navy-700">
+                    <Bell className="w-[18px] h-[18px]" />
+                    {sidebarCollapsed && unreadNoticeCount > 0 && (
+                      <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
+                        {noticeBadge}
+                      </span>
+                    )}
+                  </span>
+                  {!sidebarCollapsed && <span>通知中心</span>}
+                  {!sidebarCollapsed && unreadNoticeCount > 0 && (
+                    <span className="ml-auto min-w-5 h-5 px-1 inline-flex items-center justify-center rounded-full bg-candy-600 text-[11px] font-semibold text-white">
                       {noticeBadge}
                     </span>
                   )}
-                </span>
-                {!sidebarCollapsed && <span>通知中心</span>}
-                {!sidebarCollapsed && unreadNoticeCount > 0 && (
-                  <span className="ml-auto min-w-5 h-5 px-1 inline-flex items-center justify-center rounded-full bg-candy-600 text-[11px] font-semibold text-white">
-                    {noticeBadge}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setSettingOpen(true)}
-                title="系统设置"
-                aria-label="系统设置"
-                className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
-              >
-                <Settings2 className="w-[18px] h-[18px] text-navy-700" />
-                {!sidebarCollapsed && <span>系统设置</span>}
-              </button>
-            </div>
-            <div
-              className={`sidebar-profile mt-2 ${sidebarCollapsed ? "flex justify-center" : "rounded-xl bg-brand-50 border border-brand-100 p-3 flex items-center gap-2"}`}
-            >
-              <div
-                title={sidebarCollapsed ? roleLabel : undefined}
-                className={`w-8 h-8 shrink-0 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold ring-2 ring-white`}
-              >
-                {displayName.slice(0, 1)}
+                </button>
+                <button
+                  onClick={() => setSettingOpen(true)}
+                  title="系统设置"
+                  aria-label="系统设置"
+                  className={`h-9 rounded-full flex items-center text-[14px] text-slate-700 hover:bg-brand-50 ${sidebarCollapsed ? "w-8 justify-center" : "w-full px-3 gap-3"}`}
+                >
+                  <Settings2 className="w-[18px] h-[18px] text-navy-700" />
+                  {!sidebarCollapsed && <span>系统设置</span>}
+                </button>
               </div>
-              {!sidebarCollapsed && (
-                <>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold truncate">
-                      {displayName}
+              <div
+                className={`sidebar-profile mt-2 ${sidebarCollapsed ? "flex justify-center" : "rounded-xl bg-brand-50 border border-brand-100 p-3 flex items-center gap-2"}`}
+              >
+                <div
+                  title={sidebarCollapsed ? roleLabel : undefined}
+                  className={`w-8 h-8 shrink-0 rounded-full ${ROLE_INFO[role].color} text-white flex items-center justify-center text-[13px] font-semibold ring-2 ring-white`}
+                >
+                  {displayName.slice(0, 1)}
+                </div>
+                {!sidebarCollapsed && (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold truncate">
+                        {displayName}
+                      </div>
+                      <div className="text-[12px] text-slate-500 truncate">
+                        {roleLabel}
+                      </div>
                     </div>
-                    <div className="text-[12px] text-slate-500 truncate">
-                      {roleLabel}
-                    </div>
-                  </div>
+                    <button
+                      onClick={signOut}
+                      title={t.logout}
+                      aria-label={t.logout}
+                      className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white text-navy-700"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </aside>
+          <div className="flex-1 min-w-0">
+            <header
+              data-cy="workspace-topbar"
+              className="h-16 bg-white/90 backdrop-blur-md border-b border-[#e7e6f4] px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  aria-label={menuOpen ? "关闭菜单" : "打开菜单"}
+                  aria-expanded={menuOpen}
+                  className="lg:hidden w-10 h-10 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="hidden sm:flex min-w-0 items-center gap-2 text-[14px] text-slate-500">
                   <button
-                    onClick={signOut}
-                    title={t.logout}
-                    aria-label={t.logout}
-                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white text-navy-700"
+                    onClick={() => changePage("events")}
+                    className="shrink-0 whitespace-nowrap hover:text-brand-600"
                   >
-                    <LogOut className="w-4 h-4" />
+                    活动管理
                   </button>
+                  <ChevronRight className="w-4 h-4 shrink-0" />
+                  <button
+                    onClick={() => changePage("activity")}
+                    className="min-w-0 font-semibold text-slate-800 truncate max-w-[320px]"
+                  >
+                    {selectedEvent.name} · {selectedEvent.subtitle}
+                  </button>
+                </div>
+                <div className="sm:hidden text-[15px] font-semibold">
+                  {currentPageLabel}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => setPage("activity")}
+                  className="hidden md:flex h-9 shrink-0 px-3.5 rounded-full border border-brand-200 bg-white text-brand-700 text-[13px] font-semibold whitespace-nowrap items-center gap-1.5 hover:bg-brand-50"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  当前活动档案
+                </button>
+                <LocaleSwitch locale={locale} setLocale={setLocale} />
+                <button
+                  onClick={() => setNotificationOpen(true)}
+                  aria-label="通知中心"
+                  title="通知中心"
+                  data-cy="notice-open"
+                  className="relative w-9 h-9 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
+                >
+                  <Bell className="w-[18px] h-[18px]" />
+                  {unreadNoticeCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
+                      {noticeBadge}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </header>
+            {menuOpen && (
+              <MobileMenu
+                nav={nav}
+                page={page}
+                onNavigate={page => {
+                  setMenuOpen(false);
+                  changePage(page);
+                }}
+              />
+            )}
+            <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+              {page === "workspace" && (
+                <>
+                  {role === "organizer" && admission.status !== "approved" && (
+                    <OnboardingWorkspaceGate
+                      state={admission}
+                      onContinue={() => setPage("onboarding")}
+                    />
+                  )}
+                  <Workspace
+                    events={visibleEvents}
+                    onOpenEvent={event => {
+                      setSelectedEvent(event);
+                      changePage("activity");
+                    }}
+                    onNavigate={changePage}
+                    onCreate={createActivity}
+                  />
                 </>
               )}
-            </div>
-          </div>
-        </aside>
-        <div className="flex-1 min-w-0">
-          <header
-            data-cy="workspace-topbar"
-            className="h-16 bg-white/90 backdrop-blur-md border-b border-[#e7e6f4] px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-20"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label={menuOpen ? "关闭菜单" : "打开菜单"}
-                aria-expanded={menuOpen}
-                className="lg:hidden w-10 h-10 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <div className="hidden sm:flex min-w-0 items-center gap-2 text-[14px] text-slate-500">
-                <button
-                  onClick={() => changePage("events")}
-                  className="shrink-0 whitespace-nowrap hover:text-brand-600"
-                >
-                  活动管理
-                </button>
-                <ChevronRight className="w-4 h-4 shrink-0" />
-                <button
-                  onClick={() => changePage("activity")}
-                  className="min-w-0 font-semibold text-slate-800 truncate max-w-[320px]"
-                >
-                  {selectedEvent.name} · {selectedEvent.subtitle}
-                </button>
-              </div>
-              <div className="sm:hidden text-[15px] font-semibold">
-                {currentPageLabel}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                onClick={() => setPage("activity")}
-                className="hidden md:flex h-9 shrink-0 px-3.5 rounded-full border border-brand-200 bg-white text-brand-700 text-[13px] font-semibold whitespace-nowrap items-center gap-1.5 hover:bg-brand-50"
-              >
-                <FolderOpen className="w-4 h-4" />
-                当前活动档案
-              </button>
-              <LocaleSwitch locale={locale} setLocale={setLocale} />
-              <button
-                onClick={() => setNotificationOpen(true)}
-                aria-label="通知中心"
-                title="通知中心"
-                data-cy="notice-open"
-                className="relative w-9 h-9 rounded-full text-navy-700 hover:bg-brand-50 flex items-center justify-center"
-              >
-                <Bell className="w-[18px] h-[18px]" />
-                {unreadNoticeCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-candy-600 text-[10px] font-semibold text-white flex items-center justify-center">
-                    {noticeBadge}
-                  </span>
-                )}
-              </button>
-            </div>
-          </header>
-          {menuOpen && (
-            <MobileMenu
-              nav={nav}
-              page={page}
-              onNavigate={page => {
-                setMenuOpen(false);
-                changePage(page);
-              }}
-            />
-          )}
-          <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
-            {page === "workspace" && (
-              <>
-                {role === "organizer" && admission.status !== "approved" && (
-                  <OnboardingWorkspaceGate
-                    state={admission}
-                    onContinue={() => setPage("onboarding")}
-                  />
-                )}
-                <Workspace
-                  events={EVENTS}
-                  onOpenEvent={event => {
+              {page === "events" && (
+                <EventsPage
+                  events={visibleEvents}
+                  onOpen={event => {
                     setSelectedEvent(event);
                     changePage("activity");
                   }}
-                  onNavigate={changePage}
                   onCreate={createActivity}
                 />
-              </>
-            )}
-            {page === "events" && (
-              <EventsPage
-                events={EVENTS}
-                onOpen={event => {
-                  setSelectedEvent(event);
-                  changePage("activity");
-                }}
-                onCreate={createActivity}
-              />
-            )}
-            {page === "activity" && (
-              <ActivityRecord
-                event={selectedEvent}
-                tab={activityTab}
-                setTab={setActivityTab}
-                onNavigate={changePage}
-                role={role}
-                actor={actor}
-                canEdit={role === "organizer" || role === "platform"}
-              />
-            )}
-            {page === "tickets" && (
-              <TicketPage
-                role={role}
-                mode={ticketMode}
-                setMode={setTicketMode}
-              />
-            )}
-            {page === "costumes" && <CostumeReviewPage role={role} />}
-            {page === "onsite" && (
-              <OnsiteWorkbench actor={actor} role={role as OpsRole} />
-            )}
-            {page === "archive" && (
-              <ArchivePanel
-                actor={actor}
-                role={role as OpsRole}
-                event={toReportEvent(selectedEvent)}
-              />
-            )}
-            {page === "organizer" && (
-              <OrganizerMaterials
-                canEdit={role === "organizer" || role === "platform"}
-              />
-            )}
-            {page === "data" && (
-              <DataCenterPanel
-                actor={actor}
-                role={role as OpsRole}
-                event={toReportEvent(selectedEvent)}
-                permissions={permissions}
-                onOpen={(next, tab) =>
-                  changePage(next as Page, tab as ActivityTab | undefined)
-                }
-              />
-            )}
-            {page === "onboarding" && (
-              <OrganizerOnboarding
-                state={admission}
-                onChange={updateAdmission}
-                onCreateActivity={() => setPage("activity-create")}
-              />
-            )}
-            {page === "admissions" && (
-              <AdmissionReview state={admission} onChange={updateAdmission} />
-            )}
-            {page === "activity-create" && (
-              <ActivityCreationWizard
-                approved={admission.status === "approved"}
-                onBack={() =>
-                  setPage(
-                    admission.status === "approved"
-                      ? createFrom === "events"
-                        ? "events"
-                        : "workspace"
-                      : "onboarding"
-                  )
-                }
-                onFinish={() => setPage("activity-published")}
-              />
-            )}
-            {page === "activity-published" && (
-              <ActivityPublished
-                onWorkspace={() => setPage("events")}
-                onTickets={() => setPage("tickets")}
-              />
-            )}
-          </main>
+              )}
+              {page === "activity" && (
+                <ActivityRecord
+                  event={selectedEvent}
+                  tab={activityTab}
+                  setTab={setActivityTab}
+                  onNavigate={changePage}
+                  role={role}
+                  actor={actor}
+                  canEdit={role === "organizer" || role === "platform"}
+                />
+              )}
+              {page === "tickets" && (
+                <TicketPage
+                  role={role}
+                  eventId={selectedEvent.id}
+                  mode={ticketMode}
+                  setMode={setTicketMode}
+                />
+              )}
+              {page === "costumes" && (
+                <CostumeReviewPage role={role} eventId={selectedEvent.id} />
+              )}
+              {page === "onsite" && (
+                <OnsiteWorkbench actor={actor} role={role as OpsRole} />
+              )}
+              {page === "archive" && (
+                <ArchivePanel
+                  actor={actor}
+                  role={role as OpsRole}
+                  event={toReportEvent(selectedEvent)}
+                />
+              )}
+              {page === "organizer" && (
+                <OrganizerMaterials
+                  canEdit={role === "organizer" || role === "platform"}
+                />
+              )}
+              {page === "data" && (
+                <DataCenterPanel
+                  actor={actor}
+                  role={role as OpsRole}
+                  event={toReportEvent(selectedEvent)}
+                  permissions={permissions}
+                  onOpen={(next, tab) =>
+                    changePage(next as Page, tab as ActivityTab | undefined)
+                  }
+                />
+              )}
+              {page === "onboarding" && (
+                <OrganizerOnboarding
+                  state={admission}
+                  onChange={updateAdmission}
+                  onCreateActivity={() => setPage("activity-create")}
+                />
+              )}
+              {page === "admissions" && (
+                <AdmissionReview state={admission} onChange={updateAdmission} />
+              )}
+              {page === "activity-create" && (
+                <ActivityCreationWizard
+                  approved={admission.status === "approved"}
+                  onBack={() =>
+                    setPage(
+                      admission.status === "approved"
+                        ? createFrom === "events"
+                          ? "events"
+                          : "workspace"
+                        : "onboarding"
+                    )
+                  }
+                  onFinish={() => setPage("activity-published")}
+                />
+              )}
+              {page === "activity-published" && (
+                <ActivityPublished
+                  onWorkspace={() => setPage("events")}
+                  onTickets={() => setPage("tickets")}
+                />
+              )}
+            </main>
+          </div>
         </div>
+        {notificationOpen && (
+          <NoticePanel
+            role={role as OpsRole}
+            permissions={permissions}
+            onClose={() => setNotificationOpen(false)}
+            onOpen={(next, tab) =>
+              changePage(next as Page, tab as ActivityTab | undefined)
+            }
+          />
+        )}
+        {settingOpen && (
+          <SettingsPanel
+            role={role}
+            displayName={displayName}
+            onClose={() => setSettingOpen(false)}
+            onLogout={() => {
+              setSettingOpen(false);
+              signOut();
+            }}
+          />
+        )}
       </div>
-      {notificationOpen && (
-        <NoticePanel
-          role={role as OpsRole}
-          permissions={permissions}
-          onClose={() => setNotificationOpen(false)}
-          onOpen={(next, tab) =>
-            changePage(next as Page, tab as ActivityTab | undefined)
-          }
-        />
-      )}
-      {settingOpen && (
-        <SettingsPanel
-          role={role}
-          displayName={displayName}
-          onClose={() => setSettingOpen(false)}
-          onLogout={() => {
-            setSettingOpen(false);
-            signOut();
-          }}
-        />
-      )}
-    </div>
+    </ActivityScopeProvider>
   );
 }
 
@@ -2322,8 +2386,12 @@ function ActivityRecord({
           onOpenReview={() => setTab("costumes")}
         />
       )}
-      {tab === "tickets" && <TicketPage compact role={role} />}
-      {tab === "costumes" && <CostumeReviewPage role={role} compact />}
+      {tab === "tickets" && (
+        <TicketPage compact role={role} eventId={event.id} />
+      )}
+      {tab === "costumes" && (
+        <CostumeReviewPage role={role} eventId={event.id} compact />
+      )}
       {tab === "onsite" && (
         <OnsiteWorkbench actor={actor} role={role as OpsRole} compact />
       )}
@@ -2632,26 +2700,57 @@ function LogLine({ time, text }: { time: string; text: string }) {
   );
 }
 
+const useScopedRefundRecords = useRefundRecords as (
+  eventId?: string
+) => RefundRecord[];
+const saveScopedRefundRecords = saveRefundRecords as (
+  next: RefundRecord[],
+  eventId?: string
+) => void;
+const useScopedTicketConfig = useTicketConfig as (
+  eventId?: string
+) => ReturnType<typeof useTicketConfig>;
+
+function refundPresentation(
+  record: Pick<
+    RefundRecord,
+    "status" | "ticketId" | "ticketCode" | "amount" | "channelConfirmedAt"
+  >
+) {
+  return record.status === "refunded" && !isConfirmedRefund(record)
+    ? refundStatusPresentation("unknown")
+    : refundStatusPresentation(record.status);
+}
+
 function TicketPage({
   compact = false,
   role,
+  eventId,
   mode,
   setMode,
 }: {
   compact?: boolean;
   role: Role;
+  /** Selected activity ID; never rely on primary-event defaults. */
+  eventId: string;
   mode?: TicketMode;
   setMode?: (mode: TicketMode) => void;
 }) {
   const [localMode, setLocalMode] = useState<TicketMode>("all");
   const selected = mode || localMode;
   const set = setMode || setLocalMode;
-  const [session, setSession] = useState(loadTicketSession);
+  const ticketConfig = useScopedTicketConfig(eventId);
+  const sessionDates = ticketConfig.sessions.map(item => item.date);
+  const [session, setSession] = useState(() => loadTicketSession(sessionDates));
+  useEffect(() => {
+    if (session !== ALL_SESSIONS && !sessionDates.includes(session))
+      setSession(ALL_SESSIONS);
+  }, [eventId, session, sessionDates]);
   const changeSession = (value: string) => {
     setSession(value);
     saveTicketSession(value);
   };
-  const [refunds, setRefunds] = useState<RefundRecord[]>(loadRefundRecords);
+  const refunds = useScopedRefundRecords(eventId);
   const pending = refunds
     .filter(item => item.status === "pending_review")
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
@@ -2666,8 +2765,7 @@ function TicketPage({
       n: (current?.n || 0) + 1,
     }));
   };
-  const completed = refunds.filter(item => item.status === "refunded");
-  const ticketConfig = useTicketConfig();
+  const completed = refunds.filter(isConfirmedRefund);
   const exportLabel = {
     all: "票种数据",
     orders: "订单",
@@ -2699,19 +2797,21 @@ function TicketPage({
           ? ticketConfig.sessions.map(item => item.date)
           : [session]
         ).flatMap(date =>
-          buildSessionStock(ticketConfig.sessions, refunds, date).map(row => [
-            formatSessionDate(date),
-            row.ticket.name,
-            row.ticket.price,
-            row.ticket.inventory,
-            row.sold,
-            row.refunded,
-            row.remaining,
-            row.ticket.purchaseLimit,
-            row.ticket.realName ? "需要实名" : "无需实名",
-            row.ticket.status,
-            row.ticket.sales,
-          ])
+          buildSessionStock(ticketConfig.sessions, refunds, date, eventId).map(
+            row => [
+              formatSessionDate(date),
+              row.ticket.name,
+              row.ticket.price,
+              row.ticket.inventory,
+              row.sold,
+              row.refunded,
+              row.remaining,
+              row.ticket.purchaseLimit,
+              row.ticket.realName ? "需要实名" : "无需实名",
+              row.ticket.status,
+              row.ticket.sales,
+            ]
+          )
         ),
       ];
     } else if (selected === "orders") {
@@ -2736,11 +2836,7 @@ function TicketPage({
         ]),
       ];
     } else if (selected === "refunds") {
-      const label = {
-        pending_review: "待平台审批",
-        refunded: "已同意并退款",
-        rejected: "已驳回",
-      } as const;
+      const label = (record: RefundRecord) => refundPresentation(record).label;
       rows = [
         [
           "申请编号",
@@ -2765,7 +2861,7 @@ function TicketPage({
           item.amount,
           item.reason,
           item.requestedAt,
-          label[item.status],
+          label(item),
           item.processedBy ?? "",
           item.processedAt ?? "",
           item.comment ?? "",
@@ -2792,8 +2888,8 @@ function TicketPage({
     toast.success(`已导出${exportLabel[selected]} ${rows.length - 1} 条`);
   };
   const updateRefund = (next: RefundRecord[]) => {
-    setRefunds(next);
-    saveRefundRecords(next);
+    assertPrototypeWriteAllowed("退款审批");
+    saveScopedRefundRecords(next, eventId);
   };
   const refundSteps: {
     icon: typeof Smartphone;
@@ -2816,7 +2912,7 @@ function TicketPage({
     {
       icon: WalletCards,
       title: "原支付渠道退款",
-      text: "结果同步用户端与操作记录",
+      text: "无渠道成功回执前不显示到账",
       tone: "text-slate-600 bg-slate-100",
     },
   ];
@@ -2878,22 +2974,32 @@ function TicketPage({
           link={openRefunds}
         />
         <TodayStat
-          label="已完成退款"
+          label="退款已到账"
           value={String(completed.length)}
           sub={`累计 ¥${completed.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}`}
           icon={<CheckCircle2 className="w-5 h-5" />}
         />
         <TodayStat
           label="当前活动已售票"
-          value="4,662"
-          sub="电子票均已生成"
+          value={formatCount(
+            ticketConfig.sessions.reduce(
+              (sum, session) =>
+                sum +
+                session.tickets.reduce(
+                  (count, ticket) => count + ticket.sold,
+                  0
+                ),
+              0
+            )
+          )}
+          sub="按当前活动票务配置统计"
           icon={<TicketCheck className="w-5 h-5" />}
           tone="blue"
         />
         <TodayStat
           label="实名完成"
-          value="4,484"
-          sub="实名完成率 96.2%"
+          value="—"
+          sub="实名数据以服务端活动范围查询为准"
           icon={<ShieldCheck className="w-5 h-5" />}
         />
       </section>
@@ -2935,11 +3041,16 @@ function TicketPage({
           </button>
         </div>
         {(selected === "all" || selected === "orders") && (
-          <SessionFilter value={session} onChange={changeSession} />
+          <SessionFilter
+            value={session}
+            onChange={changeSession}
+            dates={sessionDates}
+          />
         )}
         {selected === "all" ? (
           <TicketTypes
             role={role}
+            eventId={eventId}
             refunds={refunds}
             session={session}
             onRefunds={() => set("refunds")}
@@ -2949,16 +3060,17 @@ function TicketPage({
             }}
           />
         ) : selected === "orders" ? (
-          <OrderTable session={session} />
+          <OrderTable session={session} eventId={eventId} />
         ) : selected === "refunds" ? (
           <RefundTable
             role={role}
+            eventId={eventId}
             requests={refunds}
             onUpdate={updateRefund}
             focus={refundFocus}
           />
         ) : (
-          <PurchaseLimitPanel refunds={refunds} />
+          <PurchaseLimitPanel refunds={refunds} eventId={eventId} />
         )}
       </section>
     </div>
@@ -2966,20 +3078,22 @@ function TicketPage({
 }
 function TicketTypes({
   role,
+  eventId,
   refunds,
   session,
   onRefunds,
   onViewOrders,
 }: {
   role: Role;
+  eventId: string;
   refunds: RefundRecord[];
   session: string;
   onRefunds: () => void;
   onViewOrders: (date: string) => void;
 }) {
-  const config = useTicketConfig();
+  const config = useScopedTicketConfig(eventId);
   const sessions = config.sessions;
-  const rows = buildSessionStock(sessions, refunds, session);
+  const rows = buildSessionStock(sessions, refunds, session, eventId);
   const total = totalTicketStock(rows);
   const editable = canEditTickets(role);
   const [editing, setEditing] = useState<string | null>(null);
@@ -3262,6 +3376,7 @@ function TicketTypes({
         <TicketConfigDrawer
           key={editing}
           role={role}
+          eventId={eventId}
           ticketName={editing}
           initialDate={editDate}
           refunds={refunds}
@@ -3275,6 +3390,7 @@ function TicketTypes({
       {creating && (
         <TicketCreateDrawer
           role={role}
+          eventId={eventId}
           onClose={() => setCreating(false)}
           onCreated={(name, date) => {
             setCreating(false);
@@ -3324,15 +3440,21 @@ const ORDERS: { date: string; row: string[] }[] = [
     ],
   },
 ];
-function OrderTable({ session }: { session: string }) {
-  const orders = ORDERS.filter(
-    order => session === ALL_SESSIONS || order.date === session
-  ).map(order => [
-    order.row[0],
-    order.row[1],
-    formatSessionDate(order.date),
-    ...order.row.slice(2),
-  ]);
+function OrderTable({
+  session,
+  eventId,
+}: {
+  session: string;
+  eventId: string;
+}) {
+  const orders = (eventId === PRIMARY_EVENT_ID ? ORDERS : [])
+    .filter(order => session === ALL_SESSIONS || order.date === session)
+    .map(order => [
+      order.row[0],
+      order.row[1],
+      formatSessionDate(order.date),
+      ...order.row.slice(2),
+    ]);
   return (
     <SimpleTable
       headers={[
@@ -3349,36 +3471,19 @@ function OrderTable({ session }: { session: string }) {
     />
   );
 }
-const USED_TICKET_REFUNDS = new Set(["refund-20260927-003"]);
 function refundChecks(item: RefundRecord) {
-  const used = USED_TICKET_REFUNDS.has(item.id);
-  return [
-    {
-      label: "订单已支付",
-      detail: `支付金额 ¥${item.amount.toFixed(2)}`,
-      passed: true,
-    },
-    {
-      label: used ? "电子票已核验入场" : "电子票未使用",
-      detail: used ? "已有入场核验记录 不符合退款条件" : "无入场核验记录",
-      passed: !used,
-    },
-    { label: "在可退时间内", detail: "距离活动开始超过 24 小时", passed: true },
-    {
-      label: "票种允许退款",
-      detail: `${item.ticketName}支持活动前退款`,
-      passed: true,
-    },
-  ];
+  return refundRuleChecks(item);
 }
 type RefundFilter = "pending" | "done" | "all";
 function RefundTable({
   role,
+  eventId,
   requests,
   onUpdate,
   focus,
 }: {
   role: Role;
+  eventId: string;
   requests: RefundRecord[];
   onUpdate: (requests: RefundRecord[]) => void;
   focus: { id?: string; n: number } | null;
@@ -3401,16 +3506,7 @@ function RefundTable({
   }, [focus?.n]);
   const detail = requests.find(item => item.id === detailId) || null;
   const deciding = requests.find(item => item.id === decision?.id) || null;
-  const labels: Record<RefundStatus, string> = {
-    pending_review: "待平台审批",
-    refunded: "已同意 已退款",
-    rejected: "已驳回",
-  };
-  const tones: Record<RefundStatus, string> = {
-    pending_review: "bg-amber-50 text-amber-700",
-    refunded: "bg-emerald-50 text-emerald-700",
-    rejected: "bg-rose-50 text-rose-700",
-  };
+  const statusInfo = (record: RefundRecord) => refundPresentation(record);
   const sorted = [...requests].sort((a, b) =>
     a.status === b.status
       ? b.requestedAt.localeCompare(a.requestedAt)
@@ -3428,12 +3524,20 @@ function RefundTable({
         : true
   );
   const startDecision = (item: RefundRecord, type: "approve" | "reject") => {
+    if (type === "approve" && !canApproveRefund(item)) {
+      toast.error("缺少订单冻结规则、金额或票使用状态，不能同意退款");
+      return;
+    }
     setDecision({ id: item.id, type });
-    setComment(type === "approve" ? "符合活动退票规则，同意原路退回" : "");
+    setComment(
+      type === "approve" ? "已按订单冻结退款规则核对，等待渠道处理" : ""
+    );
   };
   const decide = () => {
     if (!deciding || !decision || !canDecide) return;
+    if (decision.type === "approve" && !canApproveRefund(deciding)) return;
     if (decision.type === "reject" && !comment.trim()) return;
+    assertPrototypeWriteAllowed("退款审批");
     const time = new Date()
       .toLocaleString("zh-CN", {
         year: "numeric",
@@ -3446,10 +3550,12 @@ function RefundTable({
       .replaceAll("/", "-");
     const approve = decision.type === "approve";
     const processingComment =
-      comment.trim() || "符合活动退票规则，同意原路退回";
-    const updated: RefundRecord = {
+      comment.trim() || "已按订单冻结退款规则核对，等待渠道处理";
+    const updated = {
       ...deciding,
-      status: approve ? "refunded" : "rejected",
+      // Approval is not a channel result. Keep the ticket frozen until a real
+      // payment provider confirms success through the business API.
+      status: approve ? "processing" : "rejected",
       processedBy: "周可",
       processedAt: time,
       comment: processingComment,
@@ -3464,21 +3570,22 @@ function RefundTable({
         ...(approve
           ? [
               {
-                action: "退款已提交原支付渠道",
-                actor: "系统 · 票务系统",
+                action: "退款处理中",
+                actor: "系统 · 前端原型",
                 time,
-                comment: "预计 1—3 个工作日到账 结果已同步漫圈 App",
+                comment:
+                  "等待真实原支付渠道回执；无成功回执前不显示到账，也不释放电子票或库存",
               },
             ]
           : []),
       ],
-    };
+    } as unknown as RefundRecord;
     onUpdate(requests.map(item => (item.id === updated.id ? updated : item)));
     setDecision(null);
     setComment("");
     toast.success(
       approve
-        ? `已同意 ${updated.buyerName} 的退款 ¥${updated.amount.toFixed(2)}`
+        ? `已同意 ${updated.buyerName} 的退款，当前为退款处理中`
         : `已驳回 ${updated.buyerName} 的退款申请`
     );
   };
@@ -3490,7 +3597,7 @@ function RefundTable({
   ];
 
   return (
-    <>
+    <div data-cy="refund-table" data-event-id={eventId}>
       <div className="px-4 py-3 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div
           data-cy="refund-filters"
@@ -3562,7 +3669,8 @@ function RefundTable({
             <tbody className="divide-y divide-slate-200">
               {rows.map(item => {
                 const pending = item.status === "pending_review";
-                const blocked = refundChecks(item).some(check => !check.passed);
+                const blocked = !canApproveRefund(item);
+                const presentation = statusInfo(item);
                 return (
                   <tr
                     key={item.id}
@@ -3607,9 +3715,9 @@ function RefundTable({
                     </td>
                     <td className="p-4">
                       <span
-                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold ${tones[item.status]}`}
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold ${presentation.tone}`}
                       >
-                        {labels[item.status]}
+                        {presentation.label}
                       </span>
                       {item.processedBy && (
                         <small className="block mt-1.5 text-[12px] text-slate-500 whitespace-nowrap">
@@ -3697,9 +3805,9 @@ function RefundTable({
               <div className="min-w-0 space-y-4">
                 <div
                   data-cy="refund-detail-status"
-                  className={`rounded-lg p-4 flex items-center gap-3 ${tones[detail.status]}`}
+                  className={`rounded-lg p-4 flex items-center gap-3 ${statusInfo(detail).tone}`}
                 >
-                  {detail.status === "refunded" ? (
+                  {isConfirmedRefund(detail) ? (
                     <CheckCircle2 className="w-5 h-5" />
                   ) : detail.status === "rejected" ? (
                     <XCircle className="w-5 h-5" />
@@ -3708,7 +3816,7 @@ function RefundTable({
                   )}
                   <div>
                     <strong className="block text-[15px]">
-                      {labels[detail.status]}
+                      {statusInfo(detail).label}
                     </strong>
                     <small className="block mt-1 text-[13px]">
                       {detail.processedBy
@@ -3746,8 +3854,8 @@ function RefundTable({
                       ["票种", detail.ticketName],
                       ["场次", formatSessionDate(refundSessionDate(detail))],
                       ["退款金额", `¥${detail.amount.toFixed(2)}`],
-                      ["支付方式", "微信支付"],
-                      ["退款去向", "原支付账户"],
+                      ["支付渠道", "以订单渠道记录为准（前端原型无渠道回执）"],
+                      ["退款去向", "以订单退款记录为准"],
                     ]}
                   />
                 </RefundDetailSection>
@@ -3818,7 +3926,7 @@ function RefundTable({
                   </button>
                   <button
                     data-cy="refund-approve"
-                    disabled={refundChecks(detail).some(check => !check.passed)}
+                    disabled={!canApproveRefund(detail)}
                     onClick={() => startDecision(detail, "approve")}
                     className="h-11 rounded-full bg-brand-grad text-white text-[14px] font-semibold disabled:bg-slate-300"
                   >
@@ -3833,7 +3941,10 @@ function RefundTable({
                       <PhraseLine
                         parts={
                           detail.status !== "pending_review"
-                            ? ["处理结果已同步漫圈 App", "并写入操作记录"]
+                            ? [
+                                "退款状态以真实支付渠道回执为准",
+                                "处理中、失败、未知和申诉状态均不可再次同意",
+                              ]
                             : [
                                 "退款审批由平台运营人员完成",
                                 "主办方可实时查看进度",
@@ -3894,7 +4005,7 @@ function RefundTable({
                 </strong>
                 <small className="block mt-2 text-[13px] leading-5 text-slate-500">
                   {decision.type === "approve"
-                    ? "确认后退款提交原支付渠道 票回到剩余库存 同步用户端"
+                    ? "确认后仅进入退款处理中；在真实渠道成功回执前，不显示到账，也不释放电子票、库存或限购额度"
                     : "驳回原因将同步给用户 请填写清楚具体原因"}
                 </small>
               </div>
@@ -3935,7 +4046,7 @@ function RefundTable({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

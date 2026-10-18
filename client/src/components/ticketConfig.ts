@@ -5,6 +5,12 @@ import {
   type SessionTicketStatus,
 } from "./ticketSamples";
 import type { StockSession } from "./ticketStats";
+import { assertPrototypeWriteAllowed, isApiDataMode } from "../lib/api";
+import {
+  normalizeEventId,
+  PRIMARY_EVENT_ID,
+  storageKeyForEvent,
+} from "./eventScope";
 
 /**
  * 票务管理 · 票种配置
@@ -152,9 +158,13 @@ function describeChanges(before: SessionTicket, after: SessionTicket) {
   return parts;
 }
 
-export function createTicketConfig(): TicketConfigState {
+export function createTicketConfig(
+  eventId = PRIMARY_EVENT_ID
+): TicketConfigState {
+  if (eventId !== PRIMARY_EVENT_ID) return { sessions: [], logs: [] };
   return {
     sessions: EVENT_SESSIONS.map(session => ({
+      eventId,
       date: session.date,
       tickets: session.tickets.map(ticket => {
         const window = saleWindow(ticket, session.date);
@@ -261,11 +271,20 @@ export function addTicketType(
   state: TicketConfigState,
   input: NewTicketInput,
   actor: TicketActor,
-  time = formatNow()
+  time = formatNow(),
+  eventId = PRIMARY_EVENT_ID
 ):
   | { ok: true; state: TicketConfigState }
   | { ok: false; errors: TicketConfigErrors } {
   const errors: TicketConfigErrors = {};
+  const scope = normalizeEventId(eventId);
+  const dates = input.dates.length
+    ? input.dates
+    : state.sessions.length
+      ? []
+      : /^\d{4}-\d{2}-\d{2}$/.test(input.saleEnd.slice(0, 10))
+        ? [input.saleEnd.slice(0, 10)]
+        : [];
   const name = input.name.trim();
   const names = new Set(
     state.sessions.flatMap(session => session.tickets.map(item => item.name))
@@ -275,16 +294,15 @@ export function addTicketType(
   else if (names.has(name)) errors.name = "已有同名票种";
   else if (names.size >= MAX_TICKET_TYPES)
     errors.name = `每个活动最多 ${MAX_TICKET_TYPES} 个票种`;
-  if (!input.dates.length) errors.dates = "至少选择一个场次";
-  const first = input.dates[0] ?? state.sessions[0]?.date ?? "";
+  if (!dates.length) errors.dates = "至少选择一个场次";
+  const first = dates[0] ?? state.sessions[0]?.date ?? "";
   Object.assign(errors, validateTicketConfig(input, 0, first));
   if (Object.keys(errors).length) return { ok: false, errors };
   const logs: TicketConfigLog[] = [];
-  const sessions = state.sessions.map(session => {
-    if (!input.dates.includes(session.date)) return session;
+  const ticketFor = (sessionDate: string): SessionTicket => {
     const start = input.saleStart;
-    const end = `${session.date} ${input.saleEnd.slice(11) || "17:00"}`;
-    const ticket: SessionTicket = {
+    const end = `${sessionDate} ${input.saleEnd.slice(11) || "17:00"}`;
+    return {
       name,
       price: toNumber(input.price),
       inventory: toNumber(input.inventory),
@@ -297,9 +315,11 @@ export function addTicketType(
       sales: salesText(input.status, start, end),
       channel: input.channel.trim() || "漫圈用户端",
     };
+  };
+  const logCreation = (sessionDate: string, ticket: SessionTicket) => {
     logs.push({
       id: logId(),
-      sessionDate: session.date,
+      sessionDate,
       ticketName: name,
       action: "新增票种",
       detail: `¥${ticket.price} · 库存 ${ticket.inventory.toLocaleString("zh-CN")} · 限购 ${ticket.purchaseLimit} 张 · ${ticket.realName ? "需要实名" : "无需实名"}`,
@@ -307,8 +327,19 @@ export function addTicketType(
       actorRole: actor.role,
       occurredAt: time,
     });
-    return { ...session, tickets: [...session.tickets, ticket] };
-  });
+  };
+  const sessions = state.sessions.length
+    ? state.sessions.map(session => {
+        if (!dates.includes(session.date)) return session;
+        const ticket = ticketFor(session.date);
+        logCreation(session.date, ticket);
+        return { ...session, tickets: [...session.tickets, ticket] };
+      })
+    : dates.map(date => {
+        const ticket = ticketFor(date);
+        logCreation(date, ticket);
+        return { eventId: scope, date, tickets: [ticket] };
+      });
   return {
     ok: true,
     state: { sessions, logs: [...logs, ...state.logs].slice(0, 60) },
@@ -334,41 +365,96 @@ export function configuredLimit(
 }
 
 /* ---------- 跨组件共享（票种配置 订单 限购校验 活动档案票务页签） ---------- */
-function load(): TicketConfigState {
-  if (typeof window === "undefined") return createTicketConfig();
+export function createEmptyTicketConfig(): TicketConfigState {
+  return { sessions: [], logs: [] };
+}
+
+const EMPTY_API_CONFIG = createEmptyTicketConfig();
+function fallback(eventId?: string) {
+  if (isApiDataMode()) return EMPTY_API_CONFIG;
+  return normalizeEventId(eventId) === PRIMARY_EVENT_ID
+    ? createTicketConfig()
+    : createEmptyTicketConfig();
+}
+
+function load(eventId?: string): TicketConfigState {
+  const scope = normalizeEventId(eventId);
+  if (isApiDataMode()) return EMPTY_API_CONFIG;
+  if (typeof window === "undefined") return fallback(scope);
   try {
-    const raw = window.localStorage.getItem(TICKET_CONFIG_KEY);
-    if (!raw) return createTicketConfig();
+    const raw = window.localStorage.getItem(
+      storageKeyForEvent(TICKET_CONFIG_KEY, scope)
+    );
+    if (!raw) return fallback(scope);
     const parsed = JSON.parse(raw) as TicketConfigState;
-    return Array.isArray(parsed?.sessions) && parsed.sessions.length
-      ? { sessions: parsed.sessions, logs: parsed.logs ?? [] }
-      : createTicketConfig();
+    if (!Array.isArray(parsed?.sessions)) return fallback(scope);
+    const sessions = parsed.sessions.filter(session =>
+      session.eventId ? session.eventId === scope : scope === PRIMARY_EVENT_ID
+    );
+    return {
+      sessions,
+      // Unscoped historical records belong only to the known primary activity.
+      logs:
+        sessions.length || scope === PRIMARY_EVENT_ID
+          ? Array.isArray(parsed.logs)
+            ? parsed.logs
+            : []
+          : [],
+    };
   } catch {
-    return createTicketConfig();
+    return fallback(scope);
   }
 }
 
-let state: TicketConfigState | null = null;
+const states = new Map<string, TicketConfigState>();
 const listeners = new Set<() => void>();
-const snapshot = () => (state ??= load());
+const snapshot = (eventId?: string) => {
+  const scope = normalizeEventId(eventId);
+  if (isApiDataMode()) return EMPTY_API_CONFIG;
+  const cached = states.get(scope);
+  if (cached) return cached;
+  const next = load(scope);
+  states.set(scope, next);
+  return next;
+};
 
-export function commitTicketConfig(next: TicketConfigState) {
-  state = next;
+export function getTicketConfig(eventId?: string) {
+  return snapshot(eventId);
+}
+
+export function commitTicketConfig(next: TicketConfigState, eventId?: string) {
+  assertPrototypeWriteAllowed("保存票种配置");
+  const scope = normalizeEventId(eventId);
+  if (
+    next.sessions.some(session => session.eventId && session.eventId !== scope)
+  )
+    throw new Error("不能把其他活动的票务场次改绑到当前活动");
+  const scoped: TicketConfigState = {
+    ...next,
+    // Every newly saved session receives its selected scope. Old unscoped data
+    // is migrated only while saving its known primary owner.
+    sessions: next.sessions.map(session => ({ ...session, eventId: scope })),
+  };
+  states.set(scope, scoped);
   try {
-    window.localStorage.setItem(TICKET_CONFIG_KEY, JSON.stringify(next));
+    window.localStorage.setItem(
+      storageKeyForEvent(TICKET_CONFIG_KEY, scope),
+      JSON.stringify(scoped)
+    );
   } catch {
-    /* 忽略存储失败 */
+    /* Storage failure does not mean a ticket configuration was accepted server-side. */
   }
   listeners.forEach(listener => listener());
 }
 
-export function useTicketConfig() {
+export function useTicketConfig(eventId?: string) {
+  const scope = normalizeEventId(eventId);
   return useSyncExternalStore(
     listener => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    snapshot,
-    snapshot
+    () => snapshot(scope),
+    () => fallback(scope)
   );
 }

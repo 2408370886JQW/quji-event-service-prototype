@@ -1,10 +1,8 @@
-/**
- * 票务管理 · 按票种统计
- * 与 Vue3 工程 src/utils/ticketStats.ts 保持同一口径：
- * 已售为支付成功张数；已退款为平台同意并原路退款的张数；
- * 退款票回到库存，剩余 = 库存 - 已售 + 已退款。
- */
-export type RefundState = "pending_review" | "refunded" | "rejected";
+import { normalizeEventId, PRIMARY_EVENT_ID } from "./eventScope";
+import { isConfirmedRefund, type RefundStatus } from "./refundData";
+
+/** Ticket statistics for the frontend prototype; production reconciliation remains server-owned. */
+export type RefundState = RefundStatus | string;
 
 export interface TicketStockSource {
   name: string;
@@ -14,13 +12,16 @@ export interface TicketStockSource {
 }
 
 export interface RefundSource {
+  eventId?: string;
+  ticketId?: string;
   ticketName: string;
   status: RefundState;
   amount: number;
   quantity?: number;
-  /** 场次日期 YYYY-MM-DD，缺省时从电子票号 QT-YYYYMMDD-xxxxx 读取 */
   sessionDate?: string;
   ticketCode?: string;
+  /** Authority evidence from the payment/refund channel; missing values fail closed. */
+  channelConfirmedAt?: string;
 }
 
 export interface TicketStockRow<T extends TicketStockSource> {
@@ -28,11 +29,16 @@ export interface TicketStockRow<T extends TicketStockSource> {
   sold: number;
   refunded: number;
   refundedAmount: number;
+  /** Pending includes all non-final, unknown and appeal states, which keep stock frozen. */
   pending: number;
   remaining: number;
-  /** 0 - 100，按库存计算的净售出占比 */
   soldPercent: number;
 }
+
+const completedRefund = isConfirmedRefund;
+const rejectedRefund = (status: RefundState) => status === "rejected";
+const frozenRefund = (refund: RefundSource) =>
+  !completedRefund(refund) && !rejectedRefund(refund.status);
 
 export function buildTicketStock<T extends TicketStockSource>(
   tickets: T[],
@@ -40,13 +46,22 @@ export function buildTicketStock<T extends TicketStockSource>(
 ): TicketStockRow<T>[] {
   return tickets.map(ticket => {
     const related = refunds.filter(item => item.ticketName === ticket.name);
-    const refundedItems = related.filter(item => item.status === "refunded");
-    const refunded = refundedItems.reduce(
-      (sum, item) => sum + (item.quantity ?? 1),
-      0
-    );
+    const settled = new Map<string, RefundSource>();
+    for (const item of related.filter(completedRefund))
+      settled.set(
+        `${item.eventId ?? PRIMARY_EVENT_ID}:${item.ticketId || item.ticketCode}`,
+        item
+      );
+    const refundedItems = Array.from(settled.values());
+    const refunded = refundedItems.length;
     const pending = related
-      .filter(item => item.status === "pending_review")
+      .filter(
+        item =>
+          frozenRefund(item) &&
+          !settled.has(
+            `${item.eventId ?? PRIMARY_EVENT_ID}:${item.ticketId || item.ticketCode}`
+          )
+      )
       .reduce((sum, item) => sum + (item.quantity ?? 1), 0);
     const refundedAmount = refundedItems.reduce(
       (sum, item) => sum + item.amount,
@@ -92,21 +107,29 @@ export function totalTicketStock<T extends TicketStockSource>(
 }
 
 export const formatCount = (value: number) => value.toLocaleString("zh-CN");
-
-/* ---------- 按场次日期查看 ---------- */
-
 export const ALL_SESSIONS = "all";
 
 export interface StockSession<T extends TicketStockSource> {
+  /** Optional for legacy primary fixtures; scoped stores must not borrow these sessions. */
+  eventId?: string;
   date: string;
   tickets: T[];
 }
 
-/** 退款对应的场次日期 */
 export function refundSessionDate(refund: RefundSource) {
   if (refund.sessionDate) return refund.sessionDate;
   const match = /QT-(\d{4})(\d{2})(\d{2})-/.exec(refund.ticketCode ?? "");
   return match ? `${match[1]}-${match[2]}-${match[3]}` : "";
+}
+
+export function filterRefundsByEvent<R extends RefundSource>(
+  refunds: R[],
+  eventId?: string
+) {
+  const scope = normalizeEventId(eventId);
+  return refunds.filter(refund =>
+    refund.eventId ? refund.eventId === scope : scope === PRIMARY_EVENT_ID
+  );
 }
 
 export function filterRefundsBySession<R extends RefundSource>(
@@ -118,7 +141,6 @@ export function filterRefundsBySession<R extends RefundSource>(
     : refunds.filter(item => refundSessionDate(item) === date);
 }
 
-/** 全部场次时按票种名称合并库存与已售 */
 export function mergeSessionTickets<T extends TicketStockSource>(
   sessions: StockSession<T>[]
 ): T[] {
@@ -138,15 +160,23 @@ export function mergeSessionTickets<T extends TicketStockSource>(
   return merged;
 }
 
-/** 某一场次或全部场次的按票种统计 */
+/** Scoped callers pass their scoped sessions and eventId; legacy samples only resolve to primary. */
 export function buildSessionStock<T extends TicketStockSource>(
   sessions: StockSession<T>[],
   refunds: RefundSource[],
-  date: string
+  date: string,
+  eventId?: string
 ) {
+  const scope = normalizeEventId(eventId);
+  const scopedSessions = sessions.filter(session =>
+    session.eventId ? session.eventId === scope : scope === PRIMARY_EVENT_ID
+  );
   const tickets =
     date === ALL_SESSIONS
-      ? mergeSessionTickets(sessions)
-      : (sessions.find(session => session.date === date)?.tickets ?? []);
-  return buildTicketStock(tickets, filterRefundsBySession(refunds, date));
+      ? mergeSessionTickets(scopedSessions)
+      : (scopedSessions.find(session => session.date === date)?.tickets ?? []);
+  return buildTicketStock(
+    tickets,
+    filterRefundsBySession(filterRefundsByEvent(refunds, scope), date)
+  );
 }

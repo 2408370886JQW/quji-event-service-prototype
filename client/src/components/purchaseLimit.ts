@@ -1,34 +1,46 @@
-/**
- * 票务 · 按同一身份证严格限购
- * 与 Vue3 工程 src/utils/purchaseLimit.ts 保持同一口径，后端下单接口以此为校验规则：
- * 1. 限购按购票人身份证号统计，不按登录账号统计，同一身份证用多个账号购买合并计算；
- * 2. 统计范围为同一场次、同一票种；
- * 3. 已支付和退款处理中的票计入已持有，平台同意并完成退款的票释放额度；
- * 4. 身份证号按 GB 11643 规则校验出生日期与校验码，未通过不允许下单。
- */
-export type PurchaseStatus = "paid" | "refund_pending" | "refunded";
+import type { RefundStatus } from "./refundData";
+import { normalizeEventId, PRIMARY_EVENT_ID } from "./eventScope";
+
+/** Identity-based purchase limits. Client-side logic only; a server must repeat it. */
+export type PurchaseStatus =
+  | "paid"
+  | "refund_pending"
+  | "refunded"
+  | "unpaid"
+  | "payment_pending"
+  | "payment_unknown"
+  | "payment_failed"
+  | "closed";
 
 export interface PurchaseRecord {
+  eventId?: string;
   orderNo: string;
-  /** 漫圈 App 登录账号（脱敏手机号） */
   account: string;
   buyerName: string;
   idCard: string;
-  /** 场次日期 YYYY-MM-DD */
   sessionDate: string;
   ticketName: string;
   quantity: number;
   status: PurchaseStatus;
-  /** 关联退款申请，退款结果决定是否释放额度 */
+  /** Legacy whole-order refund pointer. New partial refunds must use ticketId/ticketIds. */
   refundId?: string;
+  ticketId?: string;
+  ticketIds?: string[];
+  /** Authoritatively refunded ticket IDs; retained so duplicate callbacks are idempotent. */
+  refundedTicketIds?: string[];
 }
 
 export interface RefundLink {
   id: string;
-  status: "pending_review" | "refunded" | "rejected";
+  status: RefundStatus | string;
+  /** Individual affected ticket. No order-level inference is permitted. */
+  ticketId?: string;
+  /** Only a verified channel result can release quota/inventory. */
+  channelConfirmedAt?: string;
 }
 
 export interface LimitCheckInput {
+  eventId?: string;
   idCard: string;
   sessionDate: string;
   ticketName: string;
@@ -37,15 +49,12 @@ export interface LimitCheckInput {
 }
 
 export interface LimitCheckResult {
-  /** 输入是否完整有效 */
   valid: boolean;
   allowed: boolean;
   message: string;
   held: number;
   accounts: string[];
-  /** 本次之前还可再购张数 */
   available: number;
-  /** 超出限购张数 */
   exceed: number;
 }
 
@@ -56,7 +65,6 @@ export function normalizeIdCard(value: string) {
   return value.replace(/\s/g, "").toUpperCase();
 }
 
-/** 18 位居民身份证号：地址码 出生日期 顺序码 校验码 */
 export function isValidIdCard(value: string) {
   const id = normalizeIdCard(value);
   if (!/^[1-9]\d{16}[\dX]$/.test(id)) return false;
@@ -75,48 +83,119 @@ export function isValidIdCard(value: string) {
   return CHECK_CODES[sum % 11] === id[17];
 }
 
-/** 650102********002X */
 export function maskIdCard(value: string) {
   const id = normalizeIdCard(value);
   return id.length < 10 ? id : `${id.slice(0, 6)}********${id.slice(-4)}`;
 }
 
-/** 按退款结果得到购票记录的实际状态 */
+const holdsQuota = (status: PurchaseStatus) =>
+  !["unpaid", "payment_failed", "closed", "refunded"].includes(status);
+
+const scopedRecord = (record: PurchaseRecord, eventId?: string) => {
+  const scope = normalizeEventId(eventId);
+  return record.eventId ? record.eventId === scope : scope === PRIMARY_EVENT_ID;
+};
+
+/**
+ * Resolves refund outcome without optimistic recovery. A missing/unknown refund
+ * record remains frozen; only an authoritative `refunded` outcome releases it.
+ */
 export function resolvePurchaseStatus(
   records: PurchaseRecord[],
-  refunds: RefundLink[]
+  refunds: RefundLink[],
+  eventId?: string
 ): PurchaseRecord[] {
-  return records.map(record => {
-    if (!record.refundId) return record;
-    const refund = refunds.find(item => item.id === record.refundId);
-    if (!refund) return record;
-    const status: PurchaseStatus =
-      refund.status === "refunded"
-        ? "refunded"
-        : refund.status === "pending_review"
-          ? "refund_pending"
-          : "paid";
-    return { ...record, status };
-  });
+  const scope = normalizeEventId(eventId);
+  return records
+    .filter(record => scopedRecord(record, scope))
+    .map(record => {
+      const ticketIds =
+        record.ticketIds ?? (record.ticketId ? [record.ticketId] : []);
+      const linked = ticketIds.length
+        ? refunds.filter(
+            refund => !!refund.ticketId && ticketIds.includes(refund.ticketId)
+          )
+        : [];
+      // A legacy refund pointer without a ticketId must remain frozen; it must
+      // never be expanded to sibling tickets in the same order.
+      if (!ticketIds.length && record.refundId)
+        return { ...record, status: "refund_pending" };
+      if (!linked.length)
+        return record.refundId
+          ? { ...record, status: "refund_pending" }
+          : record;
+      if (
+        linked.some(
+          refund =>
+            refund.status !== "rejected" &&
+            !(
+              refund.status === "refunded" &&
+              !!refund.ticketId &&
+              !!refund.channelConfirmedAt &&
+              Number.isFinite(Date.parse(refund.channelConfirmedAt))
+            )
+        )
+      )
+        return { ...record, status: "refund_pending" };
+
+      const completed = new Set(
+        linked
+          .filter(
+            refund =>
+              refund.status === "refunded" &&
+              !!refund.ticketId &&
+              !!refund.channelConfirmedAt
+          )
+          .map(refund => refund.ticketId!)
+      );
+      const released = new Set([
+        ...(record.refundedTicketIds ?? []).filter(id =>
+          ticketIds.includes(id)
+        ),
+        ...Array.from(completed),
+      ]);
+      if (!released.size)
+        return {
+          ...record,
+          status: record.status === "refund_pending" ? "paid" : record.status,
+        };
+      if (released.size >= ticketIds.length)
+        return {
+          ...record,
+          status: "refunded",
+          refundedTicketIds: Array.from(released),
+        };
+      return {
+        ...record,
+        status: "paid",
+        refundedTicketIds: Array.from(released),
+      };
+    });
 }
 
-/** 同一身份证在同一场次同一票种的已持有张数与涉及账号 */
 export function heldByIdCard(
   records: PurchaseRecord[],
   idCard: string,
   sessionDate: string,
-  ticketName: string
+  ticketName: string,
+  eventId?: string
 ) {
   const id = normalizeIdCard(idCard);
   const related = records.filter(
     record =>
+      scopedRecord(record, eventId) &&
       normalizeIdCard(record.idCard) === id &&
       record.sessionDate === sessionDate &&
       record.ticketName === ticketName &&
-      record.status !== "refunded"
+      holdsQuota(record.status)
   );
   const accounts = Array.from(new Set(related.map(record => record.account)));
-  const held = related.reduce((sum, record) => sum + record.quantity, 0);
+  const held = related.reduce(
+    (sum, record) =>
+      sum +
+      Math.max(record.quantity - (record.refundedTicketIds?.length ?? 0), 0),
+    0
+  );
   return { held, accounts, records: related };
 }
 
@@ -145,7 +224,8 @@ export function checkPurchaseLimit(
     records,
     input.idCard,
     input.sessionDate,
-    input.ticketName
+    input.ticketName,
+    input.eventId
   );
   const available = Math.max(input.limit - held, 0);
   const exceed = Math.max(held + quantity - input.limit, 0);
@@ -157,13 +237,5 @@ export function checkPurchaseLimit(
     : held >= input.limit
       ? `超出限购 该身份证${accountNote || "已"}持有 ${held} 张`
       : `超出限购 该身份证还可再购 ${available} 张`;
-  return {
-    valid: true,
-    allowed,
-    message,
-    held,
-    accounts,
-    available,
-    exceed,
-  };
+  return { valid: true, allowed, message, held, accounts, available, exceed };
 }

@@ -1,4 +1,11 @@
 import { useSyncExternalStore } from "react";
+import {
+  isRecordInEvent,
+  normalizeEventId,
+  PRIMARY_EVENT_ID,
+  storageKeyForEvent,
+} from "./eventScope";
+import { assertPrototypeWriteAllowed, isApiDataMode } from "../lib/api";
 
 /**
  * 参与者申报（角色 服装 道具 实名 身份证 人脸）双层审核
@@ -34,6 +41,14 @@ export interface SubmissionLog {
 }
 export interface ParticipantSubmission {
   id: string;
+  /** Activity/user/submission/rule identity used by the admission qualification check. */
+  eventId: string;
+  userId?: string;
+  attendeeId?: string;
+  ruleVersion: string;
+  attire: "costume" | "ordinary";
+  /** Ordinary attire has a separate explicit undertaking; it never bypasses eligibility. */
+  undertakingAccepted?: boolean;
   participant: string;
   role: string;
   source: string;
@@ -102,152 +117,197 @@ const submitted = (id: string, time: string, name: string): SubmissionLog => ({
   comment: "角色 服装 道具 实名与人脸资料已提交",
 });
 
-export const createSubmissionFixtures = (): ParticipantSubmission[] => [
-  {
-    id: "sub-001",
-    participant: "张三",
-    role: "甘雨",
-    source: "《原神》",
-    costume: "白色长袍 / 渐变蓝发 / 羊角发箍",
-    prop: "紫色铃铛挂饰，无锐利金属",
-    riskLevel: "low",
-    riskLabel: "低风险",
-    similarityScore: 0.97,
-    materialsComplete: true,
-    status: "approved",
-    submittedAt: "2026-06-20 09:18",
-    identity: {
-      maskedIdNumber: "6501**********0628",
-      realNamePassed: true,
-      faceMatchPassed: true,
-      faceMatchScore: 0.98,
-    },
-    materials: materials(),
-    logs: [
-      submitted("sub-001", "2026-06-20 09:18", "张三"),
-      {
-        id: "sub-001-organizer",
-        action: "主办方初审通过",
-        actorName: "林洁",
-        actorRole: "主办方活动运营人员",
-        occurredAt: "2026-06-20 10:35",
-      },
-      {
-        id: "sub-001-platform",
-        action: "平台复核通过",
-        actorName: "周可",
-        actorRole: "平台运营人员",
-        occurredAt: "2026-06-20 11:02",
-      },
-    ],
-  },
-  {
-    id: "sub-002",
-    participant: "古丽米热·阿布都",
-    role: "敦煌伎乐飞天",
-    source: "国风原创",
-    costume: "石青色长裙 / 朱砂红飘带",
-    prop: "EVA 泡棉琵琶，非金属材质",
-    riskLevel: "low",
-    riskLabel: "低风险",
-    similarityScore: 0.95,
-    materialsComplete: true,
-    status: "platform_pending",
-    submittedAt: "2026-06-20 10:46",
-    identity: {
-      maskedIdNumber: "6501**********1207",
-      realNamePassed: true,
-      faceMatchPassed: true,
-      faceMatchScore: 0.97,
-    },
-    materials: materials(),
-    logs: [
-      submitted("sub-002", "2026-06-20 10:46", "古丽米热·阿布都"),
-      {
-        id: "sub-002-organizer",
-        action: "主办方初审通过",
-        actorName: "林洁",
-        actorRole: "主办方活动运营人员",
-        occurredAt: "2026-06-20 11:22",
-      },
-    ],
-  },
-  {
-    id: "sub-003",
-    participant: "李思远",
-    role: "机甲重装佣兵",
-    source: "原创设定",
-    costume: "黑色仿战术背心 / 外骨骼臂甲",
-    prop: "仿真重弩模型，长约 1.2 米",
-    riskLevel: "high",
-    riskLabel: "高关注",
-    materialsComplete: true,
-    status: "security_review",
-    submittedAt: "2026-06-20 11:31",
-    identity: {
-      maskedIdNumber: "6501**********4431",
-      realNamePassed: true,
-      faceMatchPassed: true,
-      faceMatchScore: 0.96,
-    },
-    materials: materials(),
-    logs: [
-      submitted("sub-003", "2026-06-20 11:31", "李思远"),
-      {
-        id: "sub-003-security",
-        action: "转现场安保复验",
-        actorName: "林洁",
-        actorRole: "主办方活动运营人员",
-        occurredAt: "2026-06-20 11:48",
-        comment: "仿真重弩模型需核对尺寸与材质",
-      },
-    ],
-  },
-  {
-    id: "sub-004",
-    participant: "何晓晨",
-    role: "雷电将军",
-    source: "《原神》",
-    costume: "紫色印花振袖 / 编发发簪",
-    prop: "轻质木质长刀，海绵安全鞘",
-    riskLevel: "low",
-    riskLabel: "低风险",
-    similarityScore: 0.96,
-    materialsComplete: true,
-    status: "organizer_pending",
-    submittedAt: "2026-06-20 12:05",
-    identity: {
-      maskedIdNumber: "6501**********3812",
-      realNamePassed: true,
-      faceMatchPassed: true,
-      faceMatchScore: 0.98,
-    },
-    materials: materials(),
-    logs: [submitted("sub-004", "2026-06-20 12:05", "何晓晨")],
-  },
-  {
-    id: "sub-005",
-    participant: "王雨桐",
-    role: "刻晴",
-    source: "《原神》",
-    costume: "紫白短裙 / 双马尾假发",
-    prop: "EVA 泡棉单手剑，无金属刃口",
-    riskLevel: "low",
-    riskLabel: "低风险",
-    similarityScore: 0.94,
-    materialsComplete: true,
-    status: "organizer_pending",
-    submittedAt: "2026-06-20 12:08",
-    identity: {
-      maskedIdNumber: "6501**********2766",
-      realNamePassed: true,
-      faceMatchPassed: true,
-      faceMatchScore: 0.97,
-    },
-    materials: materials(),
-    logs: [submitted("sub-005", "2026-06-20 12:08", "王雨桐")],
-  },
-];
+export const createSubmissionFixtures = (
+  eventId?: string
+): ParticipantSubmission[] =>
+  normalizeEventId(eventId) !== PRIMARY_EVENT_ID
+    ? []
+    : (
+        [
+          {
+            id: "sub-001",
+            participant: "张三",
+            role: "甘雨",
+            source: "《原神》",
+            costume: "白色长袍 / 渐变蓝发 / 羊角发箍",
+            prop: "紫色铃铛挂饰，无锐利金属",
+            riskLevel: "low",
+            riskLabel: "低风险",
+            similarityScore: 0.97,
+            materialsComplete: true,
+            status: "approved",
+            submittedAt: "2026-06-20 09:18",
+            identity: {
+              maskedIdNumber: "6501**********0628",
+              realNamePassed: true,
+              faceMatchPassed: true,
+              faceMatchScore: 0.98,
+            },
+            materials: materials(),
+            logs: [
+              submitted("sub-001", "2026-06-20 09:18", "张三"),
+              {
+                id: "sub-001-organizer",
+                action: "主办方初审通过",
+                actorName: "林洁",
+                actorRole: "主办方活动运营人员",
+                occurredAt: "2026-06-20 10:35",
+              },
+              {
+                id: "sub-001-platform",
+                action: "平台复核通过",
+                actorName: "周可",
+                actorRole: "平台运营人员",
+                occurredAt: "2026-06-20 11:02",
+              },
+            ],
+          },
+          {
+            id: "sub-002",
+            participant: "古丽米热·阿布都",
+            role: "敦煌伎乐飞天",
+            source: "国风原创",
+            costume: "石青色长裙 / 朱砂红飘带",
+            prop: "EVA 泡棉琵琶，非金属材质",
+            riskLevel: "low",
+            riskLabel: "低风险",
+            similarityScore: 0.95,
+            materialsComplete: true,
+            status: "platform_pending",
+            submittedAt: "2026-06-20 10:46",
+            identity: {
+              maskedIdNumber: "6501**********1207",
+              realNamePassed: true,
+              faceMatchPassed: true,
+              faceMatchScore: 0.97,
+            },
+            materials: materials(),
+            logs: [
+              submitted("sub-002", "2026-06-20 10:46", "古丽米热·阿布都"),
+              {
+                id: "sub-002-organizer",
+                action: "主办方初审通过",
+                actorName: "林洁",
+                actorRole: "主办方活动运营人员",
+                occurredAt: "2026-06-20 11:22",
+              },
+            ],
+          },
+          {
+            id: "sub-003",
+            participant: "李思远",
+            role: "机甲重装佣兵",
+            source: "原创设定",
+            costume: "黑色仿战术背心 / 外骨骼臂甲",
+            prop: "仿真重弩模型，长约 1.2 米",
+            riskLevel: "high",
+            riskLabel: "高关注",
+            materialsComplete: true,
+            status: "security_review",
+            submittedAt: "2026-06-20 11:31",
+            identity: {
+              maskedIdNumber: "6501**********4431",
+              realNamePassed: true,
+              faceMatchPassed: true,
+              faceMatchScore: 0.96,
+            },
+            materials: materials(),
+            logs: [
+              submitted("sub-003", "2026-06-20 11:31", "李思远"),
+              {
+                id: "sub-003-security",
+                action: "转现场安保复验",
+                actorName: "林洁",
+                actorRole: "主办方活动运营人员",
+                occurredAt: "2026-06-20 11:48",
+                comment: "仿真重弩模型需核对尺寸与材质",
+              },
+            ],
+          },
+          {
+            id: "sub-004",
+            participant: "何晓晨",
+            role: "雷电将军",
+            source: "《原神》",
+            costume: "紫色印花振袖 / 编发发簪",
+            prop: "轻质木质长刀，海绵安全鞘",
+            riskLevel: "low",
+            riskLabel: "低风险",
+            similarityScore: 0.96,
+            materialsComplete: true,
+            status: "organizer_pending",
+            submittedAt: "2026-06-20 12:05",
+            identity: {
+              maskedIdNumber: "6501**********3812",
+              realNamePassed: true,
+              faceMatchPassed: true,
+              faceMatchScore: 0.98,
+            },
+            materials: materials(),
+            logs: [submitted("sub-004", "2026-06-20 12:05", "何晓晨")],
+          },
+          {
+            id: "sub-005",
+            participant: "王雨桐",
+            role: "刻晴",
+            source: "《原神》",
+            costume: "紫白短裙 / 双马尾假发",
+            prop: "EVA 泡棉单手剑，无金属刃口",
+            riskLevel: "low",
+            riskLabel: "低风险",
+            similarityScore: 0.94,
+            materialsComplete: true,
+            status: "organizer_pending",
+            submittedAt: "2026-06-20 12:08",
+            identity: {
+              maskedIdNumber: "6501**********2766",
+              realNamePassed: true,
+              faceMatchPassed: true,
+              faceMatchScore: 0.97,
+            },
+            materials: materials(),
+            logs: [submitted("sub-005", "2026-06-20 12:08", "王雨桐")],
+          },
+        ] as Array<
+          Omit<
+            ParticipantSubmission,
+            | "eventId"
+            | "userId"
+            | "attendeeId"
+            | "ruleVersion"
+            | "attire"
+            | "undertakingAccepted"
+          >
+        >
+      ).map(item => {
+        const identity: Record<string, { userId: string; attendeeId: string }> =
+          {
+            "sub-001": {
+              userId: "user-zhang-san",
+              attendeeId: "attendee-zhang-san",
+            },
+            "sub-002": { userId: "user-gulimi", attendeeId: "attendee-gulimi" },
+            "sub-003": {
+              userId: "user-lisiyuan",
+              attendeeId: "attendee-lisiyuan",
+            },
+            "sub-004": {
+              userId: "user-hexiaochen",
+              attendeeId: "attendee-hexiaochen",
+            },
+            "sub-005": {
+              userId: "user-wangyutong",
+              attendeeId: "attendee-wangyutong",
+            },
+          };
+        return {
+          ...item,
+          eventId: PRIMARY_EVENT_ID,
+          ...identity[item.id],
+          ruleVersion: "RULE-2026-06-v1",
+          attire: "costume" as const,
+        };
+      });
 
 export function formatNow(date = new Date()) {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -422,41 +482,81 @@ export function approveMany(
 }
 
 /* ---------- 跨页面共享状态（侧栏角标 活动档案页签 审核页） ---------- */
-function load(): ParticipantSubmission[] {
-  if (typeof window === "undefined") return createSubmissionFixtures();
+const EMPTY_SUBMISSIONS: ParticipantSubmission[] = [];
+function defaults(eventId?: string): ParticipantSubmission[] {
+  if (isApiDataMode()) return EMPTY_SUBMISSIONS;
+  return normalizeEventId(eventId) === PRIMARY_EVENT_ID
+    ? createSubmissionFixtures()
+    : [];
+}
+
+function load(eventId?: string): ParticipantSubmission[] {
+  const scope = normalizeEventId(eventId);
+  if (isApiDataMode()) return EMPTY_SUBMISSIONS;
+  if (typeof window === "undefined") return defaults(scope);
   try {
-    const raw = window.localStorage.getItem(SUBMISSION_STORAGE_KEY);
-    if (!raw) return createSubmissionFixtures();
-    const parsed = JSON.parse(raw) as ParticipantSubmission[];
-    return Array.isArray(parsed) && parsed.length
-      ? parsed
-      : createSubmissionFixtures();
+    const raw = window.localStorage.getItem(
+      storageKeyForEvent(SUBMISSION_STORAGE_KEY, scope)
+    );
+    if (!raw) return defaults(scope);
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return defaults(scope);
+    return parsed.filter(
+      (item): item is ParticipantSubmission =>
+        !!item &&
+        typeof item === "object" &&
+        isRecordInEvent(item as ParticipantSubmission, scope)
+    );
   } catch {
-    return createSubmissionFixtures();
+    return defaults(scope);
   }
 }
 
-let state: ParticipantSubmission[] | null = null;
+const states = new Map<string, ParticipantSubmission[]>();
 const listeners = new Set<() => void>();
-const snapshot = () => (state ??= load());
+const snapshot = (eventId?: string) => {
+  const scope = normalizeEventId(eventId);
+  if (isApiDataMode()) return EMPTY_SUBMISSIONS;
+  const cached = states.get(scope);
+  if (cached) return cached;
+  const next = load(scope);
+  states.set(scope, next);
+  return next;
+};
 
-export function commitSubmissions(next: ParticipantSubmission[]) {
-  state = next;
+export function getSubmissions(eventId?: string) {
+  return snapshot(eventId);
+}
+
+export function commitSubmissions(
+  next: ParticipantSubmission[],
+  eventId?: string
+) {
+  assertPrototypeWriteAllowed("保存申报审核状态");
+  const scope = normalizeEventId(eventId);
+  if (next.some(item => item.eventId && item.eventId !== scope))
+    throw new Error("不能把其他活动的申报记录改绑到当前活动");
+  const scoped = next.map(item => ({ ...item, eventId: scope }));
+  states.set(scope, scoped);
   try {
-    window.localStorage.setItem(SUBMISSION_STORAGE_KEY, JSON.stringify(next));
+    window.localStorage.setItem(
+      storageKeyForEvent(SUBMISSION_STORAGE_KEY, scope),
+      JSON.stringify(scoped)
+    );
   } catch {
-    /* 忽略存储失败 */
+    /* A client storage error does not change review authority. */
   }
   listeners.forEach(listener => listener());
 }
 
-export function useSubmissions() {
+export function useSubmissions(eventId?: string) {
+  const scope = normalizeEventId(eventId);
   return useSyncExternalStore(
     listener => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    snapshot,
-    snapshot
+    () => snapshot(scope),
+    () => defaults(scope)
   );
 }

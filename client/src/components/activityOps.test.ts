@@ -19,7 +19,14 @@ import {
   verifyStaff,
   verifyTicket,
   type RefundStateMap,
+  type TicketEligibility,
+  type TicketVerificationOptions,
+  E_TICKETS,
 } from "./activityOpsCore";
+import {
+  createSubmissionFixtures,
+  type ParticipantSubmission,
+} from "./submissionReview";
 import { buildActivityReport, buildReportDocx } from "./activityReport";
 
 const actor = { name: "林洁", role: "主办方活动运营人员" };
@@ -29,35 +36,184 @@ const refunds: RefundStateMap = {
   "refund-20260928-002": "refunded",
   "refund-20260927-003": "rejected",
 };
-const verify = (code: string, session = "2026-06-28") =>
+const primaryEventId = "EVT-2026-0628";
+const submissions = createSubmissionFixtures();
+const eligibilityFor = (
+  code: string,
+  patch: Partial<TicketEligibility> = {}
+) => {
+  const ticket = E_TICKETS.find(item => item.code === code)!;
+  return {
+    eventId: ticket.eventId,
+    userId: ticket.userId,
+    attendeeId: ticket.attendeeId,
+    submissionId: ticket.submissionId,
+    ruleVersion: ticket.ruleVersion,
+    status: "valid" as const,
+    attire: "costume" as const,
+    verifiedAt: "2026-06-20 11:02",
+    ...patch,
+  };
+};
+const verify = (
+  code: string,
+  session = "2026-06-28",
+  patch: Partial<TicketVerificationOptions> = {}
+) =>
   verifyTicket(createActivityOps(), code, {
     session,
     refunds,
     method: "扫码核验",
     operator: "林洁",
+    eventId: primaryEventId,
+    submissions,
+    eligibility: [eligibilityFor("QT-20260628-48305")],
+    ...patch,
   });
 
 describe("现场电子票核验", () => {
-  it("有效票通过 并计入入场", () => {
+  it("仅在匹配活动、已支付、最终资格和冻结规则版本同时成立时通过", () => {
     const state = createActivityOps();
     const out = verifyTicket(state, "qt-20260628-48305", {
       session: "2026-06-28",
       refunds,
       method: "扫码核验",
       operator: "林洁",
+      eventId: primaryEventId,
+      submissions,
+      eligibility: [eligibilityFor("QT-20260628-48305")],
     });
     expect(out.result).toBe("通过");
     expect(out.ticket?.holder).toBe("张三");
     const next = { ...state, checkins: [out.record, ...state.checkins] };
     expect(onsiteStats(next, "2026-06-28").entered).toBe(2187);
-  });
-  it("订单号也能核验", () => {
     expect(verify("ORD1789301148305").result).toBe("通过");
   });
-  it("高关注道具需复验", () => {
-    expect(verify("QT-20260628-47720").result).toBe("复验");
+
+  it("无活动范围、跨活动、支付未知、姓名或 Coser role 都不能替代最终资格", () => {
+    expect(
+      verifyTicket(createActivityOps(), "QT-20260628-48305", {
+        session: "2026-06-28",
+        refunds,
+        method: "扫码核验",
+        operator: "林洁",
+      }).result
+    ).toBe("拦截");
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", { eventId: "EVT-OTHER" }).result
+    ).toBe("拦截");
+    expect(verify("QT-20260628-49112").reason).toContain("资格查询");
+    const coser = E_TICKETS.find(item => item.code === "QT-20260628-48305")!;
+    const oldStatus = coser.paymentStatus;
+    coser.paymentStatus = "payment_unknown";
+    expect(verify(coser.code).reason).toContain("支付状态未确认");
+    coser.paymentStatus = oldStatus;
   });
-  it("未实名 退款中 已退款 重复入场 跨场次 未知票码均拦截", () => {
+
+  it("审批撤销、过期、规则版本不一致和普通服装未承诺均 fail closed", () => {
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        eligibility: [
+          eligibilityFor("QT-20260628-48305", { revokedAt: "2026-06-21" }),
+        ],
+      }).result
+    ).toBe("拦截");
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        eligibility: [
+          eligibilityFor("QT-20260628-48305", {
+            validUntil: "2026-06-20 11:00",
+          }),
+        ],
+      }).result
+    ).toBe("拦截");
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        eligibility: [
+          eligibilityFor("QT-20260628-48305", { ruleVersion: "RULE-OLD" }),
+        ],
+      }).result
+    ).toBe("拦截");
+    const ordinaryTicket = E_TICKETS.find(
+      item => item.code === "QT-20260628-20588"
+    )!;
+    const ordinary: ParticipantSubmission = {
+      ...submissions[0],
+      id: ordinaryTicket.submissionId,
+      userId: ordinaryTicket.userId,
+      attendeeId: ordinaryTicket.attendeeId,
+      eventId: ordinaryTicket.eventId,
+      ruleVersion: ordinaryTicket.ruleVersion,
+      attire: "ordinary",
+      undertakingAccepted: true,
+    };
+    expect(
+      verify(ordinaryTicket.code, "2026-06-28", {
+        submissions: [ordinary],
+        eligibility: [
+          eligibilityFor(ordinaryTicket.code, {
+            attire: "ordinary",
+            undertakingAccepted: false,
+          }),
+        ],
+      }).result
+    ).toBe("拦截");
+    expect(
+      verify(ordinaryTicket.code, "2026-06-28", {
+        submissions: [ordinary],
+        eligibility: [
+          eligibilityFor(ordinaryTicket.code, {
+            attire: "ordinary",
+            undertakingAccepted: true,
+          }),
+        ],
+      }).result
+    ).toBe("通过");
+  });
+
+  it("同一申报资料更新后不能凭旧规则通过记录放行", () => {
+    const latest: ParticipantSubmission = {
+      ...submissions[0],
+      ruleVersion: "RULE-NEW",
+      status: "changes_required",
+      logs: [
+        {
+          id: "changed",
+          action: "资料更新",
+          actorName: "用户",
+          actorRole: "用户",
+          occurredAt: "2026-06-21 10:00",
+        },
+      ],
+    };
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        submissions: [submissions[0], latest],
+      }).result
+    ).toBe("拦截");
+  });
+
+  it("同日 ISO 到期时间与本地格式核验时间按实际时间比较", () => {
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        now: "2026-06-28T14:00:00Z",
+        eligibility: [
+          eligibilityFor("QT-20260628-48305", {
+            validUntil: "2026-06-28T13:00:00Z",
+          }),
+        ],
+      }).result
+    ).toBe("拦截");
+    expect(
+      verify("QT-20260628-48305", "2026-06-28", {
+        eligibility: [
+          eligibilityFor("QT-20260628-48305", { validUntil: "not-a-date" }),
+        ],
+      }).result
+    ).toBe("拦截");
+  });
+
+  it("未实名、退款冻结或未知、已退款、重复入场、跨场次和未知票码均拦截", () => {
     expect(verify("QT-20260628-60218").reason).toContain("实名认证未完成");
     expect(verify("QT-20260628-10316").reason).toContain("待审批的退款");
     expect(verify("QT-20260629-20762", "2026-06-29").reason).toContain(
@@ -67,15 +223,31 @@ describe("现场电子票核验", () => {
     expect(verify("QT-20260629-51870").reason).toContain("6月29日");
     expect(verify("QT-00000000-00000").result).toBe("拦截");
   });
+
+  it("高关注道具在最终批准后仍须复验", () => {
+    const ticket = E_TICKETS.find(item => item.code === "QT-20260628-47720")!;
+    const approved = {
+      ...submissions.find(item => item.id === "sub-003")!,
+      status: "approved" as const,
+      securityCleared: true,
+    };
+    expect(
+      verify(ticket.code, "2026-06-28", {
+        submissions: [approved],
+        eligibility: [eligibilityFor(ticket.code)],
+      }).result
+    ).toBe("复验");
+  });
+
   it("实名核对 比对姓名与证件号后 4 位", () => {
     const ok = checkRealName(
       { code: "QT-20260628-49112", name: "古丽米热·阿布都", idTail: "1312" },
-      { session: "2026-06-28", operator: "林洁" }
+      { session: "2026-06-28", operator: "林洁", eventId: primaryEventId }
     );
     expect(ok.match).toBe(true);
     const bad = checkRealName(
       { code: "QT-20260628-49112", name: "古丽米热·阿布都", idTail: "0000" },
-      { session: "2026-06-28", operator: "林洁" }
+      { session: "2026-06-28", operator: "林洁", eventId: primaryEventId }
     );
     expect(bad.match).toBe(false);
     expect(bad.reason).toContain("后 4 位");
@@ -304,6 +476,7 @@ describe("活动摘要报告", () => {
           amount: 68,
           reason: "行程变化",
           status: "refunded",
+          channelConfirmedAt: "2026-06-28T11:58:00+08:00",
           processedBy: "周可",
         },
       ],
@@ -329,7 +502,7 @@ describe("活动摘要报告", () => {
       "notes",
     ]);
     expect(r.highlights[0].value).toBe("1,896 张");
-    expect(r.sections[3].intro).toContain("已同意并退款 1 笔 ¥68");
+    expect(r.sections[3].intro).toContain("渠道确认到账 1 笔 ¥68");
   });
   it("生成可打开的 Word 文件", async () => {
     const blob = await buildReportDocx(report());

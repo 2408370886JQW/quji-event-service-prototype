@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { assertPrototypeWriteAllowed } from "@/lib/api";
 import {
   ArrowRight,
   Check,
@@ -37,6 +38,14 @@ import {
 } from "./submissionReview";
 
 type ViewerRole = "platform" | "organizer" | "culture";
+
+const useScopedSubmissions = useSubmissions as (
+  eventId?: string
+) => ParticipantSubmission[];
+const commitScopedSubmissions = commitSubmissions as (
+  next: ParticipantSubmission[],
+  eventId?: string
+) => void;
 type Filter = "mine" | "all" | "approved" | "changes" | "security";
 
 const STATUS_TONE: Record<SubmissionStatus, string> = {
@@ -334,12 +343,15 @@ function ReviewFlow({ role }: { role: ViewerRole }) {
 /* ---------------- 页面 ---------------- */
 export function CostumeReviewPage({
   role,
+  eventId,
   compact = false,
 }: {
   role: ViewerRole;
+  /** Selected activity ID; never rely on legacy primary-event defaults. */
+  eventId: string;
   compact?: boolean;
 }) {
-  const list = useSubmissions();
+  const list = useScopedSubmissions(eventId);
   const reviewer: ReviewerRole | null = role === "culture" ? null : role;
   const mine = reviewer ? list.filter(item => isMyTurn(reviewer, item)) : [];
   const candidates = reviewer ? batchCandidates(list, reviewer) : [];
@@ -755,6 +767,7 @@ export function CostumeReviewPage({
           item={detail}
           list={list}
           role={role}
+          eventId={eventId}
           onOpenImages={openImages}
           onNavigate={setDetailId}
           onClose={() => setDetailId(null)}
@@ -764,6 +777,7 @@ export function CostumeReviewPage({
         <BatchReviewDialog
           list={list}
           reviewer={reviewer}
+          eventId={eventId}
           onReviewOne={id => {
             setBatchOpen(false);
             setDetailId(id);
@@ -789,6 +803,7 @@ function ReviewDrawer({
   item,
   list,
   role,
+  eventId,
   onOpenImages,
   onNavigate,
   onClose,
@@ -796,6 +811,7 @@ function ReviewDrawer({
   item: ParticipantSubmission;
   list: ParticipantSubmission[];
   role: ViewerRole;
+  eventId: string;
   onOpenImages: (
     item: ParticipantSubmission,
     images: SubmissionMaterial[],
@@ -818,7 +834,8 @@ function ReviewDrawer({
 
   const run = (action: () => ParticipantSubmission[], message: string) => {
     try {
-      commitSubmissions(action());
+      assertPrototypeWriteAllowed("角色服装审核");
+      commitScopedSubmissions(action(), eventId);
       setDialog(null);
       setComment("");
       setError("");
@@ -1256,11 +1273,13 @@ function ReviewDrawer({
 function BatchReviewDialog({
   list,
   reviewer,
+  eventId,
   onReviewOne,
   onClose,
 }: {
   list: ParticipantSubmission[];
   reviewer: ReviewerRole;
+  eventId: string;
   onReviewOne: (id: string) => void;
   onClose: () => void;
 }) {
@@ -1282,7 +1301,8 @@ function BatchReviewDialog({
     );
   const confirm = () => {
     const result = approveMany(list, reviewer, picked);
-    commitSubmissions(result.list);
+    assertPrototypeWriteAllowed("角色服装批量审核");
+    commitScopedSubmissions(result.list, eventId);
     setDone(result.updated);
     toast.success(`已通过 ${result.updated.length} 条相似申报`);
   };
@@ -1442,8 +1462,8 @@ function BatchReviewDialog({
 }
 
 /** 侧栏角标 待当前身份处理的申报数 */
-export function useMyReviewCount(role: ViewerRole) {
-  const list = useSubmissions();
+export function useMyReviewCount(role: ViewerRole, eventId: string) {
+  const list = useScopedSubmissions(eventId);
   if (role === "culture") return 0;
   return list.filter(item => isMyTurn(role, item)).length;
 }

@@ -30,8 +30,17 @@ describe("身份证号校验", () => {
 
 describe("按同一身份证严格限购", () => {
   const records = resolvePurchaseStatus(PURCHASE_RECORDS, [
-    { id: "refund-20260929-001", status: "pending_review" },
-    { id: "refund-20260928-002", status: "refunded" },
+    {
+      id: "refund-20260929-001",
+      ticketId: "QT-20260628-10316",
+      status: "pending_review",
+    },
+    {
+      id: "refund-20260928-002",
+      ticketId: "QT-20260629-20762",
+      status: "refunded",
+      channelConfirmedAt: "2026-09-28 13:39",
+    },
   ]);
 
   it("同一身份证多个账号购买合并计算", () => {
@@ -90,9 +99,93 @@ describe("按同一身份证严格限购", () => {
     });
     expect(coser.allowed).toBe(true);
     const approved = resolvePurchaseStatus(PURCHASE_RECORDS, [
-      { id: "refund-20260929-001", status: "refunded" },
+      {
+        id: "refund-20260929-001",
+        ticketId: "QT-20260628-10316",
+        status: "refunded",
+        channelConfirmedAt: "2026-09-29 17:00",
+      },
     ]);
     expect(heldByIdCard(approved, MA, "2026-06-28", "普通观众票").held).toBe(3);
+  });
+
+  it("未知/处理/申诉状态冻结，按 ticketId 部分退款且重复成功不重复释放", () => {
+    const record: PurchaseRecord = {
+      ...PURCHASE_RECORDS[2],
+      quantity: 2,
+      ticketIds: ["ticket-a", "ticket-b"],
+      refundId: undefined,
+    };
+    for (const status of [
+      "processing",
+      "failed",
+      "unknown",
+      "appeal_pending",
+    ] as const) {
+      const resolved = resolvePurchaseStatus(
+        [record],
+        [{ id: status, ticketId: "ticket-a", status }]
+      );
+      expect(resolved[0].status).toBe("refund_pending");
+      expect(
+        heldByIdCard(resolved, MA, record.sessionDate, record.ticketName).held
+      ).toBe(2);
+    }
+    const callback = {
+      id: "channel-1",
+      ticketId: "ticket-a",
+      status: "refunded" as const,
+      channelConfirmedAt: "2026-09-30 10:00",
+    };
+    const once = resolvePurchaseStatus([record], [callback]);
+    expect(once[0].status).toBe("paid");
+    expect(
+      heldByIdCard(once, MA, record.sessionDate, record.ticketName).held
+    ).toBe(1);
+    const twice = resolvePurchaseStatus(once, [callback]);
+    expect(twice[0].refundedTicketIds).toEqual(["ticket-a"]);
+    expect(
+      heldByIdCard(twice, MA, record.sessionDate, record.ticketName).held
+    ).toBe(1);
+    expect(
+      resolvePurchaseStatus(
+        [record],
+        [{ ...callback, channelConfirmedAt: undefined }]
+      )[0].status
+    ).toBe("refund_pending");
+  });
+
+  it("跨活动订单不会参与主活动限购，也不借用主活动样例", () => {
+    const other: PurchaseRecord = {
+      ...PURCHASE_RECORDS[0],
+      eventId: "EVT-OTHER",
+      ticketIds: ["other-ticket"],
+      status: "paid",
+    };
+    expect(resolvePurchaseStatus([other], [], "EVT-2026-0628")).toEqual([]);
+    expect(
+      heldByIdCard(
+        [other],
+        MA,
+        other.sessionDate,
+        other.ticketName,
+        "EVT-2026-0628"
+      ).held
+    ).toBe(0);
+  });
+
+  it("退款记录丢失或未知付款状态不能释放名额", () => {
+    const unresolved = { ...PURCHASE_RECORDS[0], status: "paid" as const };
+    expect(resolvePurchaseStatus([unresolved], [])[0].status).toBe(
+      "refund_pending"
+    );
+    const unknown = {
+      ...PURCHASE_RECORDS[0],
+      status: "unexpected-status",
+    } as unknown as PurchaseRecord;
+    expect(
+      heldByIdCard([unknown], MA, unknown.sessionDate, unknown.ticketName).held
+    ).toBe(unknown.quantity);
   });
 
   it("身份证无效或输入不完整时不放行", () => {
@@ -137,6 +230,7 @@ describe("票务管理按场次日期查看", () => {
       status: "refunded" as const,
       amount: 68,
       ticketCode: "QT-20260629-20762",
+      channelConfirmedAt: "2026-09-28 13:39",
     },
   ];
 
@@ -162,6 +256,25 @@ describe("票务管理按场次日期查看", () => {
       rows.reduce((sum, row) => sum + row.sold * row.ticket.price, 0)
     ).toBe(380096);
     expect(total.refunded).toBe(1);
+  });
+
+  it("没有渠道确认的 refunded 文本仍冻结库存", () => {
+    const rows = buildSessionStock(
+      EVENT_SESSIONS,
+      [
+        {
+          ticketName: "Coser 专属票",
+          status: "refunded",
+          amount: 68,
+          ticketCode: "QT-20260629-20762",
+        },
+      ],
+      "2026-06-29"
+    );
+    const coser = rows.find(row => row.ticket.name === "Coser 专属票")!;
+    expect(coser.refunded).toBe(0);
+    expect(coser.pending).toBe(1);
+    expect(coser.remaining).toBe(250 - 150);
   });
 
   it("单个场次只统计当天票种与退款", () => {

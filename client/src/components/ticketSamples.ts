@@ -5,9 +5,9 @@
  */
 import type { PurchaseRecord } from "./purchaseLimit";
 import type { StockSession } from "./ticketStats";
-
+import { PRIMARY_EVENT_ID } from "./eventScope";
+import { isApiDataMode } from "../lib/api";
 export type SessionTicketStatus = "售票中" | "已停售" | "待开售";
-
 export interface SessionTicket {
   name: string;
   price: number;
@@ -90,9 +90,25 @@ const dayTickets = (sold: [number, number, number]): SessionTicket[] => [
 ];
 
 export const EVENT_SESSIONS: StockSession<SessionTicket>[] = [
-  { date: "2026-06-28", tickets: dayTickets([1896, 176, 396]) },
-  { date: "2026-06-29", tickets: dayTickets([1652, 150, 392]) },
+  {
+    eventId: PRIMARY_EVENT_ID,
+    date: "2026-06-28",
+    tickets: dayTickets([1896, 176, 396]),
+  },
+  {
+    eventId: PRIMARY_EVENT_ID,
+    date: "2026-06-29",
+    tickets: dayTickets([1652, 150, 392]),
+  },
 ];
+
+/** The primary-event fixture is never a fallback for another selected activity. */
+export function getEventSessions(
+  eventId = PRIMARY_EVENT_ID
+): StockSession<SessionTicket>[] {
+  if (isApiDataMode()) return [];
+  return eventId === PRIMARY_EVENT_ID ? EVENT_SESSIONS : [];
+}
 
 export const SESSION_DATES = EVENT_SESSIONS.map(session => session.date);
 
@@ -104,7 +120,7 @@ export function ticketLimit(name: string) {
 }
 
 /** 购票记录样例：用于按身份证合并统计 同一人使用多个账号的情况 */
-export const PURCHASE_RECORDS: PurchaseRecord[] = [
+const PRIMARY_PURCHASE_RECORDS: PurchaseRecord[] = [
   {
     orderNo: "ORD1789301120316",
     account: "138****9036",
@@ -179,6 +195,31 @@ export const PURCHASE_RECORDS: PurchaseRecord[] = [
     status: "paid",
   },
 ];
+
+const SAMPLE_TICKET_IDS = [
+  ["QT-20260628-10316"],
+  ["QT-20260628-20588"],
+  ["QT-20260628-31407-1", "QT-20260628-31407-2"],
+  ["QT-20260628-49112"],
+  ["QT-20260629-20762"],
+  ["QT-20260628-98175"],
+  ["QT-20260629-51870-1", "QT-20260629-51870-2"],
+] as const;
+
+export const PURCHASE_RECORDS: PurchaseRecord[] = PRIMARY_PURCHASE_RECORDS.map(
+  (record, index) => ({
+    ...record,
+    eventId: PRIMARY_EVENT_ID,
+    ticketIds: [...SAMPLE_TICKET_IDS[index]],
+  })
+);
+
+export function getPurchaseRecords(
+  eventId = PRIMARY_EVENT_ID
+): PurchaseRecord[] {
+  if (isApiDataMode()) return [];
+  return eventId === PRIMARY_EVENT_ID ? PURCHASE_RECORDS : [];
+}
 
 export interface LimitCheckLog {
   id: string;
