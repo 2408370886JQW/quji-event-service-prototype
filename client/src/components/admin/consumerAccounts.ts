@@ -462,12 +462,78 @@ export function validateSecurityPolicy(
  * Explicit demo-only store for compliance and policy configuration. It cannot list users,
  * change accounts, or review KYC; nothing here represents an App publication.
  */
-export function createDemoConfigurationApi(seed?: {
-  documents?: ComplianceDocument[];
-  policy?: ConsumerSecurityPolicy;
-}): ConsumerConfigurationApi {
+export const DEMO_CONSUMER_CONFIGURATION_KEY = "quji_consumer_configuration_v1";
+type ConfigurationStorage = Pick<Storage, "getItem" | "setItem">;
+type ConfigurationSnapshot = {
+  schemaVersion: 1;
+  documents: ComplianceDocument[];
+  policy: ConsumerSecurityPolicy | null;
+};
+function configurationStorage(): ConfigurationStorage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function createDemoConfigurationApi(
+  seed?: { documents?: ComplianceDocument[]; policy?: ConsumerSecurityPolicy },
+  storage: ConfigurationStorage | null = configurationStorage()
+): ConsumerConfigurationApi {
   let documents = structuredClone(seed?.documents ?? []);
   let policy = seed?.policy ? structuredClone(seed.policy) : null;
+  const restore = () => {
+    if (!storage) return;
+    try {
+      const raw = storage.getItem(DEMO_CONSUMER_CONFIGURATION_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as ConfigurationSnapshot;
+      if (
+        saved.schemaVersion !== 1 ||
+        !Array.isArray(saved.documents) ||
+        !saved.documents.every(
+          item =>
+            item &&
+            typeof item.id === "string" &&
+            Array.isArray(item.versionAudit) &&
+            validateComplianceDocument(item).length === 0
+        ) ||
+        (saved.policy !== null &&
+          validateSecurityPolicy(saved.policy).length !== 0)
+      )
+        return;
+      documents = structuredClone(saved.documents);
+      policy = saved.policy ? structuredClone(saved.policy) : null;
+    } catch {
+      // Corrupt or unavailable local configuration is never substituted for API data.
+    }
+  };
+  const persist = (
+    nextDocuments: ComplianceDocument[],
+    nextPolicy: ConsumerSecurityPolicy | null
+  ) => {
+    if (!storage && typeof window !== "undefined") {
+      throw new Error("浏览器存储不可用，配置未保存");
+    }
+    if (storage) {
+      try {
+        storage.setItem(
+          DEMO_CONSUMER_CONFIGURATION_KEY,
+          JSON.stringify({
+            schemaVersion: 1,
+            documents: nextDocuments,
+            policy: nextPolicy,
+          } satisfies ConfigurationSnapshot)
+        );
+      } catch {
+        throw new Error("浏览器存储写入失败，配置未保存");
+      }
+    }
+    documents = nextDocuments;
+    policy = nextPolicy;
+  };
+  restore();
   const audit = (action: string) => ({
     id: `demo-${Date.now()}`,
     action,
@@ -475,8 +541,12 @@ export function createDemoConfigurationApi(seed?: {
     actor: "demo-config",
   });
   return {
-    listComplianceDocuments: async () => structuredClone(documents),
+    listComplianceDocuments: async () => {
+      restore();
+      return structuredClone(documents);
+    },
     saveComplianceDocument: async input => {
+      restore();
       const errors = validateComplianceDocument(input);
       if (errors.length) throw new Error(errors.join("；"));
       const now = new Date().toISOString();
@@ -496,12 +566,14 @@ export function createDemoConfigurationApi(seed?: {
         updatedAt: now,
         versionAudit: [...(found?.versionAudit ?? []), audit("draft_saved")],
       };
-      documents = found
+      const nextDocuments = found
         ? documents.map(item => (item.id === found.id ? saved : item))
         : [saved, ...documents];
+      persist(nextDocuments, policy);
       return structuredClone(saved);
     },
     publishComplianceDocument: async input => {
+      restore();
       const index = documents.findIndex(item => item.id === input.id);
       if (index < 0) throw new Error("未找到待发布文档");
       const current = documents[index];
@@ -525,19 +597,22 @@ export function createDemoConfigurationApi(seed?: {
           audit("demo_publication_saved_not_app_live"),
         ],
       };
-      documents = documents.map((item, itemIndex) =>
+      const nextDocuments = documents.map((item, itemIndex) =>
         itemIndex === index ? updated : item
       );
+      persist(nextDocuments, policy);
       return structuredClone(updated);
     },
     getSecurityPolicy: async () => {
+      restore();
       if (!policy) throw new Error("尚未配置短信安全策略");
       return structuredClone(policy);
     },
     saveSecurityPolicy: async input => {
+      restore();
       const errors = validateSecurityPolicy(input);
       if (errors.length) throw new Error(errors.join("；"));
-      policy = {
+      const nextPolicy = {
         ...structuredClone(input),
         updatedAt: new Date().toISOString(),
         versionAudit: [
@@ -545,7 +620,8 @@ export function createDemoConfigurationApi(seed?: {
           audit("security_policy_saved_not_app_live"),
         ],
       };
-      return structuredClone(policy);
+      persist(documents, nextPolicy);
+      return structuredClone(nextPolicy);
     },
   };
 }

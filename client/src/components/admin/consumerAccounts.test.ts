@@ -182,3 +182,62 @@ describe("Demo 配置边界", () => {
     expect("reviewKyc" in demo).toBe(false);
   });
 });
+
+describe("本地配置刷新和存储失败边界", () => {
+  function storage() {
+    const values = new Map<string, string>();
+    return {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+    };
+  }
+
+  it("新的适配器实例仍能读取已保存合规版本及发布审计", async () => {
+    const shared = storage();
+    const first = createDemoConfigurationApi(undefined, shared);
+    const draft = await first.saveComplianceDocument({
+      ...validDocument,
+      kind: "privacy",
+    });
+    await first.publishComplianceDocument({
+      id: draft.id,
+      version: "1.0.0",
+      effectiveAt: "2099-01-01T00:00:00Z",
+    });
+    const restored = createDemoConfigurationApi(undefined, shared);
+    const documents = await restored.listComplianceDocuments();
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      id: draft.id,
+      title: "隐私政策",
+      status: "scheduled",
+    });
+    expect(documents[0].versionAudit).toHaveLength(2);
+  });
+
+  it("安全策略和四个短信场景在刷新后完整保留", async () => {
+    const shared = storage();
+    const first = createDemoConfigurationApi(undefined, shared);
+    const saved = await first.saveSecurityPolicy(validPolicy());
+    const restored = createDemoConfigurationApi(undefined, shared);
+    expect(await restored.getSecurityPolicy()).toEqual(saved);
+  });
+
+  it("存储写入失败必须拒绝，不能先改内存后宣称保存", async () => {
+    const unavailable = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("quota exceeded");
+      },
+    };
+    const api = createDemoConfigurationApi(undefined, unavailable);
+    await expect(
+      api.saveComplianceDocument({ ...validDocument, kind: "privacy" })
+    ).rejects.toThrow("保存");
+    expect(await api.listComplianceDocuments()).toEqual([]);
+    await expect(api.saveSecurityPolicy(validPolicy())).rejects.toThrow("保存");
+    await expect(api.getSecurityPolicy()).rejects.toThrow("尚未配置");
+  });
+});

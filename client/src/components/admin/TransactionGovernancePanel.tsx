@@ -24,6 +24,7 @@ import {
   saveDemoAppeal,
   saveDemoPolicy,
   transitionDemoAppeal,
+  transactionStatusTone,
   validatePolicy,
   type AppealAction,
   type GovernanceRole,
@@ -66,13 +67,13 @@ function policyStatus(status: TicketPolicy["status"]) {
 }
 
 function statusTone(status: string | undefined) {
-  if (/refunded|paid|issued|used|succeeded/i.test(status ?? ""))
-    return "bg-emerald-50 text-emerald-700";
-  if (/failed|rejected|closed/i.test(status ?? ""))
-    return "bg-rose-50 text-rose-700";
-  if (/unknown|pending|processing|appeal/i.test(status ?? ""))
-    return "bg-amber-50 text-amber-800";
-  return "bg-slate-100 text-slate-700";
+  const tones = {
+    success: "bg-emerald-50 text-emerald-700",
+    danger: "bg-rose-50 text-rose-700",
+    warning: "bg-amber-50 text-amber-800",
+    neutral: "bg-slate-100 text-slate-700",
+  };
+  return tones[transactionStatusTone(status)];
 }
 
 function Status({ value }: { value?: string }) {
@@ -106,12 +107,12 @@ function SourceNotice({ source }: { source: GovernanceSnapshot["source"] }) {
   ) : (
     <p className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm leading-5 text-amber-900">
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{" "}
-      当前为本地演示配置：只保存政策和已有演示申诉流程，不代表订单、支付、退款回执或核销码。
+      当前为本地配置：只保存政策和已有申诉流程，不代表订单、支付、退款回执或核销码。
     </p>
   );
 }
 
-export function TransactionGovernancePanel({
+function TransactionGovernanceBody({
   activityId,
   role,
 }: TransactionGovernancePanelProps) {
@@ -187,8 +188,8 @@ export function TransactionGovernancePanel({
           : saveDemoPolicy(activityId, policy);
         setNotice(
           publish
-            ? "已更新本地演示发布状态；未改变真实售卖或退款规则。"
-            : "已保存本地演示政策配置；未提交任何后台规则。"
+            ? "已更新本地发布状态；未改变真实售卖或退款规则。"
+            : "已保存本地政策配置；未提交任何后台规则。"
         );
       } else {
         const saved = assertResourceScope(
@@ -229,7 +230,7 @@ export function TransactionGovernancePanel({
   const openOrder = async (orderId: string) => {
     if (data?.source !== "api") {
       setError(
-        "演示模式不构造订单详情、支付回执或电子票码；请接入订单接口后查询。"
+        "模式不构造订单详情、支付回执或电子票码；请接入订单接口后查询。"
       );
       return;
     }
@@ -251,7 +252,7 @@ export function TransactionGovernancePanel({
   const refreshChannel = async () => {
     if (!selectedOrder || !canHandleMoney(role)) return;
     if (data?.source !== "api") {
-      setError("演示模式不能查询支付渠道；未生成任何渠道结果。\n");
+      setError("模式不能查询支付渠道；未生成任何渠道结果。\n");
       return;
     }
     try {
@@ -277,7 +278,7 @@ export function TransactionGovernancePanel({
       return;
     }
     if (data?.source !== "api") {
-      setError("演示模式不能登记渠道问题；不会伪造处理工单。");
+      setError("模式不能登记渠道问题；不会伪造处理工单。");
       return;
     }
     try {
@@ -312,7 +313,7 @@ export function TransactionGovernancePanel({
         );
         saveDemoAppeal(activityId, returned);
         setNotice(
-          "已更新本地演示申诉流程，未发起原路退款、未生成回执，也不代表到账。"
+          "已更新本地申诉流程，未发起原路退款、未生成回执，也不代表到账。"
         );
       } else {
         returned = assertResourceScope(
@@ -377,7 +378,7 @@ export function TransactionGovernancePanel({
     ) ?? data?.cancellationBatches[0];
 
   return (
-    <section className="space-y-4" aria-label="票务交易管理补齐">
+    <section className="space-y-4" aria-label="票务交易政策与售后">
       <div className={`${card} overflow-hidden`}>
         <div className="border-b border-slate-200 px-5 pt-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -385,7 +386,7 @@ export function TransactionGovernancePanel({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-brand-600" />
                 <h2 className="text-lg font-bold text-slate-900">
-                  交易管理补齐
+                  交易政策与售后
                 </h2>
               </div>
               <p className="mt-1 text-sm text-slate-500">
@@ -629,7 +630,7 @@ export function TransactionGovernancePanel({
                   ) : (
                     <Empty
                       title="暂无政策版本"
-                      detail="可建立本地演示政策配置；真实售卖规则须由后台接口保存并发布。"
+                      detail="可建立本地政策配置；真实售卖规则须由后台接口保存并发布。"
                     />
                   )}
                 </div>
@@ -676,7 +677,7 @@ export function TransactionGovernancePanel({
                   detail={
                     data?.source === "api"
                       ? "接口返回当前活动没有订单，或筛选条件没有命中。"
-                      : "演示模式不会造已支付订单、退款回执或电子票码；接入订单接口后将在此加载。"
+                      : "模式不会造已支付订单、退款回执或电子票码；接入订单接口后将在此加载。"
                   }
                 />
               ) : (
@@ -762,7 +763,7 @@ export function TransactionGovernancePanel({
                   detail={
                     data?.source === "api"
                       ? "接口未返回当前活动的申诉记录。"
-                      : "本地演示没有预置退款申请、到账回执或资金结果；若已有本地演示申诉，操作仅演示流程。"
+                      : "本地没有预置退款申请、到账回执或资金结果；若已有本地申诉，操作仅流程。"
                   }
                 />
               ) : (
@@ -1100,4 +1101,15 @@ function OrderDetailCard({
   );
 }
 
+export function TransactionGovernancePanel(
+  props: TransactionGovernancePanelProps
+) {
+  // Unmount the complete scope before showing another activity or role.
+  return (
+    <TransactionGovernanceBody
+      key={`${props.activityId}:${props.role}`}
+      {...props}
+    />
+  );
+}
 export default TransactionGovernancePanel;

@@ -39,7 +39,7 @@ export type ConsumerAccountsPanelProps = {
   permissions?: readonly ConsumerPermission[];
   mode?: ConsumerPanelMode;
   api?: ConsumerAccountsApi;
-  /** Demo is intentionally limited to compliance/security configuration; it can never mock account or KYC actions. */
+  /** 本地 is intentionally limited to compliance/security configuration; it can never mock account or KYC actions. */
   demoConfigurationApi?: ConsumerConfigurationApi;
 };
 
@@ -172,13 +172,13 @@ export function ConsumerAccountsPanel({
     demoConfigurationOnly || canManageConsumerCompliance(access);
   const canManageSecurity =
     demoConfigurationOnly || canManageConsumerSecurity(access);
-  const generatedDemoConfigurationApi = useMemo(
+  const generated本地ConfigurationApi = useMemo(
     () => createDemoConfigurationApi(),
     []
   );
   const configurationApi =
     mode === "demo"
-      ? (demoConfigurationApi ?? generatedDemoConfigurationApi)
+      ? (demoConfigurationApi ?? generated本地ConfigurationApi)
       : api;
 
   const clearFeedback = () => {
@@ -421,7 +421,7 @@ export function ConsumerAccountsPanel({
       setDocumentDraft({ ...saved });
       setNotice(
         mode === "demo"
-          ? "Demo 配置已保存版本审计；尚未接入正式 App 发布。"
+          ? "本地 配置已保存版本审计；尚未接入正式 App 发布。"
           : "合规草稿已按服务端回执保存。"
       );
     } catch (cause) {
@@ -453,7 +453,7 @@ export function ConsumerAccountsPanel({
       setDocumentDraft({ ...saved });
       setNotice(
         mode === "demo"
-          ? "Demo 发布计划已留审计，未使正式 App 上线。"
+          ? "本地 发布计划已留审计，未使正式 App 上线。"
           : "文档发布已取得服务端回执。"
       );
     } catch (cause) {
@@ -481,7 +481,7 @@ export function ConsumerAccountsPanel({
       setPolicy(saved);
       setNotice(
         mode === "demo"
-          ? "Demo 安全策略已留版本审计；不会发送短信，也未接入正式 App。"
+          ? "本地 安全策略已留版本审计；不会发送短信，也未接入正式 App。"
           : "安全策略已取得服务端回执；此操作不会发送短信。"
       );
     } catch (cause) {
@@ -550,8 +550,8 @@ export function ConsumerAccountsPanel({
       <div className="p-5 sm:p-6">
         {mode === "demo" && (tab === "compliance" || tab === "security") && (
           <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-800">
-            Demo 仅允许保存合规/策略配置及版本审计；它不代表正式 App
-            已上线，且不会模拟真实用户、KYC、短信发送或服务端审批成功。
+            本地 仅允许保存合规/策略配置及版本审计；它不代表正式 App
+            已上线，且不会生成真实用户、KYC、短信发送或服务端审批成功。
           </div>
         )}
         {error && (

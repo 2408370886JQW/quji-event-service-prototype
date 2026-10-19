@@ -75,7 +75,7 @@ function messageFor(command: GovernanceCommand, api: boolean) {
     end: "活动结束已提交",
     cancel: "活动取消已提交",
   };
-  return `${verb[command]}${api ? "，已以服务端回执为准" : "（Demo 配置）"}`;
+  return `${verb[command]}${api ? "，已以服务端回执为准" : "（本地 配置）"}`;
 }
 
 function errorMessage(problem: unknown) {
@@ -129,7 +129,7 @@ function Field({
  * Embeddable activity-detail panel. API mode has no mock/localStorage fallback; demo mode
  * only stores versioned configuration keyed by the exact activity ID.
  */
-export function ActivityGovernancePanel({
+function ActivityGovernanceBody({
   activityId,
   role,
 }: ActivityGovernancePanelProps) {
@@ -259,7 +259,7 @@ export function ActivityGovernancePanel({
       if (!apiMode) {
         setEligibilities([]);
         setNotice(
-          "Demo 不生成或签发资格；资格列表保持为空，不能作为入场依据。"
+          "本地 不生成或签发资格；资格列表保持为空，不能作为入场依据。"
         );
         return;
       }
@@ -285,7 +285,7 @@ export function ActivityGovernancePanel({
       assertKnownEligibility(activityId, eligibilities, revokeTarget);
       if (!apiMode) {
         throw new Error(
-          "Demo 模式不会伪造资格撤销成功；请接入权威资格服务后办理。"
+          "本地 模式不会伪造资格撤销成功；请接入权威资格服务后办理。"
         );
       }
       await requestApi<unknown>(
@@ -315,7 +315,7 @@ export function ActivityGovernancePanel({
       if (!apiMode) {
         setAppeals([]);
         setNotice(
-          "Demo 不生成用户异议；异议仅由 App 用户端发起，后台只读取权威案件。"
+          "本地 不生成用户异议；异议仅由 App 用户端发起，后台只读取权威案件。"
         );
         return;
       }
@@ -428,7 +428,7 @@ export function ActivityGovernancePanel({
         <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-6 text-amber-900">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <strong>Demo 配置，不代表 App 已上线。</strong>{" "}
+            <strong>本地 配置，不代表 App 已上线。</strong>{" "}
             本地仅保存当前活动的配置与操作记录；不会创建公开页、资格、退款、订单或任何资金完成状态。
           </div>
         </div>
@@ -1007,7 +1007,7 @@ export function ActivityGovernancePanel({
         ) : null}
         {eligibilities === null ? (
           <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-[13px] leading-6 text-slate-500">
-            尚未读取资格记录。Demo 不会生成资格；API 模式须从权威资格服务读取。
+            尚未读取资格记录。本地 不会生成资格；API 模式须从权威资格服务读取。
           </div>
         ) : eligibilities.length === 0 ? (
           <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-[13px] leading-6 text-slate-500">
@@ -1138,7 +1138,7 @@ export function ActivityGovernancePanel({
           ) : null}
           {appeals === null ? (
             <p className="mt-2 text-[13px] leading-5 text-slate-500">
-              点击“审核异议入口”读取当前活动关联的申报异议；不会在后台模拟用户发起。
+              点击“审核异议入口”读取当前活动关联的申报异议；异议仅由用户端发起，后台读取处理状态。
             </p>
           ) : appeals.length === 0 ? (
             <p className="mt-2 text-[13px] text-slate-500">
@@ -1218,7 +1218,7 @@ export function ActivityGovernancePanel({
         )}
       </section>
       <p className="text-[12px] leading-5 text-slate-500">
-        Demo 存储键：<code>{activityGovernanceStorageKey(activityId)}</code>
+        本地 存储键：<code>{activityGovernanceStorageKey(activityId)}</code>
         。API
         模式失败时不会读取或写入该键；退款批准、渠道回执和资金到账均不由本组件处理。
       </p>
@@ -1226,4 +1226,13 @@ export function ActivityGovernancePanel({
   );
 }
 
+export function ActivityGovernancePanel(props: ActivityGovernancePanelProps) {
+  // Late responses belong only to the old unmounted scope, never the newly displayed activity.
+  return (
+    <ActivityGovernanceBody
+      key={`${props.activityId}:${props.role}`}
+      {...props}
+    />
+  );
+}
 export default ActivityGovernancePanel;

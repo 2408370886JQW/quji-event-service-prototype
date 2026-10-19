@@ -140,3 +140,31 @@ it("最终有效资格门禁不能由退票政策关闭", () => {
     validatePolicy({ ...policy, requiresFinalEligibility: false })
   ).toHaveProperty("requiresFinalEligibility");
 });
+
+it("未支付与待退款状态绝不显示为资金成功", async () => {
+  const { transactionStatusTone } = await import("./transactionGovernance");
+  expect(transactionStatusTone("unpaid")).toBe("warning");
+  expect(transactionStatusTone("not_paid")).toBe("warning");
+  expect(transactionStatusTone("refund_pending")).toBe("warning");
+  expect(transactionStatusTone("not_refunded")).not.toBe("success");
+  expect(transactionStatusTone("paid")).toBe("success");
+  expect(transactionStatusTone("refunded")).toBe("success");
+});
+
+it("浏览器存储失败不得伪造政策保存成功", async () => {
+  const { saveDemoPolicy } = await import("./transactionGovernance");
+  const { vi } = await import("vitest");
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("quota exceeded");
+      },
+    },
+  });
+  try {
+    expect(() => saveDemoPolicy(policy.activityId, policy)).toThrow("保存");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

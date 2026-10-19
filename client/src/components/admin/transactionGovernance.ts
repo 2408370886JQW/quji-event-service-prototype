@@ -1,6 +1,42 @@
 import { isApiDataMode, requestApi } from "@/lib/api";
 import { isRefundFrozen } from "../refundData";
 
+export function transactionStatusTone(
+  status?: string
+): "success" | "danger" | "warning" | "neutral" {
+  const value = (status ?? "").trim().toLowerCase();
+  if (
+    ["unpaid", "not_paid"].includes(value) ||
+    /(^|_)(unknown|pending|processing|appeal)(_|$)/.test(value)
+  )
+    return "warning";
+  if (
+    [
+      "refunded",
+      "paid",
+      "issued",
+      "used",
+      "succeeded",
+      "published",
+      "已发布",
+      "已支付",
+      "已退款",
+    ].includes(value)
+  )
+    return "success";
+  if (
+    [
+      "failed",
+      "rejected",
+      "closed",
+      "refund_failed",
+      "payment_failed",
+    ].includes(value)
+  )
+    return "danger";
+  return "neutral";
+}
+
 export type GovernanceRole = "platform" | "organizer" | "culture";
 export type PolicyStatus = "draft" | "published";
 export type AppealStatus =
@@ -444,16 +480,18 @@ function storageRead(key: string): string | null {
   }
   return memory.get(key) ?? null;
 }
-
 function storageWrite(key: string, value: string) {
-  memory.set(key, value);
-  try {
-    if (typeof window !== "undefined") window.localStorage.setItem(key, value);
-  } catch {
-    /* Browser storage failure never implies an API success. */
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      throw new Error("浏览器存储写入失败，配置未保存");
+    }
+    return;
   }
+  // Memory is for SSR/unit tests only; never a substitute for a successful browser write.
+  memory.set(key, value);
 }
-
 function readScoped<T extends { activityId: string }>(
   key: string,
   activityId: string
