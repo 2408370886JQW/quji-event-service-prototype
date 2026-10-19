@@ -76,6 +76,9 @@ import {
   ScrollText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ActivityGovernancePanel } from "@/components/admin/ActivityGovernancePanel";
+import { TransactionGovernancePanel } from "@/components/admin/TransactionGovernancePanel";
+import { ConsumerAccountsPanel } from "@/components/admin/ConsumerAccountsPanel";
 import {
   ActivityMaterials,
   OrganizerMaterials,
@@ -170,6 +173,7 @@ type Page =
   | "data"
   | "onboarding"
   | "admissions"
+  | "consumer-accounts"
   | "activity-create"
   | "activity-published";
 type ActivityTab =
@@ -415,6 +419,7 @@ const ROLE_INFO: Record<
     permissions: [
       "workspace",
       "admissions",
+      "consumer-accounts",
       "events",
       "activity",
       "tickets",
@@ -1039,6 +1044,7 @@ const PAGE_VALUES: Page[] = [
   "admissions",
   "activity-create",
   "activity-published",
+  "consumer-accounts",
 ];
 const TAB_VALUES: ActivityTab[] = [
   "overview",
@@ -1141,6 +1147,16 @@ export default function Home() {
   const [registrationOpen, setRegistrationOpen] = useState(
     restored.registrationOpen
   );
+  useEffect(() => {
+    const expire = () => {
+      setSignedIn(false);
+      setPage("workspace");
+      setRegistrationOpen(false);
+      toast.error("登录已失效，请重新登录");
+    };
+    window.addEventListener("quji:unauthorized", expire);
+    return () => window.removeEventListener("quji:unauthorized", expire);
+  }, []);
   useEffect(() => {
     const snapshot: WorkspaceSession = {
       signedIn,
@@ -1246,6 +1262,12 @@ export default function Home() {
         id: "admissions",
         label: "入驻审核",
         icon: ClipboardCheck,
+        group: "账号与主体",
+      },
+      {
+        id: "consumer-accounts",
+        label: "用户与账户",
+        icon: UserCog,
         group: "账号与主体",
       },
       { id: "events", label: t.events, icon: CalendarDays, group: "工作协同" },
@@ -1635,6 +1657,12 @@ export default function Home() {
                   role={role}
                   actor={actor}
                   canEdit={role === "organizer" || role === "platform"}
+                />
+              )}
+              {page === "consumer-accounts" && role === "platform" && (
+                <ConsumerAccountsPanel
+                  role={role}
+                  mode={isApiDataMode() ? "api" : "demo"}
                 />
               )}
               {page === "tickets" && (
@@ -2377,7 +2405,16 @@ function ActivityRecord({
           })}
         </div>
       </div>
-      {tab === "overview" && <ActivityOverview event={event} onTab={setTab} />}
+      {tab === "overview" && (
+        <>
+          <ActivityOverview event={event} onTab={setTab} />
+          <ActivityGovernancePanel
+            key={event.id}
+            activityId={event.id}
+            role={role}
+          />
+        </>
+      )}
       {tab === "materials" && <ActivityMaterials canEdit={canEdit} />}
       {tab === "participants" && (
         <ParticipantsPanel
@@ -2922,7 +2959,7 @@ function TicketPage({
         <ModuleTitle
           eyebrow="票务管理"
           title="订单、退款与电子票"
-          description="用户在漫圈 App 提交退款申请后自动进入这里 平台运营人员核对订单与规则后同意或驳回"
+          description="统一管理订单、电子票与退款 当前 Demo 未接入漫圈 App 的真实交易数据"
           actions={
             <button
               data-cy="refund-entry"
@@ -2940,6 +2977,11 @@ function TicketPage({
           }
         />
       )}
+      <TransactionGovernancePanel
+        key={eventId}
+        activityId={eventId}
+        role={role}
+      />
       <section className="bg-white border border-slate-200 rounded-xl px-4 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center">
         {refundSteps.map(({ icon: Icon, title, text, tone }, index) => (
           <div key={title} className="contents">
